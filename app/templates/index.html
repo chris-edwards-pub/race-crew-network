@@ -5,7 +5,7 @@
     {% if current_user.is_admin %}
     <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>
     {% endif %}
-    <a href="javascript:window.print()" class="btn btn-outline-secondary btn-sm no-print">Print</a>
+    <a href="{{ url_for('regattas.pdf') }}" class="btn btn-outline-secondary btn-sm no-print" target="_blank">Print PDF</a>
 </div>
 
 {% macro regatta_table(regattas, is_past) %}
