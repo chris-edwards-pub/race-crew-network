@@ -18,6 +18,10 @@
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required value="{{ user.email }}">
             </div>
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" id="phone" name="phone" value="{{ user.phone or '' }}" placeholder="e.g. 555-123-4567">
+            </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin" {% if user.is_admin %}checked{% endif %}>
                 <label class="form-check-label" for="is_admin">Admin</label>

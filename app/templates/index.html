@@ -52,7 +52,7 @@
                 </td>
                 <td>
                     {% for rsvp in regatta.rsvps %}
-                    <span class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}: {{ rsvp.status }}">{{ rsvp.user.initials }}{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %}</span>
+                    <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
                     {% endfor %}
                 </td>
                 {% if not is_past %}

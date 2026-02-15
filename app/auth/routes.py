@@ -88,6 +88,7 @@ def profile():
             current_user.display_name = display_name
             current_user.initials = initials
             current_user.email = email
+            current_user.phone = request.form.get("phone", "").strip() or None
             if password:
                 current_user.set_password(password)
             db.session.commit()
@@ -95,6 +96,16 @@ def profile():
             return redirect(url_for("auth.profile"))
 
     return render_template("profile.html")
+
+
+@bp.route("/crew/<int:user_id>")
+@login_required
+def view_profile(user_id: int):
+    user = db.session.get(User, user_id)
+    if not user or user.invite_token:
+        flash("User not found.", "error")
+        return redirect(url_for("regattas.index"))
+    return render_template("view_profile.html", user=user)
 
 
 @bp.route("/admin/users")
@@ -174,6 +185,7 @@ def edit_user(user_id: int):
             user.initials = initials
             user.email = email
             user.is_admin = is_admin
+            user.phone = request.form.get("phone", "").strip() or None
             if password:
                 user.set_password(password)
             db.session.commit()

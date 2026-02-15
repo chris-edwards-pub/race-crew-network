@@ -1,5 +1,14 @@
 # Version History
 
+## 0.10.0
+- RSVP symbols moved to front of initials with space (e.g. "&#10003; CE" instead of "CE&#10003;")
+- Crew initials are clickable links to crew member profile page
+- Hover over initials shows crew member's full name
+- Phone number field added to user profiles
+- Phone number editable in self profile and admin edit user
+- Profile view page shows name, email, phone, and role
+- Version 0.10.0
+
 ## 0.9.0
 - Added VERSIONS.md with full version history
 - RSVP display: checkmark for Yes, X for No, ? for Maybe next to crew initials

@@ -15,6 +15,13 @@
     font-size: 0.8rem;
     font-weight: bold;
     margin-right: 4px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.crew-badge:hover {
+    opacity: 0.8;
+    text-decoration: underline;
 }
 
 .crew-badge.yes { background-color: #d1e7dd; color: #0f5132; }
