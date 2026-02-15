@@ -5,7 +5,7 @@
     {% if current_user.is_admin %}
     <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>
     {% endif %}
-    <button id="print-btn" type="button" class="btn btn-outline-secondary btn-sm no-print">Print</button>
+    <a href="#" id="print-btn" class="btn btn-outline-secondary btn-sm no-print">Print</a>
 </div>
 
 {% macro regatta_table(regattas, is_past) %}
@@ -51,7 +51,7 @@
                     {% endfor %}
                 </td>
                 <td>
-                    {% for rsvp in regatta.rsvps %}
+                    {% for rsvp in regatta.rsvps|sort_rsvps %}
                     <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
                     {% endfor %}
                 </td>
@@ -99,8 +99,14 @@
 {% endblock %}
 {% block scripts %}
 <script>
-document.getElementById('print-btn').addEventListener('click', function() {
-    window.print();
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('print-btn');
+    if (btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.print();
+        });
+    }
 });
 </script>
 {% endblock %}
