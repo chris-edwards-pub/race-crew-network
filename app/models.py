@@ -21,6 +21,8 @@ class User(UserMixin, db.Model):
 
     # Registration invite token (null after registration is complete)
     invite_token = db.Column(db.String(64), unique=True, nullable=True)
+    # Token for iCal subscription feed (generated on first request)
+    calendar_token = db.Column(db.String(64), unique=True, nullable=True)
 
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
     documents = db.relationship("Document", backref="uploaded_by_user", lazy="dynamic")

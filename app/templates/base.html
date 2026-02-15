@@ -13,6 +13,7 @@
             <a class="navbar-brand" href="{{ url_for('regattas.index') }}">Thistle Regattas</a>
             {% if current_user.is_authenticated %}
             <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
                 {% if current_user.is_admin %}
                 <a class="nav-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
                 {% endif %}
