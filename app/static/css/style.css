@@ -1,0 +1,27 @@
+/* Thistle Regatta Schedule */
+
+.rsvp-yes { color: #198754; font-weight: bold; }
+.rsvp-no { color: #dc3545; }
+.rsvp-maybe { color: #ffc107; font-weight: bold; }
+
+.regatta-past {
+    opacity: 0.5;
+}
+
+.crew-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.crew-badge.yes { background-color: #d1e7dd; color: #0f5132; }
+.crew-badge.no { background-color: #f8d7da; color: #842029; }
+.crew-badge.maybe { background-color: #fff3cd; color: #664d03; }
+
+.doc-link {
+    display: inline-block;
+    margin-right: 4px;
+}
