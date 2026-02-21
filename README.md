@@ -89,6 +89,102 @@ docker compose down -v
 
 ---
 
+## CI/CD Setup (GitHub Actions + Terraform)
+
+Before deploying infrastructure, create a dedicated IAM user with least-privilege
+permissions. This user is used by GitHub Actions and Terraform — never use your
+personal or root AWS credentials.
+
+### Prerequisites
+
+- AWS CLI installed and configured with admin credentials (`aws configure`)
+- GitHub CLI authenticated (`gh auth login`)
+
+### 1. Create IAM user
+
+```bash
+aws iam create-user --user-name thistle-regatta-deploy
+```
+
+### 2. Create IAM policy
+
+The policy file (`iam-policy.json`) is included in the repo root:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LightsailFullAccess",
+      "Effect": "Allow",
+      "Action": "lightsail:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformStateBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::thistle-regatta-tfstate",
+        "arn:aws:s3:::thistle-regatta-tfstate/*"
+      ]
+    }
+  ]
+}
+```
+
+Create the policy:
+
+```bash
+aws iam create-policy \
+  --policy-name thistle-regatta-deploy \
+  --policy-document file://iam-policy.json
+```
+
+### 3. Attach policy to user
+
+```bash
+# Get your account ID
+aws sts get-caller-identity --query Account --output text
+
+# Attach the policy (replace <ACCOUNT_ID> with the value above)
+aws iam attach-user-policy \
+  --user-name thistle-regatta-deploy \
+  --policy-arn arn:aws:iam::<ACCOUNT_ID>:policy/thistle-regatta-deploy
+```
+
+### 4. Generate access keys
+
+```bash
+aws iam create-access-key --user-name thistle-regatta-deploy
+```
+
+Save the output — the `SecretAccessKey` is only shown once.
+
+### 5. Store credentials in GitHub Secrets
+
+```bash
+gh secret set AWS_ACCESS_KEY_ID
+gh secret set AWS_SECRET_ACCESS_KEY
+```
+
+You'll be prompted to paste each value.
+
+### Verify setup
+
+```bash
+aws iam get-user --user-name thistle-regatta-deploy
+aws iam list-attached-user-policies --user-name thistle-regatta-deploy
+gh secret list
+```
+
+---
+
 ## AWS Lightsail Deployment
 
 ### Option A: Lightsail Container Service (Recommended)
