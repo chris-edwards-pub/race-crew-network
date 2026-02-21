@@ -1,5 +1,15 @@
 # Version History
 
+## 0.13.0
+- Terraform infrastructure-as-code for AWS Lightsail (instance, static IP, firewall)
+- GitHub Actions deploy workflow: auto-deploys on push to master via SSH
+- GitHub Actions Terraform workflow: plans on PR, applies on merge to master
+- Dedicated IAM user and policy with least-privilege permissions
+- S3 backend for Terraform state with versioning and public access block
+- User-data script bootstraps instance with Docker, Docker Compose, and git
+- All secrets stored in GitHub Secrets, nothing hardcoded in code
+- Updated README with full CI/CD setup, infrastructure, and deployment docs
+
 ## 0.12.0
 - Replaced broken Print button with server-side PDF generation using WeasyPrint
 - PDF button opens a clean, print-ready PDF of the regatta schedule in a new tab
