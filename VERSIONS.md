@@ -1,5 +1,13 @@
 # Version History
 
+## 0.15.0
+- Add Let's Encrypt SSL/HTTPS via certbot Docker sidecar container
+- Automatic certificate renewal every 12 hours with nginx reload every 6 hours
+- HTTP to HTTPS redirect with HSTS header
+- Custom nginx entrypoint with SSL auto-detection (HTTP-only mode when no certs)
+- One-time `scripts/init-ssl.sh` for initial certificate provisioning
+- DOMAIN_NAME environment variable added to deployment workflow
+
 ## 0.14.0
 - Migrated non-sensitive GitHub Secrets to GitHub Variables
 - Fixed deploy SSH timeout with keepalive settings

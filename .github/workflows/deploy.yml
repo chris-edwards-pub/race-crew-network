@@ -5,6 +5,12 @@ on:
     branches: [master]
 
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy (defaults to master)"
+        required: false
+        default: "master"
+        type: string
 
 concurrency:
   group: deploy-production
@@ -12,6 +18,7 @@ concurrency:
 
 env:
   SSH_USER: ec2-user
+  DEPLOY_BRANCH: ${{ inputs.branch || 'master' }}
 
 jobs:
   deploy:
@@ -35,8 +42,9 @@ jobs:
           cd $HOME/app
 
           # Pull latest code
-          git fetch origin master
-          git reset --hard origin/master
+          BRANCH="${DEPLOY_BRANCH}"
+          git fetch origin "$BRANCH"
+          git reset --hard "origin/$BRANCH"
 
           # Stop running containers to free RAM for the build
           docker compose down
@@ -68,6 +76,7 @@ jobs:
           MYSQL_DATABASE=${{ vars.MYSQL_DATABASE }}
           MYSQL_USER=${{ vars.MYSQL_USER }}
           MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          DOMAIN_NAME=${{ vars.DOMAIN_NAME }}
           ENVFILE
 
       - name: Deploy application
@@ -75,7 +84,7 @@ jobs:
           SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
           SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}"
           scp $SSH_OPTS /tmp/env-file ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}:~/app/.env
-          $SSH_CMD 'bash -s' < /tmp/deploy.sh
+          $SSH_CMD "DEPLOY_BRANCH=${{ env.DEPLOY_BRANCH }} bash -s" < /tmp/deploy.sh
 
       - name: Cleanup
         if: always()
