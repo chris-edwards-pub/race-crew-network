@@ -38,6 +38,9 @@ jobs:
           git fetch origin master
           git reset --hard origin/master
 
+          # Pre-pull base image to avoid buildx session timeout
+          docker pull python:3.11-slim
+
           # Build and deploy
           docker compose up -d --build --remove-orphans
 
