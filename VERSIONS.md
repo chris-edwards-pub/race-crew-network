@@ -1,5 +1,8 @@
 # Version History
 
+## 0.15.1
+- Upgrade Lightsail instance from micro_3_0 (1GB) to small_3_0 (2GB) to resolve OOM issues
+
 ## 0.15.0
 - Add Let's Encrypt SSL/HTTPS via certbot Docker sidecar container
 - Automatic certificate renewal every 12 hours with nginx reload every 6 hours

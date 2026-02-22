@@ -25,7 +25,7 @@ variable "blueprint_id" {
 variable "bundle_id" {
   description = "Lightsail instance bundle (size/price)"
   type        = string
-  default     = "micro_3_0"
+  default     = "small_3_0"
 }
 
 variable "ssh_public_key" {

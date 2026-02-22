@@ -364,11 +364,11 @@ every 60 days.
 
 | Component | Monthly Cost |
 |-----------|-------------|
-| Lightsail instance (micro_3_0, 1GB RAM) | $5 |
+| Lightsail instance (small_3_0, 2GB RAM) | $10 |
 | Static IP (attached to instance) | $0 |
 | S3 state bucket | ~$0 |
 | GitHub Actions | $0 (free tier) |
-| **Total** | **~$5/mo** |
+| **Total** | **~$10/mo** |
 
 ---
 
