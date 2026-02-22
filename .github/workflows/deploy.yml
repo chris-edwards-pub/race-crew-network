@@ -77,6 +77,7 @@ jobs:
           MYSQL_USER=${{ vars.MYSQL_USER }}
           MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
           DOMAIN_NAME=${{ vars.DOMAIN_NAME }}
+          CERTBOT_EMAIL=${{ vars.CERTBOT_EMAIL }}
           ENVFILE
 
       - name: Deploy application
@@ -85,6 +86,12 @@ jobs:
           SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}"
           scp $SSH_OPTS /tmp/env-file ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}:~/app/.env
           $SSH_CMD "DEPLOY_BRANCH=${{ env.DEPLOY_BRANCH }} bash -s" < /tmp/deploy.sh
+
+      - name: Initialize SSL certificate
+        run: |
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
+          SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}"
+          $SSH_CMD 'bash ~/app/scripts/init-ssl.sh ~/app'
 
       - name: Cleanup
         if: always()

@@ -2,18 +2,29 @@
 set -euo pipefail
 
 # Obtain initial Let's Encrypt SSL certificate.
-# Run once on the Lightsail server after the first deploy.
-#
-# Usage: bash scripts/init-ssl.sh <domain> <email>
-# Example: bash scripts/init-ssl.sh regatta.example.com admin@example.com
+# Reads DOMAIN_NAME and CERTBOT_EMAIL from the .env file.
+# Skips if certificates already exist.
 
-DOMAIN="${1:?Usage: $0 <domain> <email>}"
-EMAIL="${2:?Usage: $0 <domain> <email>}"
-APP_DIR="${3:-/home/ec2-user/app}"
-
-echo "=== Obtaining SSL certificate for $DOMAIN ==="
+APP_DIR="${1:-/home/ec2-user/app}"
 
 cd "$APP_DIR"
+
+# Load variables from .env
+set -a
+source .env
+set +a
+
+DOMAIN="${DOMAIN_NAME:?DOMAIN_NAME not set in .env}"
+EMAIL="${CERTBOT_EMAIL:?CERTBOT_EMAIL not set in .env}"
+
+# Check if certificate already exists
+CERT_VOL=$(docker volume inspect "${PWD##*/}_certbot_certs" 2>/dev/null | grep -o '"Mountpoint": "[^"]*"' | cut -d'"' -f4 || true)
+if [ -n "$CERT_VOL" ] && [ -f "$CERT_VOL/live/$DOMAIN/fullchain.pem" ]; then
+    echo "SSL certificate already exists for $DOMAIN, skipping."
+    exit 0
+fi
+
+echo "=== Obtaining SSL certificate for $DOMAIN ==="
 
 # Ensure nginx is running (HTTP-only mode) so ACME challenges can be served
 docker compose up -d nginx
