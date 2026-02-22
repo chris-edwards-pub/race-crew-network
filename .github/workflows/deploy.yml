@@ -66,8 +66,9 @@ jobs:
 
       - name: Deploy application
         run: |
-          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}"
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new /tmp/env-file ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}:~/app/.env
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
+          SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}"
+          scp $SSH_OPTS /tmp/env-file ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}:~/app/.env
           $SSH_CMD 'bash -s' < /tmp/deploy.sh
 
       - name: Cleanup
