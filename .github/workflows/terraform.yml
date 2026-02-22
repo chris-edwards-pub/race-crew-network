@@ -11,9 +11,9 @@ on:
 
 env:
   TF_VAR_ssh_public_key: ${{ secrets.LIGHTSAIL_SSH_PUBLIC_KEY }}
-  TF_VAR_repo_url: ${{ secrets.REPO_URL }}
-  TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
-  TF_VAR_route53_zone_id: ${{ secrets.ROUTE53_ZONE_ID }}
+  TF_VAR_repo_url: ${{ vars.REPO_URL }}
+  TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
+  TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
 
 jobs:
   terraform:

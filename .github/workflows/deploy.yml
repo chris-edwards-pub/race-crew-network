@@ -25,7 +25,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H ${{ vars.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Write deploy script
         run: |
@@ -62,19 +62,19 @@ jobs:
         run: |
           cat > /tmp/env-file << ENVFILE
           SECRET_KEY=${{ secrets.SECRET_KEY }}
-          DATABASE_URL=mysql+pymysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL=mysql+pymysql://${{ vars.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@db:3306/${{ vars.MYSQL_DATABASE }}
           UPLOAD_FOLDER=/app/uploads
           MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
-          MYSQL_USER=${{ secrets.MYSQL_USER }}
+          MYSQL_DATABASE=${{ vars.MYSQL_DATABASE }}
+          MYSQL_USER=${{ vars.MYSQL_USER }}
           MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
           ENVFILE
 
       - name: Deploy application
         run: |
           SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
-          SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}"
-          scp $SSH_OPTS /tmp/env-file ${{ env.SSH_USER }}@${{ secrets.LIGHTSAIL_HOST }}:~/app/.env
+          SSH_CMD="ssh $SSH_OPTS ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}"
+          scp $SSH_OPTS /tmp/env-file ${{ env.SSH_USER }}@${{ vars.LIGHTSAIL_HOST }}:~/app/.env
           $SSH_CMD 'bash -s' < /tmp/deploy.sh
 
       - name: Cleanup
