@@ -6,3 +6,4 @@
 - [ ] Create backups
 - [ ] Explore DB survivability
 - [ ] Security scan containers
+- [ ] Use AWS federated tokens for auth
