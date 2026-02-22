@@ -33,8 +33,9 @@ docker compose up -d nginx
 sleep 5
 
 # Request certificate using webroot authentication
-docker compose run --rm certbot \
-    certbot certonly \
+# Override entrypoint since the compose file sets a renewal loop entrypoint
+docker compose run --rm --entrypoint certbot certbot \
+    certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
     --email "$EMAIL" \
