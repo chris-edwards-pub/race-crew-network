@@ -25,7 +25,10 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 - **MINOR:** new features (new page, new functionality)
 - **PATCH:** bug fixes, small tweaks
 - Version tracked in `app/__init__.py` as `__version__`
-- Current version: `0.1.0`
+- **Every `feature/` or `fix/` branch must bump the version and update `VERSIONS.md` before merging**
+  - `feature/` branches bump MINOR (e.g. 0.13.0 → 0.14.0)
+  - `fix/` branches bump PATCH (e.g. 0.14.0 → 0.14.1)
+- **After merging, tag the merge commit:** `git tag v<version>` and `git push origin --tags`
 
 ## Git Workflow
 - `master` branch is production-ready — **never push directly to master**

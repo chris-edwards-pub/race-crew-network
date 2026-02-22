@@ -1,5 +1,14 @@
 # Version History
 
+## 0.14.0
+- Migrated non-sensitive GitHub Secrets to GitHub Variables
+- Fixed deploy SSH timeout with keepalive settings
+- Fixed buildx session timeout by pre-pulling base image
+- Fixed deploy OOM by stopping containers before build
+- Increased deploy workflow timeout to 15 minutes
+- Added versioning requirements to CLAUDE.md
+- Added branching workflow rules to CLAUDE.md (never push directly to master)
+
 ## 0.13.0
 - Terraform infrastructure-as-code for AWS Lightsail (instance, static IP, firewall)
 - GitHub Actions deploy workflow: auto-deploys on push to master via SSH
