@@ -1,5 +1,9 @@
 # Version History
 
+## 0.16.1
+- Revert Lightsail instance_name default to avoid destroying deployed instance
+- Update IAM policy Route53 zone ID to racecrew.net hosted zone
+
 ## 0.16.0
 - Rename project from "Thistle Regatta Schedule" to "Race Crew Network"
 - Update all user-facing branding (templates, PDF, iCal, filenames)
