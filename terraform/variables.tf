@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "instance_name" {
   description = "Name for the Lightsail instance"
   type        = string
-  default     = "thistle-regattas"
+  default     = "race-crew-network"
 }
 
 variable "availability_zone" {

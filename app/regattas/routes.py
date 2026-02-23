@@ -54,7 +54,7 @@ def pdf():
     pdf_bytes = HTML(string=html_str).write_pdf()
     response = make_response(pdf_bytes)
     response.headers["Content-Type"] = "application/pdf"
-    response.headers["Content-Disposition"] = "inline; filename=thistle-schedule.pdf"
+    response.headers["Content-Disposition"] = "inline; filename=race-crew-schedule.pdf"
     return response
 
 

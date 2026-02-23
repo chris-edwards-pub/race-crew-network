@@ -26,7 +26,7 @@ def register_commands(app: Flask) -> None:
             return
 
         # Generate credentials
-        email = "admin@regattas.local"
+        email = "admin@racecrew.net"
         password = _generate_password()
         display_name = "Administrator"
         initials = "AD"

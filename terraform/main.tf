@@ -16,7 +16,7 @@ resource "aws_lightsail_instance" "app" {
   })
 
   tags = {
-    Project = "thistle-regatta-schedule"
+    Project = "race-crew-network"
   }
 }
 

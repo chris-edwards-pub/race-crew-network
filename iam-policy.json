@@ -31,8 +31,8 @@
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::thistle-regatta-tfstate",
-        "arn:aws:s3:::thistle-regatta-tfstate/*"
+        "arn:aws:s3:::race-crew-tfstate",
+        "arn:aws:s3:::race-crew-tfstate/*"
       ]
     }
   ]

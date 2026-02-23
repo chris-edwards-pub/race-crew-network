@@ -4,7 +4,7 @@ output "instance_name" {
 }
 
 output "static_ip" {
-  description = "Static IP address — point hulagirl.us A record here"
+  description = "Static IP address — point racecrew.net A record here"
   value       = aws_lightsail_static_ip.app.ip_address
 }
 

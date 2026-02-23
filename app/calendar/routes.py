@@ -34,17 +34,17 @@ def ical_feed(token: str):
     user = User.query.filter_by(calendar_token=token).first_or_404()
 
     cal = Calendar()
-    cal.add("prodid", "-//Thistle Regattas//EN")
+    cal.add("prodid", "-//Race Crew Network//EN")
     cal.add("version", "2.0")
     cal.add("calscale", "GREGORIAN")
-    cal.add("x-wr-calname", "Thistle Regattas")
+    cal.add("x-wr-calname", "Race Crew Network")
     cal.add("method", "PUBLISH")
 
     regattas = Regatta.query.order_by(Regatta.start_date).all()
 
     for regatta in regattas:
         event = Event()
-        event.add("uid", f"regatta-{regatta.id}@thistle-regattas")
+        event.add("uid", f"regatta-{regatta.id}@racecrew.net")
         event.add("summary", regatta.name)
         event.add("dtstart", regatta.start_date)
         # End date is exclusive in iCal, so add 1 day
@@ -82,5 +82,5 @@ def ical_feed(token: str):
         cal.add_component(event)
 
     response = Response(cal.to_ical(), mimetype="text/calendar")
-    response.headers["Content-Disposition"] = "attachment; filename=thistle-regattas.ics"
+    response.headers["Content-Disposition"] = "attachment; filename=race-crew-network.ics"
     return response

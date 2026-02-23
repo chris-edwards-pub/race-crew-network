@@ -1,5 +1,13 @@
 # Version History
 
+## 0.16.0
+- Rename project from "Thistle Regatta Schedule" to "Race Crew Network"
+- Update all user-facing branding (templates, PDF, iCal, filenames)
+- Rename database/user from `regatta` to `racecrew`
+- Rename Terraform/AWS resources (S3 bucket, instance name, IAM user)
+- Update default admin email to `admin@racecrew.net`
+- Bump version to 0.16.0
+
 ## 0.15.1
 - Upgrade Lightsail instance from micro_3_0 (1GB) to small_3_0 (2GB) to resolve OOM issues
 

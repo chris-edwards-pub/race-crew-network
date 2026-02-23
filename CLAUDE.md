@@ -1,4 +1,4 @@
-# Thistle Regatta Schedule — Project Standards
+# Race Crew Network — Project Standards
 
 ## Python Standards
 - Python 3.11+

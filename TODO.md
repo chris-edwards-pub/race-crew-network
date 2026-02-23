@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] Add a way to have Claude read provided documents and URLs to populate the regatta list for the year
+- [ ] Add a way to have Claude read provided documents and URLs to populate the schedule for the year
 - [ ] Create backups
 - [ ] Explore DB survivability
 - [ ] Security scan containers

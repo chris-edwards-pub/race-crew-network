@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "thistle-regatta-tfstate"
+    bucket = "race-crew-tfstate"
     key    = "lightsail/terraform.tfstate"
     region = "us-east-1"
   }
