@@ -18,10 +18,6 @@ resource "aws_lightsail_instance" "app" {
   tags = {
     Project = "race-crew-network"
   }
-
-  lifecycle {
-    ignore_changes = [user_data]
-  }
 }
 
 # Static IP so the address survives instance stop/start

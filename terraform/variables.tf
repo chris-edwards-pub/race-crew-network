@@ -7,8 +7,7 @@ variable "aws_region" {
 variable "instance_name" {
   description = "Name for the Lightsail instance"
   type        = string
-  # Immutable in Lightsail; changing would destroy the instance
-  default = "thistle-regattas"
+  default = "race-crew-network"
 }
 
 variable "availability_zone" {
