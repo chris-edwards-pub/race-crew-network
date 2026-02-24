@@ -18,6 +18,10 @@ resource "aws_lightsail_instance" "app" {
   tags = {
     Project = "race-crew-network"
   }
+
+  lifecycle {
+    replace_triggered_by = [aws_lightsail_key_pair.deploy.id]
+  }
 }
 
 # Static IP so the address survives instance stop/start
