@@ -53,4 +53,3 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 
 ## Documentation
 - Keep the README.md file up to date with each PR
-
