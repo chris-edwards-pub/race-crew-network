@@ -1,6 +1,7 @@
 services:
   web:
     build: .
+    image: ghcr.io/chris-edwards-pub/race-crew-network:latest
     env_file: .env
     depends_on:
       db:

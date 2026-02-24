@@ -1,5 +1,13 @@
 # Version History
 
+## 0.17.0
+- Build and push Docker images to GHCR via GitHub Actions
+- Deploy pulls pre-built images instead of building on server
+- Zero-downtime deploys (no more stopping containers to free RAM)
+- Images tagged with: latest, git SHA, semantic version
+- GHA build cache for fast subsequent builds
+- Trimmed .dockerignore to reduce build context size
+
 ## 0.16.1
 - Revert Lightsail instance_name default to avoid destroying deployed instance
 - Update IAM policy Route53 zone ID to racecrew.net hosted zone

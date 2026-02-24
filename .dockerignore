@@ -5,3 +5,11 @@ __pycache__
 *.pyc
 .DS_Store
 .claude
+.github
+terraform
+tests
+nginx
+scripts
+*.md
+TODO.md
+iam-policy.json
