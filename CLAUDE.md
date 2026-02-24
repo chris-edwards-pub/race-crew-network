@@ -45,3 +45,8 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 - Local dev: `docker compose up --build`
 - Production: AWS Lightsail container service
 - 3 containers: web (Flask/Gunicorn), db (MySQL 8), nginx (reverse proxy)
+
+## Security
+- This is a public repo, store all sensitive information in GitHub secrets and variables
+- Check each PR for known security issues
+- When planning take security into consideration
