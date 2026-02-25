@@ -1,5 +1,7 @@
 import ipaddress
+import json
 import logging
+import re
 from datetime import date
 from socket import getaddrinfo
 from urllib.parse import quote_plus, urlparse
@@ -56,14 +58,62 @@ def _fetch_url_content(url: str) -> str:
     content_type = resp.headers.get("Content-Type", "")
     if "html" in content_type:
         soup = BeautifulSoup(resp.text, "html.parser")
-        # Remove scripts and styles
+
+        # Extract JSON-LD structured data (schema.org Events)
+        jsonld_events = _extract_jsonld_events(resp.text)
+
+        # Remove scripts and styles for plain text extraction
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
         text = soup.get_text(separator="\n", strip=True)
+
+        # Prepend JSON-LD events so the AI sees structured data
+        if jsonld_events:
+            text = jsonld_events + "\n\n" + text
     else:
         text = resp.text
 
     return text[:MAX_CONTENT_LENGTH]
+
+
+def _extract_jsonld_events(html: str) -> str:
+    """Extract schema.org Event data from JSON-LD script tags."""
+    blocks = re.findall(
+        r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
+        html,
+        re.DOTALL,
+    )
+    events = []
+    for block in blocks:
+        try:
+            data = json.loads(block)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            if item.get("@type") == "Event":
+                events.append(item)
+            # Handle @graph wrapper
+            if "@graph" in item:
+                for node in item["@graph"]:
+                    if node.get("@type") == "Event":
+                        events.append(node)
+
+    if not events:
+        return ""
+
+    lines = ["Structured event data found on page:"]
+    for ev in events:
+        loc = ev.get("location", {})
+        loc_name = loc.get("name", "") if isinstance(loc, dict) else ""
+        lines.append(
+            f"- {ev.get('name', 'Unknown')}"
+            f" | {ev.get('startDate', '')}"
+            f" - {ev.get('endDate', '')}"
+            f" | {loc_name}"
+        )
+    return "\n".join(lines)
 
 
 @bp.route("/admin/import-schedule", methods=["GET", "POST"])
@@ -133,8 +183,17 @@ def import_schedule():
             regattas=None,
         )
 
+    # Filter out past events
+    today = date.today().isoformat()
+    past_count = len(regattas)
+    regattas = [r for r in regattas if (r.get("start_date") or "") >= today]
+    past_count -= len(regattas)
+
     if not regattas:
-        flash("No regattas found in the provided content.", "warning")
+        msg = "No upcoming regattas found in the provided content."
+        if past_count:
+            msg += f" ({past_count} past event(s) excluded.)"
+        flash(msg, "warning")
 
     return render_template(
         "admin/import_schedule.html",
