@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import func
 
 from app import db
 from app.admin import bp
@@ -27,6 +28,14 @@ def _require_admin():
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
     return None
+
+
+def _find_duplicate(name: str, start_date) -> Regatta | None:
+    """Find an existing regatta with the same name (case-insensitive) and start date."""
+    return Regatta.query.filter(
+        func.lower(Regatta.name) == name.lower(),
+        Regatta.start_date == start_date,
+    ).first()
 
 
 def _is_private_ip(hostname: str) -> bool:
@@ -195,6 +204,20 @@ def import_schedule():
             msg += f" ({past_count} past event(s) excluded.)"
         flash(msg, "warning")
 
+    # Check for duplicates against existing regattas
+    for r in regattas:
+        start = r.get("start_date")
+        name = r.get("name")
+        if name and start:
+            existing = _find_duplicate(name, date.fromisoformat(start))
+            if existing:
+                r["duplicate_of"] = {
+                    "id": existing.id,
+                    "name": existing.name,
+                    "location": existing.location,
+                    "start_date": existing.start_date.isoformat(),
+                }
+
     return render_template(
         "admin/import_schedule.html",
         years=years,
@@ -241,8 +264,8 @@ def import_schedule_confirm():
             skipped += 1
             continue
 
-        # Duplicate check: same name + start_date
-        existing = Regatta.query.filter_by(name=name, start_date=start_date).first()
+        # Duplicate check: case-insensitive name + start_date
+        existing = _find_duplicate(name, start_date)
         if existing:
             skipped += 1
             continue

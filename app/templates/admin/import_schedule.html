@@ -42,7 +42,7 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 40px;">
-                                <input type="checkbox" id="select-all" checked>
+                                <input type="checkbox" id="select-all" {% if not regattas|selectattr('duplicate_of')|list %}checked{% endif %}>
                             </th>
                             <th>Name</th>
                             <th>Location</th>
@@ -53,12 +53,17 @@
                     </thead>
                     <tbody>
                         {% for r in regattas %}
-                        <tr>
+                        <tr{% if r.duplicate_of %} class="table-warning"{% endif %}>
                             <td class="text-center">
-                                <input type="checkbox" name="selected" value="{{ loop.index0 }}" checked>
+                                <input type="checkbox" name="selected" value="{{ loop.index0 }}" {% if not r.duplicate_of %}checked{% endif %}>
                             </td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" name="name_{{ loop.index0 }}" value="{{ r.name or '' }}" required>
+                                {% if r.duplicate_of %}
+                                <small class="d-block mt-1" style="color: #856404;">
+                                    &#9888; Possible duplicate of: {{ r.duplicate_of.name }} ({{ r.duplicate_of.start_date }}{% if r.duplicate_of.location %} at {{ r.duplicate_of.location }}{% endif %})
+                                </small>
+                                {% endif %}
                             </td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" name="location_{{ loop.index0 }}" value="{{ r.location or '' }}">

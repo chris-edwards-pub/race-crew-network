@@ -1,5 +1,12 @@
 # Version History
 
+## 0.21.0
+- Detect duplicate regattas during AI import preview with warning badges
+- Case-insensitive duplicate matching (name + start date) against existing regattas
+- Duplicate rows highlighted in yellow and unchecked by default in preview table
+- Existing regatta details shown inline so admin can make informed decisions
+- Improved confirm-step duplicate check to be case-insensitive
+
 ## 0.20.2
 - Bulk delete regattas: admin can select multiple regattas via checkboxes and delete them at once
 - Select-all checkbox and confirmation dialog for both upcoming and past tables
