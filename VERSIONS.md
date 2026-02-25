@@ -1,5 +1,13 @@
 # Version History
 
+## 0.19.0
+- Add CloudFront distribution in front of S3 redirect bucket for apex domain HTTPS
+- ACM certificate for racecrew.net with DNS validation
+- Both https://racecrew.net and http://racecrew.net now redirect to https://www.racecrew.net
+- Add ACM and CloudFront permissions to IAM policy
+- Increase Terraform workflow timeout to 30 minutes for CloudFront deploys
+- Remove stale TF_VAR_secret_key from Terraform workflow
+
 ## 0.18.1
 - Require INIT_ADMIN_EMAIL and INIT_ADMIN_PASSWORD env vars for first deploy
 - Remove random password generation from init-admin command (Lightsail logs not accessible)

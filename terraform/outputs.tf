@@ -28,3 +28,8 @@ output "bucket_secret_access_key" {
   value       = aws_lightsail_bucket_access_key.app.secret_access_key
   sensitive   = true
 }
+
+output "cloudfront_distribution_domain" {
+  description = "CloudFront domain name for apex redirect"
+  value       = aws_cloudfront_distribution.apex_redirect.domain_name
+}

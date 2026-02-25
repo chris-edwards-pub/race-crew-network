@@ -53,6 +53,35 @@
         "arn:aws:s3:::racecrew.net",
         "arn:aws:s3:::racecrew.net/*"
       ]
+    },
+    {
+      "Sid": "ACMCertificates",
+      "Effect": "Allow",
+      "Action": [
+        "acm:RequestCertificate",
+        "acm:DescribeCertificate",
+        "acm:DeleteCertificate",
+        "acm:ListCertificates",
+        "acm:ListTagsForCertificate",
+        "acm:AddTagsToCertificate",
+        "acm:GetCertificate"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudFrontDistribution",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:GetDistribution",
+        "cloudfront:ListDistributions",
+        "cloudfront:TagResource",
+        "cloudfront:ListTagsForResource",
+        "cloudfront:GetDistributionConfig"
+      ],
+      "Resource": "*"
     }
   ]
 }

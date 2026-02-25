@@ -82,7 +82,7 @@ resource "aws_route53_record" "app" {
 }
 
 # Naked domain redirect: S3 bucket redirects racecrew.net -> www.racecrew.net
-# Route 53 alias at zone apex points to the S3 website endpoint.
+# CloudFront terminates SSL, forwards to S3 website endpoint.
 
 resource "aws_s3_bucket" "redirect" {
   bucket = var.domain_name
@@ -97,14 +97,106 @@ resource "aws_s3_bucket_website_configuration" "redirect" {
   }
 }
 
+# --- ACM Certificate for apex domain (must be us-east-1 for CloudFront) ---
+
+resource "aws_acm_certificate" "apex" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "apex_cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.apex.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  zone_id = var.route53_zone_id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "apex" {
+  certificate_arn         = aws_acm_certificate.apex.arn
+  validation_record_fqdns = [for record in aws_route53_record.apex_cert_validation : record.fqdn]
+}
+
+# --- CloudFront distribution for apex redirect ---
+
+resource "aws_cloudfront_distribution" "apex_redirect" {
+  enabled         = true
+  aliases         = [var.domain_name]
+  price_class     = "PriceClass_100"
+  is_ipv6_enabled = true
+  comment         = "Naked domain redirect for ${var.domain_name}"
+
+  origin {
+    domain_name = aws_s3_bucket_website_configuration.redirect.website_endpoint
+    origin_id   = "S3RedirectOrigin"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "S3RedirectOrigin"
+    viewer_protocol_policy = "allow-all"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 86400
+    max_ttl     = 31536000
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = aws_acm_certificate_validation.apex.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  tags = {
+    Project = "race-crew-network"
+  }
+
+  depends_on = [aws_acm_certificate_validation.apex]
+}
+
+# Route 53 alias at zone apex points to the CloudFront distribution.
+
 resource "aws_route53_record" "apex" {
   zone_id = var.route53_zone_id
   name    = var.domain_name
   type    = "A"
 
   alias {
-    name                   = aws_s3_bucket_website_configuration.redirect.website_domain
-    zone_id                = aws_s3_bucket.redirect.hosted_zone_id
+    name                   = aws_cloudfront_distribution.apex_redirect.domain_name
+    zone_id                = aws_cloudfront_distribution.apex_redirect.hosted_zone_id
     evaluate_target_health = false
   }
 }
