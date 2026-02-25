@@ -29,8 +29,13 @@ Production:
   Lightsail Container Service (Micro) ─── Lightsail Managed MySQL (Micro)
          │                                         │
          ├── GHCR image (Flask/Gunicorn)           └── Automated backups
-         ├── Built-in HTTPS + custom domain
+         ├── Built-in HTTPS + custom domain (www.racecrew.net)
          └── Lightsail Object Storage (S3) ── file uploads
+
+  CloudFront + ACM ─── S3 redirect bucket
+         │                    │
+         ├── SSL for racecrew.net (naked domain)
+         └── 301 redirect → https://www.racecrew.net
 
 Local Development:
   docker-compose up
@@ -182,8 +187,11 @@ provisions Lightsail Container Service, Managed MySQL, Object Storage, and DNS.
 - Lightsail Container Service (`micro` — $10/mo)
 - Lightsail Managed MySQL (`micro_1_0` — $15/mo, automated backups)
 - Lightsail Object Storage (`small_1_0` — $1/mo, file uploads)
-- SSL certificate with DNS validation
-- Route 53 DNS records (CNAME to container service, cert validation)
+- SSL certificate with DNS validation (Lightsail, for www subdomain)
+- ACM certificate with DNS validation (for naked domain)
+- CloudFront distribution (naked domain HTTPS → S3 redirect → www)
+- S3 bucket (redirect-only, no content)
+- Route 53 DNS records (CNAME for www, A-alias for apex → CloudFront, cert validation)
 - Bucket access key for app-to-S3 authentication
 
 ### First-time setup
@@ -357,9 +365,14 @@ Or re-run a previous successful workflow from the GitHub Actions UI.
 
 ## DNS Setup
 
-DNS is managed by Terraform via Route 53. The CNAME record points to the
-container service URL. HTTPS is handled by a Lightsail-managed SSL certificate
-with automatic DNS validation and renewal.
+DNS is managed by Terraform via Route 53:
+
+- **www.racecrew.net** — CNAME to the Lightsail Container Service. HTTPS is
+  handled by a Lightsail-managed SSL certificate with automatic DNS validation
+  and renewal.
+- **racecrew.net** (naked domain) — A-alias to a CloudFront distribution that
+  terminates SSL using an ACM certificate, then forwards to an S3 redirect
+  bucket which returns a 301 to `https://www.racecrew.net`.
 
 ---
 
@@ -371,6 +384,8 @@ with automatic DNS validation and renewal.
 | Lightsail Managed MySQL (micro_1_0) | $15 |
 | Lightsail Object Storage (small_1_0) | $1 |
 | S3 state bucket | ~$0 |
+| ACM certificate (apex domain) | $0 |
+| CloudFront (apex redirect) | $0 (free tier) |
 | GitHub Actions | $0 (free tier) |
 | GHCR container images | $0 (free for public repos) |
 | **Total** | **~$26/mo** |
