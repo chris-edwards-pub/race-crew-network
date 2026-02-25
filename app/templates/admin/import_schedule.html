@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Import Schedule — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">Import Schedule</h2>
+        <p class="text-muted">Paste a regatta schedule or provide a URL. AI will extract the events for review before importing.</p>
+
+        <form method="POST" action="{{ url_for('admin.import_schedule') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_url" class="form-label">Schedule URL (optional)</label>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" value="{{ request.form.get('schedule_url', '') }}">
+            </div>
+            <div class="mb-3">
+                <label for="schedule_text" class="form-label">Or paste schedule text</label>
+                <textarea class="form-control" id="schedule_text" name="schedule_text" rows="8" placeholder="Paste regatta schedule here...">{{ request.form.get('schedule_text', '') }}</textarea>
+            </div>
+            <div class="row mb-3">
+                <div class="col-auto">
+                    <label for="year" class="form-label">Year</label>
+                    <select class="form-select" id="year" name="year">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Extract Regattas</button>
+            <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+
+        {% if regattas is not none and regattas|length > 0 %}
+        <hr class="my-4">
+        <h4>Preview — {{ regattas|length }} regatta(s) found</h4>
+        <p class="text-muted">Review and edit the extracted data. Uncheck rows you don't want to import.</p>
+
+        <form method="POST" action="{{ url_for('admin.import_schedule_confirm') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all" checked>
+                            </th>
+                            <th>Name</th>
+                            <th>Location</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in regattas %}
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox" name="selected" value="{{ loop.index0 }}" checked>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" name="name_{{ loop.index0 }}" value="{{ r.name or '' }}" required>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" name="location_{{ loop.index0 }}" value="{{ r.location or '' }}">
+                                <input type="hidden" name="location_url_{{ loop.index0 }}" value="{{ r.location_url or '' }}">
+                            </td>
+                            <td>
+                                <input type="date" class="form-control form-control-sm" name="start_date_{{ loop.index0 }}" value="{{ r.start_date or '' }}" required>
+                            </td>
+                            <td>
+                                <input type="date" class="form-control form-control-sm" name="end_date_{{ loop.index0 }}" value="{{ r.end_date or '' }}">
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" name="notes_{{ loop.index0 }}" value="{{ r.notes or '' }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn btn-success">Confirm Import</button>
+            <a href="{{ url_for('admin.import_schedule') }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('select-all')?.addEventListener('change', function() {
+    document.querySelectorAll('input[name="selected"]').forEach(cb => {
+        cb.checked = this.checked;
+    });
+});
+</script>
+{% endblock %}

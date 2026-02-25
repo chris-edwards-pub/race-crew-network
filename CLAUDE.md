@@ -53,3 +53,6 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 
 ## Documentation
 - Keep the README.md file up to date with each PR
+
+## Local testing
+- Testing can be done locally.  Docker and Mysql are both locally installed.

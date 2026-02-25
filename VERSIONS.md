@@ -1,5 +1,14 @@
 # Version History
 
+## 0.20.0
+- AI-powered schedule import: admin page to paste text or URL, extract regattas via Claude API
+- Editable preview table with select/deselect before bulk import
+- SSRF protection for URL fetching (rejects private/loopback IPs)
+- Duplicate detection (same name + start date) on import
+- Auto-generates Google Maps links for imported locations
+- New admin blueprint with `/admin/import-schedule` routes
+- New dependencies: anthropic, requests, beautifulsoup4
+
 ## 0.19.0
 - Add CloudFront distribution in front of S3 redirect bucket for apex domain HTTPS
 - ACM certificate for racecrew.net with DNS validation

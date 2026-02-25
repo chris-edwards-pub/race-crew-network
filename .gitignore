@@ -14,3 +14,5 @@ build/
 .mypy_cache/
 migrations/versions/__pycache__/
 .env
+.flask.pid
+.dev.log

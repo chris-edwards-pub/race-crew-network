@@ -4,7 +4,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
-__version__ = "0.19.0"
+__version__ = "0.20.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -22,10 +22,12 @@ def create_app():
     login_manager.init_app(app)
     csrf.init_app(app)
 
+    from app.admin import bp as admin_bp
     from app.auth import bp as auth_bp
     from app.calendar import bp as calendar_bp
     from app.regattas import bp as regattas_bp
 
+    app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(regattas_bp)
