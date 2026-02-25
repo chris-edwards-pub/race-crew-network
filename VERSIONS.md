@@ -1,5 +1,9 @@
 # Version History
 
+## 0.20.1
+- Extract JSON-LD schema.org Event data from pages that load events via JavaScript
+- Automatically filter out past events from import results
+
 ## 0.20.0
 - AI-powered schedule import: admin page to paste text or URL, extract regattas via Claude API
 - Editable preview table with select/deselect before bulk import
