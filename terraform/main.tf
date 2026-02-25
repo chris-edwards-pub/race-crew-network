@@ -66,41 +66,9 @@ resource "aws_lightsail_bucket_access_key" "app" {
 }
 
 # --- Container Deployment ---
-
-resource "aws_lightsail_container_service_deployment_version" "app" {
-  service_name = aws_lightsail_container_service.app.name
-
-  container {
-    container_name = "web"
-    image          = var.ghcr_image
-
-    environment = {
-      DATABASE_URL          = "mysql+pymysql://${var.db_username}:${var.db_password}@${aws_lightsail_database.app.master_endpoint_address}:${aws_lightsail_database.app.master_endpoint_port}/${var.db_name}"
-      SECRET_KEY            = var.secret_key
-      UPLOAD_FOLDER         = "/app/uploads"
-      BUCKET_NAME           = aws_lightsail_bucket.uploads.name
-      AWS_ACCESS_KEY_ID     = aws_lightsail_bucket_access_key.app.access_key_id
-      AWS_SECRET_ACCESS_KEY = aws_lightsail_bucket_access_key.app.secret_access_key
-      AWS_REGION            = var.aws_region
-    }
-
-    ports = {
-      8000 = "HTTP"
-    }
-  }
-
-  public_endpoint {
-    container_name = "web"
-    container_port = 8000
-
-    health_check {
-      path             = "/"
-      success_codes    = "200-499"
-      interval_seconds = 30
-      timeout_seconds  = 5
-    }
-  }
-}
+# Deployments are managed by GitHub Actions (deploy.yml), not Terraform.
+# Terraform manages infrastructure only; GH Actions owns the container image
+# and environment variables for each deploy.
 
 # --- DNS ---
 # www subdomain CNAME pointing to the container service.

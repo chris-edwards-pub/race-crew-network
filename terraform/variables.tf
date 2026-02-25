@@ -44,12 +44,6 @@ variable "db_name" {
   default     = "racecrew"
 }
 
-variable "secret_key" {
-  description = "Flask SECRET_KEY for session signing"
-  type        = string
-  sensitive   = true
-}
-
 variable "container_power" {
   description = "Lightsail container service power (nano, micro, small, etc.)"
   type        = string
@@ -60,12 +54,6 @@ variable "container_scale" {
   description = "Number of container instances to run"
   type        = number
   default     = 1
-}
-
-variable "ghcr_image" {
-  description = "GHCR image to deploy"
-  type        = string
-  default     = "ghcr.io/chris-edwards-pub/race-crew-network:latest"
 }
 
 variable "db_bundle_id" {
