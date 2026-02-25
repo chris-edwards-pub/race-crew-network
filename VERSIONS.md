@@ -4,6 +4,7 @@
 - Require INIT_ADMIN_EMAIL and INIT_ADMIN_PASSWORD env vars for first deploy
 - Remove random password generation from init-admin command (Lightsail logs not accessible)
 - Add admin env vars to deploy workflow and .env.example
+- Remove container deployment from Terraform — GitHub Actions owns deploys
 
 ## 0.18.0
 - Migrate from Lightsail EC2 instance to Container Service for ephemeral deploys
