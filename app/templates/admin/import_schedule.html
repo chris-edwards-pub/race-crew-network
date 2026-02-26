@@ -6,7 +6,7 @@
         <h2 class="mb-4">Import Schedule</h2>
         <p class="text-muted">Paste a regatta schedule or provide a URL. AI will extract the events for review before importing.</p>
 
-        <form method="POST" action="{{ url_for('admin.import_schedule') }}">
+        <form id="extract-form" method="POST" action="{{ url_for('admin.import_schedule') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="schedule_url" class="form-label">Schedule URL (optional)</label>
@@ -26,9 +26,14 @@
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary">Extract Regattas</button>
+            <button type="submit" id="btn-extract" class="btn btn-primary">Extract Regattas</button>
             <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
         </form>
+
+        <div id="extract-spinner" class="text-center my-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">AI is extracting regattas... this may take a moment.</p>
+        </div>
 
         {% if regattas is not none and regattas|length > 0 %}
         <hr class="my-4">
@@ -102,26 +107,32 @@
 
 {% block scripts %}
 <script>
+/* Spinner for initial Extract Regattas form submission */
+document.getElementById('extract-form')?.addEventListener('submit', function() {
+    document.getElementById('btn-extract').disabled = true;
+    document.getElementById('extract-spinner').style.display = 'block';
+});
+
+/* Select-all checkbox for preview table */
 document.getElementById('select-all')?.addEventListener('change', function() {
     document.querySelectorAll('input[name="selected"]').forEach(cb => {
         cb.checked = this.checked;
     });
 });
 
+/* Find Documents & Import — SSE streaming */
 document.getElementById('btn-find-docs')?.addEventListener('click', function() {
     const form = document.getElementById('import-form');
     const previewSection = document.getElementById('preview-section');
     const terminal = document.getElementById('discovery-terminal');
     const output = document.getElementById('terminal-output');
 
-    // Check if any regattas are selected
     const selected = form.querySelectorAll('input[name="selected"]:checked');
     if (selected.length === 0) {
         alert('No regattas selected.');
         return;
     }
 
-    // Hide preview, show terminal
     previewSection.style.display = 'none';
     terminal.style.display = 'block';
     output.textContent = '';
@@ -134,7 +145,6 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
         output.scrollTop = output.scrollHeight;
     }
 
-    // Collect form data
     const formData = new FormData(form);
     const csrfToken = formData.get('csrf_token');
 
@@ -143,16 +153,24 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
         headers: {'X-CSRFToken': csrfToken},
         body: formData
     }).then(response => {
+        if (!response.ok) {
+            appendLine('\u2717', 'Server error: ' + response.status + ' ' + response.statusText, '#f44747');
+            return;
+        }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
 
         function read() {
             reader.read().then(({done, value}) => {
-                if (done) return;
+                if (done) {
+                    if (!output.textContent.trim()) {
+                        appendLine('\u2717', 'Stream ended without data.', '#f44747');
+                    }
+                    return;
+                }
                 buffer += decoder.decode(value, {stream: true});
 
-                // Process complete SSE events
                 const lines = buffer.split('\n');
                 buffer = '';
                 for (let i = 0; i < lines.length; i++) {
@@ -167,7 +185,8 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
                             } else if (event.type === 'error') {
                                 appendLine('\u2717', event.message, '#f44747');
                             } else if (event.type === 'done') {
-                                appendLine('\n\u2714', event.summary, '#dcdcaa');
+                                appendLine('', '', '');
+                                appendLine('\u2714', event.summary, '#dcdcaa');
                                 appendLine('\u2192', 'Redirecting to document review...', '#569cd6');
                                 setTimeout(() => {
                                     window.location.href = "{{ url_for('admin.import_schedule_documents') }}?task_id=" + event.task_id;
@@ -175,10 +194,9 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
                                 return;
                             }
                         } catch (e) {
-                            // ignore parse errors
+                            // ignore parse errors for incomplete chunks
                         }
                     } else if (line !== '') {
-                        // Incomplete line, put back in buffer
                         buffer = line;
                     }
                 }

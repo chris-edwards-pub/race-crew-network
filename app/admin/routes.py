@@ -9,8 +9,8 @@ from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from flask import (Response, current_app, flash, redirect, render_template,
-                   request, url_for)
+from flask import (Response, flash, redirect, render_template, request,
+                   stream_with_context, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
@@ -385,7 +385,6 @@ def import_schedule_discover():
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
-        app = current_app._get_current_object()
         total_docs = 0
 
         if not has_detail_urls:
@@ -410,22 +409,34 @@ def import_schedule_discover():
                 yield _sse({"type": "progress", "message": f"Fetching: {name}..."})
 
                 try:
-                    with app.app_context():
-                        content = _fetch_url_content(r["detail_url"])
-                        docs = discover_documents(content, name, r["detail_url"])
+                    content = _fetch_url_content(r["detail_url"])
+                    docs = discover_documents(content, name, r["detail_url"])
                     r["documents"] = docs
                     total_docs += len(docs)
 
                     if docs:
                         doc_types = ", ".join(d["doc_type"] for d in docs)
-                        yield _sse({"type": "result", "message": f"Found: {doc_types}"})
+                        yield _sse(
+                            {
+                                "type": "result",
+                                "message": f"Found: {doc_types}",
+                            }
+                        )
                     else:
-                        yield _sse({"type": "result", "message": "No documents found"})
+                        yield _sse(
+                            {
+                                "type": "result",
+                                "message": "No documents found",
+                            }
+                        )
 
                 except (ValueError, requests.RequestException) as e:
                     r["error"] = str(e)
                     yield _sse(
-                        {"type": "error", "message": f"Could not fetch page: {e}"}
+                        {
+                            "type": "error",
+                            "message": f"Could not fetch page: {e}",
+                        }
                     )
                 except (ConnectionError, Exception) as e:
                     r["error"] = str(e)
@@ -434,10 +445,19 @@ def import_schedule_discover():
         _discovery_results[task_id] = regatta_data
 
         regattas_with_docs = sum(1 for r in regatta_data if r["documents"])
-        summary = f"Found {total_docs} document(s) for {regattas_with_docs} regatta(s)"
+        summary = (
+            f"Found {total_docs} document(s) " f"for {regattas_with_docs} regatta(s)"
+        )
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
-    return Response(generate(), content_type="text/event-stream")
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @bp.route("/admin/import-schedule/documents")
