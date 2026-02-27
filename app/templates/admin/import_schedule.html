@@ -10,7 +10,15 @@
             <form id="extract-form" method="POST" action="{{ url_for('admin.import_schedule') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3">
-                    <label for="schedule_url" class="form-label">Schedule URL (optional)</label>
+                    <label for="single_url" class="form-label">Import single regatta from a URL</label>
+                    <div class="input-group">
+                        <input type="url" class="form-control" id="single_url" name="single_url" placeholder="https://theclubspot.com/regatta/...">
+                        <button type="button" id="btn-single" class="btn btn-primary">Import</button>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label for="schedule_url" class="form-label">Import multiple regattas from a URL</label>
                     <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" value="{{ request.form.get('schedule_url', '') }}">
                 </div>
                 <div class="mb-3">
@@ -27,7 +35,7 @@
                         </select>
                     </div>
                 </div>
-                <button type="submit" id="btn-extract" class="btn btn-primary">Extract Regattas</button>
+                <button type="submit" id="btn-extract" class="btn btn-primary">Extract Schedule</button>
                 <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
             </form>
         </div>
@@ -39,7 +47,10 @@
         </div>
 
         {% if regattas is not none and regattas|length > 0 %}
-        <hr class="my-4">
+        <script>
+            document.getElementById('extract-section').style.display = 'none';
+            document.getElementById('extract-terminal').style.display = 'none';
+        </script>
         <div id="preview-section">
             <h4>Preview — {{ regattas|length }} regatta(s) found</h4>
             <p class="text-muted">Review and edit the extracted data. Uncheck rows you don't want to import.</p>
@@ -62,12 +73,17 @@
                         </thead>
                         <tbody>
                             {% for r in regattas %}
-                            <tr{% if r.duplicate_of %} class="table-warning"{% endif %}>
+                            <tr{% if r.duplicate_of or r.is_past %} class="table-warning"{% endif %}>
                                 <td class="text-center">
-                                    <input type="checkbox" name="selected" value="{{ loop.index0 }}" {% if not r.duplicate_of %}checked{% endif %}>
+                                    <input type="checkbox" name="selected" value="{{ loop.index0 }}" {% if not r.duplicate_of and not r.is_past %}checked{% endif %}>
                                 </td>
                                 <td>
                                     <input type="text" class="form-control form-control-sm" name="name_{{ loop.index0 }}" value="{{ r.name or '' }}" required>
+                                    {% if r.is_past %}
+                                    <small class="d-block mt-1" style="color: #856404;">
+                                        &#9888; Date appears to be in the past — check and correct if needed
+                                    </small>
+                                    {% endif %}
                                     {% if r.duplicate_of %}
                                     <small class="d-block mt-1" style="color: #856404;">
                                         &#9888; Possible duplicate of: {{ r.duplicate_of.name }} ({{ r.duplicate_of.start_date }}{% if r.duplicate_of.location %} at {{ r.duplicate_of.location }}{% endif %})
@@ -162,7 +178,7 @@ document.getElementById('extract-form')?.addEventListener('submit', function(e) 
     const output = document.getElementById('extract-output');
     const startOver = document.getElementById('extract-start-over');
 
-    extractSection.style.display = 'none';
+    document.getElementById('btn-extract').disabled = true;
     terminal.style.display = 'block';
     output.textContent = '';
 
@@ -190,7 +206,60 @@ document.getElementById('extract-form')?.addEventListener('submit', function(e) 
                 terminalAppend(output, '\u2192', 'Loading preview...', '#569cd6');
                 setTimeout(function() {
                     window.location.href = "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
-                }, 800);
+                }, 5000);
+                return false;
+            }
+        });
+    }).catch(function(err) {
+        terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+        startOver.style.display = 'inline-block';
+    });
+});
+
+/* Import Single Regatta — combined extract + discover */
+document.getElementById('btn-single')?.addEventListener('click', function() {
+    const form = document.getElementById('extract-form');
+    const terminal = document.getElementById('extract-terminal');
+    const output = document.getElementById('extract-output');
+    const startOver = document.getElementById('extract-start-over');
+
+    const url = document.getElementById('single_url').value.trim();
+    if (!url) {
+        alert('Provide a regatta URL.');
+        return;
+    }
+
+    document.getElementById('btn-extract').disabled = true;
+    this.disabled = true;
+    terminal.style.display = 'block';
+    output.textContent = '';
+
+    const formData = new FormData(form);
+    formData.set('schedule_url', url);
+    const csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract_single') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(response => {
+        readSSE(response, output, function(event) {
+            if (event.type === 'progress') {
+                terminalAppend(output, '\u2192', event.message, '#569cd6');
+            } else if (event.type === 'result') {
+                terminalAppend(output, '\u2713', event.message, '#6a9955');
+            } else if (event.type === 'error') {
+                terminalAppend(output, '\u2717', event.message, '#f44747');
+            } else if (event.type === 'failed') {
+                startOver.style.display = 'inline-block';
+                return false;
+            } else if (event.type === 'done') {
+                terminalAppend(output, '', '', '');
+                terminalAppend(output, '\u2714', event.summary, '#dcdcaa');
+                terminalAppend(output, '\u2192', 'Redirecting to document review...', '#569cd6');
+                setTimeout(function() {
+                    window.location.href = "{{ url_for('admin.import_schedule_documents') }}?task_id=" + event.task_id;
+                }, 5000);
                 return false;
             }
         });
@@ -220,7 +289,7 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
         return;
     }
 
-    previewSection.style.display = 'none';
+    document.getElementById('btn-find-docs').disabled = true;
     terminal.style.display = 'block';
     output.textContent = '';
 
@@ -245,7 +314,7 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
                 terminalAppend(output, '\u2192', 'Redirecting to document review...', '#569cd6');
                 setTimeout(function() {
                     window.location.href = "{{ url_for('admin.import_schedule_documents') }}?task_id=" + event.task_id;
-                }, 1000);
+                }, 5000);
                 return false;
             }
         });

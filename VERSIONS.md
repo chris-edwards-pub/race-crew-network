@@ -1,5 +1,16 @@
 # Version History
 
+## 0.23.0
+- Two-level document crawl: follows WWW links from detail pages to find NOR/SI on regatta websites
+- Clubspot integration: queries clubspot Parse API directly for NOR/SI documents
+- Extract JSON data attributes from JS-rendered pages (Vue/React hydration data)
+- "Import Single Regatta" button with combined extract + document discovery in one pass
+- Separate URL fields for single regatta vs multi-regatta schedule import
+- Improved document discovery prompt with explicit regatta portal domain recognition
+- Past events shown with warning instead of silently filtered out
+- Documents sorted alphabetically (NOR, SI, WWW) in all views
+- Crew column wraps for 3+ crew members on main schedule page
+
 ## 0.22.0
 - Auto-discover NOR/SI/WWW documents during AI schedule import
 - AI extracts detail_url for each regatta's individual event page

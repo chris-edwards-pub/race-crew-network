@@ -5,6 +5,7 @@
 - Type hints encouraged on function signatures
 - f-strings over `.format()` or `%` formatting
 - Use pathlib for file paths where practical
+- The local dev enviroment uses .venv
 
 ## Code Style
 - **Formatter:** Black (line length 88)
@@ -39,7 +40,22 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 ## Testing
 - Framework: pytest
 - Tests in `tests/` directory
-- Run: `pytest`
+- Run: `pytest` (or `.venv/bin/pytest` outside venv)
+- **Fixtures** (`tests/conftest.py`):
+  - `app` — Flask app with SQLite in-memory DB, CSRF disabled, `TESTING=True`
+  - `db` — SQLAlchemy database instance
+  - `client` — Flask test client
+  - `admin_user` — pre-created admin user (admin@test.com / password)
+  - `logged_in_client` — test client already authenticated as admin
+- **Test files**:
+  - `test_app_factory.py` — app creation, config, blueprints, version
+  - `test_models.py` — User, Regatta, Document, RSVP models and cascades
+  - `test_admin_routes.py` — access control, import preview/confirm, document review
+  - `test_admin_helpers.py` — helper functions (_is_private_ip, _parse_clubspot_regatta_id, etc.)
+  - `test_ai_service.py` — AI extraction/discovery with mocked Anthropic API
+- **Patterns**: use `unittest.mock.patch` for external APIs (Anthropic, requests); all fixtures are function-scoped
+- **All new features and bug fixes MUST include tests** — write and run tests for every code change before considering it complete
+- **Run the full test suite (`pytest`) after every change** to ensure nothing is broken
 
 ## Docker
 - Local dev: `docker compose up --build`
@@ -56,3 +72,5 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 
 ## Local testing
 - Testing can be done locally.  Docker and Mysql are both locally installed.
+- Testing should be done with each PR
+- Local admin credentials are set via `INIT_ADMIN_EMAIL` and `INIT_ADMIN_PASSWORD` in `.env`

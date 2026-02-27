@@ -4,7 +4,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
-__version__ = "0.22.0"
+__version__ = "0.23.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -13,9 +13,11 @@ login_manager.login_view = "auth.login"
 csrf = CSRFProtect()
 
 
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_object("app.config.Config")
+    if test_config:
+        app.config.update(test_config)
 
     db.init_app(app)
     migrate.init_app(app, db)

@@ -39,21 +39,55 @@ You are a document link extraction assistant for sailing regattas. \
 Given the content of a regatta detail page, find links to official documents.
 
 Look for these document types:
-- "NOR": Notice of Race — usually a PDF link
-- "SI": Sailing Instructions — usually a PDF link
-- "WWW": The regatta's own website — a link to a dedicated regatta website \
-(NOT the hosting club's general site, NOT the page you are reading)
+- "NOR": Notice of Race — usually a PDF link (.pdf)
+- "SI": Sailing Instructions — usually a PDF link (.pdf)
+- "WWW": The regatta's own website or event page. This includes:
+  - Registration/entry portals on known regatta platforms \
+(theclubspot.com, regattanetwork.com, yachtscoring.com)
+  - Links labeled "Register", "Registration", "Entry", "Sign up", or "Event page"
+  - Bare URLs to regatta management platforms
+  - Any link that leads to a page specifically about THIS regatta \
+(not the hosting club's general site)
 
 Return a JSON array of objects with these fields:
 - "doc_type": one of "NOR", "SI", "WWW"
 - "url": the full URL to the document or website
+- "label": a short descriptive label (e.g. "Notice of Race", "Sailing Instructions", \
+"Regatta website")
+
+Rules:
+- If the page links to theclubspot.com/regatta/*, regattanetwork.com/event/*, or \
+yachtscoring.com — that is a WWW link.
+- NOR and SI are typically PDF files (.pdf) but may be other document formats.
+- Do NOT include: the source page URL itself, calendar export links (.ics), \
+social media links, or the hosting club's general website.
+- Return ONLY the JSON array, no markdown fences, no explanation.
+- If no documents are found, return an empty array: []
+
+Regatta name: {regatta_name}
+Source page URL: {source_url}
+
+Page content:
+{content}"""
+
+
+DOCUMENT_DEEP_DISCOVERY_PROMPT = """\
+You are a document link extraction assistant for sailing regattas. \
+Given the content of a regatta website or event page, find links to official documents.
+
+Look for these document types ONLY:
+- "NOR": Notice of Race — usually a PDF link (.pdf)
+- "SI": Sailing Instructions — usually a PDF link (.pdf)
+
+Return a JSON array of objects with these fields:
+- "doc_type": one of "NOR", "SI"
+- "url": the full URL to the document
 - "label": a short descriptive label (e.g. "Notice of Race", "Sailing Instructions")
 
 Rules:
-- Only include links you are confident are the right type.
-- NOR and SI are typically PDF files (.pdf) but may be other formats.
-- WWW should be a dedicated regatta website, not the hosting club's main page.
-- Do NOT include the source page URL as a document.
+- NOR and SI are typically PDF files (.pdf) but may be other document formats.
+- Only include links you are confident are NOR or SI.
+- Do NOT include website links, registration links, or other document types.
 - Return ONLY the JSON array, no markdown fences, no explanation.
 - If no documents are found, return an empty array: []
 
@@ -141,6 +175,39 @@ def discover_documents(content: str, regatta_name: str, source_url: str) -> list
     client = anthropic.Anthropic(api_key=api_key)
 
     prompt = DOCUMENT_DISCOVERY_PROMPT.format(
+        regatta_name=regatta_name,
+        source_url=source_url,
+        content=content,
+    )
+
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIConnectionError:
+        raise ConnectionError("Could not connect to the Claude API.")
+    except anthropic.RateLimitError:
+        raise ConnectionError("Claude API rate limit exceeded. Try again shortly.")
+    except anthropic.APIStatusError as e:
+        raise ConnectionError(f"Claude API error: {e.message}")
+
+    raw = message.content[0].text.strip()
+    return _parse_json_response(raw)
+
+
+def discover_documents_deep(
+    content: str, regatta_name: str, source_url: str
+) -> list[dict]:
+    """Discover NOR/SI document links from a regatta website (level-2 crawl)."""
+    api_key = current_app.config.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY is not configured.")
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    prompt = DOCUMENT_DEEP_DISCOVERY_PROMPT.format(
         regatta_name=regatta_name,
         source_url=source_url,
         content=content,
