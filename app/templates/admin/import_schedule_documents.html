@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Review Documents — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">Review Discovered Documents</h2>
+        <p class="text-muted">Review the documents found for each regatta. Uncheck any you don't want to attach.</p>
+
+        <form method="POST" action="{{ url_for('admin.import_schedule_confirm') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% for r in regattas %}
+            {% set r_idx = loop.index0 %}
+            <input type="hidden" name="selected" value="{{ r_idx }}">
+            <input type="hidden" name="name_{{ r_idx }}" value="{{ r.name }}">
+            <input type="hidden" name="location_{{ r_idx }}" value="{{ r.location }}">
+            <input type="hidden" name="location_url_{{ r_idx }}" value="{{ r.location_url }}">
+            <input type="hidden" name="start_date_{{ r_idx }}" value="{{ r.start_date }}">
+            <input type="hidden" name="end_date_{{ r_idx }}" value="{{ r.end_date }}">
+            <input type="hidden" name="notes_{{ r_idx }}" value="{{ r.notes }}">
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>{{ r.name }}</strong>
+                    <span class="text-muted ms-2">{{ r.start_date }}{% if r.end_date %} — {{ r.end_date }}{% endif %}</span>
+                    {% if r.location %}
+                    <span class="text-muted ms-2">| {{ r.location }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if r.error %}
+                    <div class="alert alert-warning mb-0 py-2">
+                        Could not discover documents: {{ r.error }}
+                    </div>
+                    {% elif r.documents %}
+                    <input type="hidden" name="doc_count_{{ r_idx }}" value="{{ r.documents|length }}">
+                    {% for doc in r.documents %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="doc_{{ r_idx }}_{{ loop.index0 }}" value="1" checked>
+                        <input type="hidden" name="doc_type_{{ r_idx }}_{{ loop.index0 }}" value="{{ doc.doc_type }}">
+                        <input type="hidden" name="doc_url_{{ r_idx }}_{{ loop.index0 }}" value="{{ doc.url }}">
+                        <label class="form-check-label">
+                            <span class="badge bg-info text-dark me-1">{{ doc.doc_type }}</span>
+                            {{ doc.label }}
+                            — <a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.url|truncate(60) }}</a>
+                        </label>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0">No documents found.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-success">Confirm Import</button>
+            <a href="{{ url_for('admin.import_schedule') }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

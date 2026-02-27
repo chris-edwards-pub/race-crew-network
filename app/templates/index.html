@@ -52,11 +52,11 @@
                     {% endif %}
                 </td>
                 <td class="text-nowrap">
-                    {% for doc in regatta.documents %}
+                    {% for doc in regatta.documents|sort(attribute='doc_type') %}
                     <a href="{% if doc.url %}{{ doc.url }}{% else %}{{ url_for('regattas.download_doc', doc_id=doc.id) }}{% endif %}" class="badge bg-info text-decoration-none doc-link" target="_blank">{{ doc.doc_type }}</a>
                     {% endfor %}
                 </td>
-                <td class="text-nowrap">
+                <td>
                     {% for rsvp in regatta.rsvps|sort_rsvps %}
                     <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
                     {% endfor %}
