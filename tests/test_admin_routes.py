@@ -1,20 +1,29 @@
 """Tests for admin routes (access control and basic flows)."""
 
 from datetime import date
-from unittest.mock import patch
-
-import pytest
 
 from app.models import Regatta, User
 
 
-class TestAdminAccess:
-    def test_import_schedule_requires_login(self, client):
-        resp = client.get("/admin/import-schedule")
+class TestAdminAccessUnauthenticated:
+    """Tests that run without login — must come before authenticated tests."""
+
+    def test_import_single_requires_login(self, client):
+        resp = client.get("/admin/import-single")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
-    def test_import_schedule_requires_admin(self, app, client, db):
+    def test_import_multiple_requires_login(self, client):
+        resp = client.get("/admin/import-multiple")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_import_paste_requires_login(self, client):
+        resp = client.get("/admin/import-paste")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_import_multiple_requires_admin(self, app, client, db):
         """Non-admin user should be denied."""
         user = User(
             email="crew@test.com",
@@ -31,13 +40,33 @@ class TestAdminAccess:
             data={"email": "crew@test.com", "password": "password"},
             follow_redirects=True,
         )
-        resp = client.get("/admin/import-schedule", follow_redirects=True)
+        resp = client.get("/admin/import-multiple", follow_redirects=True)
         assert b"Access denied" in resp.data
 
-    def test_import_schedule_accessible_for_admin(self, logged_in_client):
+
+class TestAdminAccessAuthenticated:
+    """Tests that require an admin login."""
+
+    def test_import_schedule_redirects_to_multiple(self, logged_in_client):
+        """Legacy URL should redirect to import-multiple."""
         resp = logged_in_client.get("/admin/import-schedule")
+        assert resp.status_code == 302
+        assert "/admin/import-multiple" in resp.headers["Location"]
+
+    def test_import_single_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-single")
         assert resp.status_code == 200
-        assert b"Import Schedule" in resp.data
+        assert b"Import Single Regatta" in resp.data
+
+    def test_import_multiple_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-multiple")
+        assert resp.status_code == 200
+        assert b"Import Multiple Regattas" in resp.data
+
+    def test_import_paste_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-paste")
+        assert resp.status_code == 200
+        assert b"Paste Schedule Text" in resp.data
 
 
 class TestImportSchedulePreview:
@@ -50,6 +79,21 @@ class TestImportSchedulePreview:
     def test_invalid_task_id_redirects(self, logged_in_client):
         resp = logged_in_client.get(
             "/admin/import-schedule/preview?task_id=bogus",
+            follow_redirects=True,
+        )
+        assert b"Extraction results not found" in resp.data
+
+
+class TestImportSinglePreview:
+    def test_missing_task_id_redirects(self, logged_in_client):
+        resp = logged_in_client.get(
+            "/admin/import-single/preview", follow_redirects=True
+        )
+        assert b"Extraction results not found" in resp.data
+
+    def test_invalid_task_id_redirects(self, logged_in_client):
+        resp = logged_in_client.get(
+            "/admin/import-single/preview?task_id=bogus",
             follow_redirects=True,
         )
         assert b"Extraction results not found" in resp.data
@@ -70,6 +114,7 @@ class TestImportScheduleConfirm:
             data={
                 "selected": "0",
                 "name_0": "Test Regatta",
+                "boat_class_0": "Thistle",
                 "location_0": "Test YC",
                 "start_date_0": "2026-09-01",
                 "end_date_0": "2026-09-02",
@@ -84,6 +129,30 @@ class TestImportScheduleConfirm:
         regatta = Regatta.query.filter_by(name="Test Regatta").first()
         assert regatta is not None
         assert regatta.start_date == date(2026, 9, 1)
+        assert regatta.boat_class == "Thistle"
+
+    def test_imports_regatta_boat_class_defaults_to_tbd(
+        self, app, logged_in_client, db
+    ):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "No Class Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-05",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 regatta" in resp.data
+
+        regatta = Regatta.query.filter_by(name="No Class Regatta").first()
+        assert regatta is not None
+        assert regatta.boat_class == "TBD"
 
     def test_skips_duplicate(self, app, logged_in_client, db, admin_user):
         existing = Regatta(

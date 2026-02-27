@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.models import Document, Regatta, RSVP, User
+from app.models import RSVP, Document, Regatta, User
 
 
 class TestUserModel:
@@ -46,6 +46,31 @@ class TestRegattaModel:
 
         assert regatta.id is not None
         assert regatta.name == "Test Regatta"
+
+    def test_boat_class_defaults_to_tbd(self, app, db, admin_user):
+        regatta = Regatta(
+            name="Default Class Test",
+            location="Test YC",
+            start_date=date(2026, 6, 20),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.boat_class == "TBD"
+
+    def test_boat_class_explicit_value(self, app, db, admin_user):
+        regatta = Regatta(
+            name="Thistle Regatta",
+            boat_class="Thistle",
+            location="Test YC",
+            start_date=date(2026, 6, 21),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.boat_class == "Thistle"
 
     def test_regatta_cascade_delete_documents(self, app, db, admin_user):
         regatta = Regatta(

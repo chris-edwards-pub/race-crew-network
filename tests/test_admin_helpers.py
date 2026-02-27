@@ -6,13 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from bs4 import BeautifulSoup
 
-from app.admin.routes import (
-    _extract_data_attributes,
-    _fetch_clubspot_documents,
-    _is_private_ip,
-    _parse_clubspot_regatta_id,
-)
-
+from app.admin.routes import (_extract_data_attributes,
+                              _fetch_clubspot_documents, _is_private_ip,
+                              _parse_clubspot_regatta_id)
 
 # --- _is_private_ip ---
 
@@ -90,13 +86,15 @@ class TestExtractDataAttributes:
         assert result == ""
 
     def test_extracts_json_array(self):
-        html = '<html><body data-events=\'[{"name": "A"}, {"name": "B"}]\'></body></html>'
+        html = (
+            '<html><body data-events=\'[{"name": "A"}, {"name": "B"}]\'></body></html>'
+        )
         soup = BeautifulSoup(html, "html.parser")
         result = _extract_data_attributes(soup)
         assert "data-events" in result
 
     def test_skips_malformed_json(self):
-        html = '<html><body data-broken=\'{"unclosed: true\'></body></html>'
+        html = "<html><body data-broken='{\"unclosed: true'></body></html>"
         soup = BeautifulSoup(html, "html.parser")
         result = _extract_data_attributes(soup)
         assert result == ""
@@ -168,9 +166,7 @@ class TestFetchClubspotDocuments:
     @patch("app.admin.routes.requests.get")
     def test_ignores_docs_without_url(self, mock_get):
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "results": [{"type": "nor", "URL": ""}]
-        }
+        mock_resp.json.return_value = {"results": [{"type": "nor", "URL": ""}]}
         mock_resp.raise_for_status = MagicMock()
         mock_get.return_value = mock_resp
 

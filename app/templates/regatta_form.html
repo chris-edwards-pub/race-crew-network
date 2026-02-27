@@ -11,6 +11,10 @@
                 <input type="text" class="form-control" id="name" name="name" required value="{{ regatta.name if regatta else '' }}">
             </div>
             <div class="mb-3">
+                <label for="boat_class" class="form-label">Boat Class</label>
+                <input type="text" class="form-control" id="boat_class" name="boat_class" value="{{ regatta.boat_class if regatta else '' }}" placeholder="e.g. Thistle, J/24, Laser">
+            </div>
+            <div class="mb-3">
                 <label for="location" class="form-label">Location</label>
                 <input type="text" class="form-control" id="location" name="location" required value="{{ regatta.location if regatta else '' }}" placeholder="e.g. Lake Eustis, FL">
             </div>

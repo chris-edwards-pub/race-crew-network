@@ -13,6 +13,7 @@
             {% set r_idx = loop.index0 %}
             <input type="hidden" name="selected" value="{{ r_idx }}">
             <input type="hidden" name="name_{{ r_idx }}" value="{{ r.name }}">
+            <input type="hidden" name="boat_class_{{ r_idx }}" value="{{ r.boat_class }}">
             <input type="hidden" name="location_{{ r_idx }}" value="{{ r.location }}">
             <input type="hidden" name="location_url_{{ r_idx }}" value="{{ r.location_url }}">
             <input type="hidden" name="start_date_{{ r_idx }}" value="{{ r.start_date }}">
@@ -54,7 +55,7 @@
             {% endfor %}
 
             <button type="submit" class="btn btn-success">Confirm Import</button>
-            <a href="{{ url_for('admin.import_schedule') }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+            <a href="{{ start_over_url }}" class="btn btn-outline-secondary ms-2">Start Over</a>
         </form>
     </div>
 </div>

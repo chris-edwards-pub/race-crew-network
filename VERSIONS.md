@@ -1,5 +1,23 @@
 # Version History
 
+## 0.25.0
+- Add `boat_class` column to Regatta model (free text, defaults to "TBD")
+- Class column displayed on main schedule, PDF, and import preview tables
+- iCal event summary includes boat class when set (e.g. "Thistle — Midwinters")
+- Add/Edit regatta form includes Boat Class field
+- AI extraction prompt updated to extract boat class from imported schedules
+- Import flows (single, multiple, document review) pass boat_class through all steps
+
+## 0.24.0
+- Redesign import UI: split monolithic page into three focused pages (Single Regatta, Multiple Regattas, Paste Schedule Text)
+- Navbar dropdown menu replaces single "Import" link for admin users
+- Terminal output moved to Bootstrap modal overlay instead of inline div
+- Single regatta flow shows editable preview before document discovery
+- Shared SSE JavaScript extracted to `import-sse.js` for reuse across pages
+- Reusable template partials: terminal modal, preview table
+- Old `/admin/import-schedule` URL redirects to multiple regattas page
+- Dynamic "Start Over" links return to the correct input page
+
 ## 0.23.0
 - Two-level document crawl: follows WWW links from detail pages to find NOR/SI on regatta websites
 - Clubspot integration: queries clubspot Parse API directly for NOR/SI documents

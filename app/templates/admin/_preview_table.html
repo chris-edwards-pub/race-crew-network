@@ -1,0 +1,72 @@
+<form id="import-form" method="POST" action="{{ confirm_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="select-all" {% if not regattas|selectattr('duplicate_of')|list %}checked{% endif %}>
+                    </th>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Location</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in regattas %}
+                <tr{% if r.duplicate_of or r.is_past %} class="table-warning"{% endif %}>
+                    <td class="text-center">
+                        <input type="checkbox" name="selected" value="{{ loop.index0 }}" {% if not r.duplicate_of and not r.is_past %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="name_{{ loop.index0 }}" value="{{ r.name or '' }}" required>
+                        {% if r.is_past %}
+                        <small class="d-block mt-1" style="color: #856404;">
+                            &#9888; Date appears to be in the past
+                        </small>
+                        {% endif %}
+                        {% if r.duplicate_of %}
+                        <small class="d-block mt-1" style="color: #856404;">
+                            &#9888; Possible duplicate of: {{ r.duplicate_of.name }} ({{ r.duplicate_of.start_date }}{% if r.duplicate_of.location %} at {{ r.duplicate_of.location }}{% endif %})
+                        </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="boat_class_{{ loop.index0 }}" value="{{ r.boat_class or '' }}" placeholder="e.g. Thistle">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="location_{{ loop.index0 }}" value="{{ r.location or '' }}">
+                        <input type="hidden" name="location_url_{{ loop.index0 }}" value="{{ r.location_url or '' }}">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" name="start_date_{{ loop.index0 }}" value="{{ r.start_date or '' }}" required>
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" name="end_date_{{ loop.index0 }}" value="{{ r.end_date or '' }}">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="notes_{{ loop.index0 }}" value="{{ r.notes or '' }}">
+                    </td>
+                    <input type="hidden" name="detail_url_{{ loop.index0 }}" value="{{ r.detail_url or '' }}">
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if show_discover_btn %}
+    <button type="button" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
+    {% endif %}
+    <button type="submit" class="btn btn-success{% if show_discover_btn %} ms-2{% endif %}">Import Without Documents</button>
+    <a href="{{ start_over_url }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+</form>
+
+<script>
+document.getElementById('select-all')?.addEventListener('change', function() {
+    document.querySelectorAll('input[name="selected"]').forEach(function(cb) {
+        cb.checked = this.checked;
+    }.bind(this));
+});
+</script>

@@ -48,7 +48,10 @@ def ical_feed(token: str):
     for regatta in regattas:
         event = Event()
         event.add("uid", f"regatta-{regatta.id}@racecrew.net")
-        event.add("summary", regatta.name)
+        if regatta.boat_class and regatta.boat_class != "TBD":
+            event.add("summary", f"{regatta.boat_class} — {regatta.name}")
+        else:
+            event.add("summary", regatta.name)
         event.add("dtstart", regatta.start_date)
         # End date is exclusive in iCal, so add 1 day
         end = (regatta.end_date or regatta.start_date) + timedelta(days=1)

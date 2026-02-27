@@ -12,11 +12,13 @@ from the provided text and return a JSON array.
 
 Each object in the array must have these fields:
 - "name": string (event name)
+- "boat_class": string or null (the one-design or racing class, \
+e.g. "Thistle", "J/24")
 - "location": string (city, yacht club, or venue)
 - "location_url": string or null (URL for the venue if mentioned)
 - "start_date": string in "YYYY-MM-DD" format
 - "end_date": string in "YYYY-MM-DD" format or null (if single-day event)
-- "notes": string or null (any extra details like classes, contacts, etc.)
+- "notes": string or null (any extra details like contacts, etc.)
 - "detail_url": string or null (URL to the regatta's own detail/information page, \
 NOT the venue link)
 
@@ -26,6 +28,7 @@ Rules:
 - If a date range says "Mar 15-16", set start_date to the 15th and end_date \
 to the 16th.
 - If only one date is given, set end_date to null.
+- If the boat class is not mentioned, set boat_class to null.
 - If the text contains a link to an individual regatta's event page or \
 information page, include it as detail_url. This is NOT the venue/location URL.
 - Return ONLY the JSON array, no markdown fences, no explanation.

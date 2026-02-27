@@ -4,13 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.admin.ai_service import (
-    _parse_json_response,
-    discover_documents,
-    discover_documents_deep,
-    extract_regattas,
-)
-
+from app.admin.ai_service import (_parse_json_response, discover_documents,
+                                  discover_documents_deep, extract_regattas)
 
 # --- _parse_json_response ---
 
@@ -59,9 +54,7 @@ class TestExtractRegattas:
         mock_anthropic_cls.return_value = mock_client
         mock_msg = MagicMock()
         mock_msg.content = [
-            MagicMock(
-                text='[{"name": "Test", "start_date": "2026-03-01"}]'
-            )
+            MagicMock(text='[{"name": "Test", "start_date": "2026-03-01"}]')
         ]
         mock_client.messages.create.return_value = mock_msg
 
@@ -82,9 +75,7 @@ class TestExtractRegattas:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [
-            MagicMock(text='```json\n[{"name": "Fenced"}]\n```')
-        ]
+        mock_msg.content = [MagicMock(text='```json\n[{"name": "Fenced"}]\n```')]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():

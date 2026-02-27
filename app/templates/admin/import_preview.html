@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Preview — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">Preview — {{ regattas|length }} regatta(s) found</h2>
+        <p class="text-muted">Review and edit the extracted data. Uncheck rows you don't want to import.</p>
+
+        {% include "admin/_preview_table.html" %}
+    </div>
+</div>
+
+{% include "admin/_terminal_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+/* Find Documents & Import — SSE streaming */
+document.getElementById('btn-find-docs')?.addEventListener('click', function() {
+    var form = document.getElementById('import-form');
+    var selected = form.querySelectorAll('input[name="selected"]:checked');
+    if (selected.length === 0) {
+        alert('No regattas selected.');
+        return;
+    }
+
+    this.disabled = true;
+
+    var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+    var output = document.getElementById('terminal-output');
+    var startOverBtn = document.getElementById('terminal-start-over');
+    var titleEl = document.getElementById('terminalModalTitle');
+
+    titleEl.textContent = 'Discovering Documents...';
+    startOverBtn.href = "{{ start_over_url }}";
+    output.textContent = '';
+    modal.show();
+
+    var formData = new FormData(form);
+    formData.append('start_over_url', '{{ start_over_url }}');
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_discover') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, output, handleSSEEvents(output, modal, function(event) {
+            return "{{ url_for('admin.import_schedule_documents') }}?task_id=" + event.task_id + "&start_over_url={{ start_over_url | urlencode }}";
+        }, startOverBtn));
+    }).catch(function(err) {
+        terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+        startOverBtn.style.display = 'inline-block';
+    });
+});
+</script>
+{% endblock %}

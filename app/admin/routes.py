@@ -9,25 +9,15 @@ from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from flask import (
-    Response,
-    flash,
-    redirect,
-    render_template,
-    request,
-    stream_with_context,
-    url_for,
-)
+from flask import (Response, flash, redirect, render_template, request,
+                   stream_with_context, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
 from app import db
 from app.admin import bp
-from app.admin.ai_service import (
-    discover_documents,
-    discover_documents_deep,
-    extract_regattas,
-)
+from app.admin.ai_service import (discover_documents, discover_documents_deep,
+                                  extract_regattas)
 from app.models import Document, Regatta
 
 logger = logging.getLogger(__name__)
@@ -256,107 +246,38 @@ def _extract_jsonld_events(html: str) -> str:
     return "\n".join(lines)
 
 
-@bp.route("/admin/import-schedule", methods=["GET", "POST"])
+@bp.route("/admin/import-schedule")
 @login_required
 def import_schedule():
+    """Legacy URL — redirect to multiple regattas page."""
+    return redirect(url_for("admin.import_multiple"))
+
+
+@bp.route("/admin/import-single")
+@login_required
+def import_single():
     denied = _require_admin()
     if denied:
         return denied
+    return render_template("admin/import_single.html")
 
-    current_year = date.today().year
-    years = list(range(current_year, current_year + 3))
 
-    if request.method == "GET":
-        return render_template(
-            "admin/import_schedule.html",
-            years=years,
-            selected_year=current_year,
-            regattas=None,
-        )
+@bp.route("/admin/import-multiple")
+@login_required
+def import_multiple():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return render_template("admin/import_multiple.html")
 
-    # POST — extract regattas from input
-    schedule_text = request.form.get("schedule_text", "").strip()
-    schedule_url = request.form.get("schedule_url", "").strip()
-    year = int(request.form.get("year", current_year))
 
-    if not schedule_text and not schedule_url:
-        flash("Provide either schedule text or a URL.", "error")
-        return render_template(
-            "admin/import_schedule.html",
-            years=years,
-            selected_year=year,
-            regattas=None,
-        )
-
-    # Get content from URL if provided
-    content = schedule_text
-    if schedule_url:
-        try:
-            content = _fetch_url_content(schedule_url)
-        except (ValueError, requests.RequestException) as e:
-            flash(f"Could not fetch URL: {e}", "error")
-            return render_template(
-                "admin/import_schedule.html",
-                years=years,
-                selected_year=year,
-                regattas=None,
-            )
-
-    if not content:
-        flash("No content to process.", "error")
-        return render_template(
-            "admin/import_schedule.html",
-            years=years,
-            selected_year=year,
-            regattas=None,
-        )
-
-    # Send to Claude API
-    try:
-        regattas = extract_regattas(content, year)
-    except (ValueError, ConnectionError) as e:
-        flash(str(e), "error")
-        return render_template(
-            "admin/import_schedule.html",
-            years=years,
-            selected_year=year,
-            regattas=None,
-        )
-
-    # If source was a URL and only one regatta extracted, use it as
-    # detail_url when the AI didn't provide one (e.g. clubspot pages).
-    if schedule_url and len(regattas) == 1 and not regattas[0].get("detail_url"):
-        regattas[0]["detail_url"] = schedule_url
-
-    # Mark past events (keep them but flag for the preview)
-    today = date.today().isoformat()
-    for r in regattas:
-        if (r.get("start_date") or "") < today:
-            r["is_past"] = True
-
-    if not regattas:
-        flash("No regattas found in the provided content.", "warning")
-
-    # Check for duplicates against existing regattas
-    for r in regattas:
-        start = r.get("start_date")
-        name = r.get("name")
-        if name and start:
-            existing = _find_duplicate(name, date.fromisoformat(start))
-            if existing:
-                r["duplicate_of"] = {
-                    "id": existing.id,
-                    "name": existing.name,
-                    "location": existing.location,
-                    "start_date": existing.start_date.isoformat(),
-                }
-
-    return render_template(
-        "admin/import_schedule.html",
-        years=years,
-        selected_year=year,
-        regattas=regattas,
-    )
+@bp.route("/admin/import-paste")
+@login_required
+def import_paste():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return render_template("admin/import_paste.html")
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])
@@ -485,7 +406,7 @@ def import_schedule_extract():
 @bp.route("/admin/import-schedule/extract-single", methods=["POST"])
 @login_required
 def import_schedule_extract_single():
-    """SSE endpoint: extract a single regatta + discover documents in one pass."""
+    """SSE endpoint: extract a single regatta (no document discovery)."""
     denied = _require_admin()
     if denied:
         return denied
@@ -552,91 +473,12 @@ def import_schedule_extract_single():
                     }
                 )
 
-        # Discover documents
-        detail_url = r["detail_url"]
-        docs = []
-        cs_id = _parse_clubspot_regatta_id(detail_url)
-
-        if cs_id:
-            yield _sse(
-                {
-                    "type": "progress",
-                    "message": "Checking clubspot for documents...",
-                }
-            )
-            docs = _fetch_clubspot_documents(cs_id)
-            docs.append(
-                {
-                    "doc_type": "WWW",
-                    "url": detail_url,
-                    "label": "Regatta website",
-                }
-            )
-        else:
-            yield _sse(
-                {
-                    "type": "progress",
-                    "message": "Searching for documents...",
-                }
-            )
-            try:
-                docs = discover_documents(content, name or "", detail_url)
-            except Exception as e:
-                logger.warning("Document discovery failed: %s", e)
-
-            # Level 2: check WWW links for NOR/SI
-            www_docs = [d for d in docs if d["doc_type"] == "WWW"]
-            existing_types = {d["doc_type"] for d in docs}
-            for www_doc in www_docs:
-                if "NOR" in existing_types and "SI" in existing_types:
-                    break
-                www_url = www_doc["url"]
-                yield _sse(
-                    {
-                        "type": "progress",
-                        "message": "Checking regatta website for documents...",
-                    }
-                )
-                try:
-                    wcs_id = _parse_clubspot_regatta_id(www_url)
-                    if wcs_id:
-                        deep_docs = _fetch_clubspot_documents(wcs_id)
-                    else:
-                        www_content = _fetch_url_content(www_url)
-                        deep_docs = discover_documents_deep(
-                            www_content, name or "", www_url
-                        )
-                    new_docs = [
-                        d for d in deep_docs if d["doc_type"] not in existing_types
-                    ]
-                    docs.extend(new_docs)
-                    existing_types.update(d["doc_type"] for d in new_docs)
-                except Exception as e:
-                    logger.warning("Level-2 crawl failed for %s: %s", www_url, e)
-
-        if docs:
-            doc_types = ", ".join(d["doc_type"] for d in docs)
-            yield _sse({"type": "result", "message": f"Found: {doc_types}"})
-        else:
-            yield _sse({"type": "result", "message": "No documents found"})
-
-        # Build regatta_data in the format the document review page expects
-        docs.sort(key=lambda d: d["doc_type"])
-        regatta_entry = {
-            "idx": "0",
-            "name": r.get("name", ""),
-            "location": r.get("location", ""),
-            "location_url": r.get("location_url", ""),
-            "start_date": r.get("start_date", ""),
-            "end_date": r.get("end_date", ""),
-            "notes": r.get("notes", ""),
-            "detail_url": detail_url,
-            "documents": docs,
-            "error": None,
+        _extraction_results[task_id] = {
+            "regatta": r,
+            "year": year,
         }
-        _discovery_results[task_id] = [regatta_entry]
 
-        summary = f"{r.get('name', 'Regatta')} — {len(docs)} document(s)"
+        summary = r.get("name", "Regatta")
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
@@ -646,6 +488,26 @@ def import_schedule_extract_single():
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@bp.route("/admin/import-single/preview")
+@login_required
+def import_single_preview():
+    """Render single regatta editable preview from extraction results."""
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    task_id = request.args.get("task_id", "")
+    if not task_id or task_id not in _extraction_results:
+        flash("Extraction results not found or expired.", "error")
+        return redirect(url_for("admin.import_single"))
+
+    data = _extraction_results.pop(task_id)
+    return render_template(
+        "admin/import_single_preview.html",
+        regatta=data["regatta"],
     )
 
 
@@ -660,17 +522,20 @@ def import_schedule_preview():
     task_id = request.args.get("task_id", "")
     if not task_id or task_id not in _extraction_results:
         flash("Extraction results not found or expired.", "error")
-        return redirect(url_for("admin.import_schedule"))
+        return redirect(url_for("admin.import_multiple"))
 
     data = _extraction_results.pop(task_id)
-    current_year = date.today().year
-    years = list(range(current_year, current_year + 3))
+    # Determine start_over_url from source (default to multiple)
+    start_over_url = request.args.get(
+        "start_over_url", url_for("admin.import_multiple")
+    )
 
     return render_template(
-        "admin/import_schedule.html",
-        years=years,
-        selected_year=data["year"],
+        "admin/import_preview.html",
         regattas=data["regattas"],
+        confirm_url=url_for("admin.import_schedule_confirm"),
+        start_over_url=start_over_url,
+        show_discover_btn=True,
     )
 
 
@@ -684,7 +549,7 @@ def import_schedule_confirm():
     selected = request.form.getlist("selected")
     if not selected:
         flash("No regattas selected for import.", "warning")
-        return redirect(url_for("admin.import_schedule"))
+        return redirect(url_for("admin.import_multiple"))
 
     created = 0
     skipped = 0
@@ -692,6 +557,7 @@ def import_schedule_confirm():
 
     for idx in selected:
         name = request.form.get(f"name_{idx}", "").strip()
+        boat_class = request.form.get(f"boat_class_{idx}", "").strip() or "TBD"
         location = request.form.get(f"location_{idx}", "").strip()
         location_url = request.form.get(f"location_url_{idx}", "").strip()
         start_date_str = request.form.get(f"start_date_{idx}", "").strip()
@@ -725,6 +591,7 @@ def import_schedule_confirm():
 
         regatta = Regatta(
             name=name,
+            boat_class=boat_class,
             location=location or "TBD",
             location_url=location_url or None,
             start_date=start_date,
@@ -790,6 +657,8 @@ def import_schedule_discover():
             {
                 "idx": idx,
                 "name": request.form.get(f"name_{idx}", "").strip(),
+                "boat_class": request.form.get(f"boat_class_{idx}", "").strip()
+                or "TBD",
                 "location": request.form.get(f"location_{idx}", "").strip(),
                 "location_url": request.form.get(f"location_url_{idx}", "").strip(),
                 "start_date": request.form.get(f"start_date_{idx}", "").strip(),
@@ -986,11 +855,15 @@ def import_schedule_documents():
     task_id = request.args.get("task_id", "")
     if not task_id or task_id not in _discovery_results:
         flash("Document discovery results not found or expired.", "error")
-        return redirect(url_for("admin.import_schedule"))
+        return redirect(url_for("admin.import_multiple"))
 
     regatta_data = _discovery_results.pop(task_id)
+    start_over_url = request.args.get(
+        "start_over_url", url_for("admin.import_multiple")
+    )
 
     return render_template(
         "admin/import_schedule_documents.html",
         regattas=regatta_data,
+        start_over_url=start_over_url,
     )

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Paste Schedule Text — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4">Paste Schedule Text</h2>
+        <p class="text-muted">Paste a regatta schedule. The AI will extract all events for review.</p>
+
+        <form id="import-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_text" class="form-label">Schedule Text</label>
+                <textarea class="form-control" id="schedule_text" name="schedule_text" rows="10" placeholder="Paste regatta schedule here..." required></textarea>
+            </div>
+            <button type="submit" id="btn-submit" class="btn btn-primary">Extract Schedule</button>
+            <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+
+{% include "admin/_terminal_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+document.getElementById('import-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('btn-submit');
+    var text = document.getElementById('schedule_text').value.trim();
+    if (!text) return;
+
+    btn.disabled = true;
+
+    var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+    var output = document.getElementById('terminal-output');
+    var startOverBtn = document.getElementById('terminal-start-over');
+    var titleEl = document.getElementById('terminalModalTitle');
+
+    titleEl.textContent = 'Extracting Regattas...';
+    startOverBtn.href = "{{ url_for('admin.import_paste') }}";
+    output.textContent = '';
+    modal.show();
+
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, output, handleSSEEvents(output, modal, function(event) {
+            return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
+        }, startOverBtn));
+    }).catch(function(err) {
+        terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+        startOverBtn.style.display = 'inline-block';
+    });
+});
+</script>
+{% endblock %}

@@ -10,7 +10,7 @@
 ## Code Style
 - **Formatter:** Black (line length 88)
 - **Imports:** isort (Black-compatible profile)
-- **Linting:** flake8
+- **Linting:** flake8 (max line length 120, configured in `.flake8`)
 - Run: `black . && isort . && flake8`
 
 ## Project Conventions

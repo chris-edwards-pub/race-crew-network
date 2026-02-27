@@ -17,7 +17,14 @@
                 <a class="nav-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
                 {% if current_user.is_admin %}
                 <a class="nav-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
-                <a class="nav-link" href="{{ url_for('admin.import_schedule') }}">Import</a>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('admin.import_single') }}">Single Regatta</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin.import_multiple') }}">Multiple Regattas</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin.import_paste') }}">Paste Schedule Text</a></li>
+                    </ul>
+                </li>
                 {% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">{{ current_user.initials }}</a>

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Review Regatta — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4">Review Regatta</h2>
+        <p class="text-muted">Review and edit the extracted details before importing.</p>
+
+        {% if regatta.duplicate_of %}
+        <div class="alert alert-warning">
+            Possible duplicate of: <strong>{{ regatta.duplicate_of.name }}</strong>
+            ({{ regatta.duplicate_of.start_date }}{% if regatta.duplicate_of.location %} at {{ regatta.duplicate_of.location }}{% endif %})
+        </div>
+        {% endif %}
+
+        <form id="import-form" method="POST" action="{{ url_for('admin.import_schedule_discover') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="selected" value="0">
+            <input type="hidden" name="start_over_url" value="{{ url_for('admin.import_single') }}">
+
+            <div class="mb-3">
+                <label for="name_0" class="form-label">Name</label>
+                <input type="text" class="form-control" id="name_0" name="name_0" value="{{ regatta.name or '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="boat_class_0" class="form-label">Boat Class</label>
+                <input type="text" class="form-control" id="boat_class_0" name="boat_class_0" value="{{ regatta.boat_class or '' }}" placeholder="e.g. Thistle, J/24, Laser">
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="start_date_0" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date_0" name="start_date_0" value="{{ regatta.start_date or '' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="end_date_0" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date_0" name="end_date_0" value="{{ regatta.end_date or '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="location_0" class="form-label">Location</label>
+                <input type="text" class="form-control" id="location_0" name="location_0" value="{{ regatta.location or '' }}">
+                <input type="hidden" name="location_url_0" value="{{ regatta.location_url or '' }}">
+            </div>
+            <div class="mb-3">
+                <label for="notes_0" class="form-label">Notes</label>
+                <input type="text" class="form-control" id="notes_0" name="notes_0" value="{{ regatta.notes or '' }}">
+            </div>
+            <input type="hidden" name="detail_url_0" value="{{ regatta.detail_url or '' }}">
+
+            <button type="submit" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
+            <button type="button" id="btn-no-docs" class="btn btn-success ms-2">Import Without Documents</button>
+            <a href="{{ url_for('admin.import_single') }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+        </form>
+
+        <!-- Hidden form for import without documents -->
+        <form id="confirm-form" method="POST" action="{{ url_for('admin.import_schedule_confirm') }}" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+    </div>
+</div>
+
+{% include "admin/_terminal_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+/* Find Documents & Import — SSE streaming */
+document.getElementById('import-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+    var output = document.getElementById('terminal-output');
+    var startOverBtn = document.getElementById('terminal-start-over');
+    var titleEl = document.getElementById('terminalModalTitle');
+
+    titleEl.textContent = 'Discovering Documents...';
+    startOverBtn.href = "{{ url_for('admin.import_single') }}";
+    output.textContent = '';
+    modal.show();
+
+    document.getElementById('btn-find-docs').disabled = true;
+
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_discover') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, output, handleSSEEvents(output, modal, function(event) {
+            return "{{ url_for('admin.import_schedule_documents') }}?task_id=" + event.task_id + "&start_over_url={{ url_for('admin.import_single') | urlencode }}";
+        }, startOverBtn));
+    }).catch(function(err) {
+        terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+        startOverBtn.style.display = 'inline-block';
+    });
+});
+
+/* Import Without Documents — copy fields to confirm form */
+document.getElementById('btn-no-docs').addEventListener('click', function() {
+    var importForm = document.getElementById('import-form');
+    var confirmForm = document.getElementById('confirm-form');
+
+    confirmForm.innerHTML = '<input type="hidden" name="csrf_token" value="' + importForm.querySelector('[name=csrf_token]').value + '">';
+
+    var fields = ['selected', 'name_0', 'boat_class_0', 'start_date_0', 'end_date_0', 'location_0', 'location_url_0', 'notes_0', 'detail_url_0'];
+    fields.forEach(function(name) {
+        var input = importForm.querySelector('[name="' + name + '"]');
+        if (input) {
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = name;
+            hidden.value = input.value;
+            confirmForm.appendChild(hidden);
+        }
+    });
+
+    var docCount = document.createElement('input');
+    docCount.type = 'hidden';
+    docCount.name = 'doc_count_0';
+    docCount.value = '0';
+    confirmForm.appendChild(docCount);
+
+    confirmForm.submit();
+});
+</script>
+{% endblock %}

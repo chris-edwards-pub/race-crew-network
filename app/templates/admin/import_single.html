@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Import Single Regatta — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4">Import Single Regatta</h2>
+        <p class="text-muted">Enter a regatta URL (e.g. clubspot page). The AI will extract event details for review.</p>
+
+        <form id="import-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_url" class="form-label">Regatta URL</label>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://theclubspot.com/regatta/..." required>
+            </div>
+            <button type="submit" id="btn-submit" class="btn btn-primary">Import</button>
+            <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+
+{% include "admin/_terminal_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+document.getElementById('import-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('btn-submit');
+    var url = document.getElementById('schedule_url').value.trim();
+    if (!url) return;
+
+    btn.disabled = true;
+
+    var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+    var output = document.getElementById('terminal-output');
+    var startOverBtn = document.getElementById('terminal-start-over');
+    var titleEl = document.getElementById('terminalModalTitle');
+
+    titleEl.textContent = 'Extracting Regatta...';
+    startOverBtn.href = "{{ url_for('admin.import_single') }}";
+    output.textContent = '';
+    modal.show();
+
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract_single') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, output, handleSSEEvents(output, modal, function(event) {
+            return "{{ url_for('admin.import_single_preview') }}?task_id=" + event.task_id;
+        }, startOverBtn));
+    }).catch(function(err) {
+        terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+        startOverBtn.style.display = 'inline-block';
+    });
+});
+</script>
+{% endblock %}
