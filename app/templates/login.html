@@ -1,21 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Login — Race Crew Network{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
-        <h2 class="mb-4">Login</h2>
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" name="email" required autofocus>
+<div class="row justify-content-center align-items-center mt-5">
+    <!-- Left: Site summary -->
+    <div class="col-md-6 col-lg-5 mb-4 mb-md-0 text-center text-md-start">
+        <h2>Organize your sailing crew</h2>
+        <p class="text-muted">
+            Race Crew Network helps sailing teams stay on top of their regatta season.
+        </p>
+        <ul class="list-unstyled text-muted">
+            <li class="mb-2">&#9993; Track regatta schedules and locations</li>
+            <li class="mb-2">&#128196; Manage NOR, SI, and race documents</li>
+            <li class="mb-2">&#9989; Coordinate crew with Yes / No / Maybe RSVPs</li>
+            <li class="mb-2">&#128279; Import schedules from URLs or pasted text</li>
+        </ul>
+        <small class="text-muted">Invite-only — ask your crew admin for access.</small>
+    </div>
+    <!-- Right: Login form -->
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title mb-3">Login</h4>
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Login</button>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}

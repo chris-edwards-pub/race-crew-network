@@ -4,12 +4,13 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
-__version__ = "0.27.0"
+__version__ = "0.28.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
+login_manager.login_message = None
 csrf = CSRFProtect()
 
 

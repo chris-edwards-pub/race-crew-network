@@ -1,5 +1,11 @@
 # Version History
 
+## 0.28.0
+- Add site summary with feature list to login page (two-column layout, stacks on mobile)
+- Serve login page at `/` for anonymous users instead of redirecting to `/login?next=%2F`
+- Remove Flask-Login "Please log in" flash message
+- Login form wrapped in a Bootstrap card with shadow for visual separation
+
 ## 0.27.0
 - Make website fully responsive for phone, tablet, and desktop
 - Add hamburger menu toggler and collapsible navbar (collapses below 768px)
