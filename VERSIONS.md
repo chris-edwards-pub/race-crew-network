@@ -1,5 +1,11 @@
 # Version History
 
+## 0.30.0
+- Enable automated daily database backups with 7-day retention and point-in-time recovery
+- Set preferred backup window to 06:00–06:30 UTC (2:00–2:30 AM ET)
+- Add final snapshot on database deletion as a safety net
+- Enable versioning on Lightsail upload bucket to protect against accidental file deletion
+
 ## 0.29.0
 - Add SVG favicon with PNG fallbacks for all devices (16x16, 32x32, 180x180 apple-touch-icon, 192x192 and 512x512 android-chrome)
 - Remove legacy favicon.ico, consolidate all favicon assets into img/ directory

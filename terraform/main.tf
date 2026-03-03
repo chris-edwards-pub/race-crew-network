@@ -45,6 +45,11 @@ resource "aws_lightsail_database" "app" {
   bundle_id                = var.db_bundle_id
   publicly_accessible      = true
 
+  backup_retention_enabled = true
+  preferred_backup_window  = "06:00-06:30" # 2:00–2:30 AM ET
+  apply_immediately        = true
+  final_snapshot_name      = "${var.instance_name}-db-final-snapshot"
+
   tags = {
     Project = "race-crew-network"
   }
@@ -59,6 +64,18 @@ resource "aws_lightsail_bucket" "uploads" {
   tags = {
     Project = "race-crew-network"
   }
+}
+
+resource "null_resource" "bucket_versioning" {
+  triggers = {
+    bucket_name = aws_lightsail_bucket.uploads.name
+  }
+
+  provisioner "local-exec" {
+    command = "aws lightsail update-bucket --bucket-name ${aws_lightsail_bucket.uploads.name} --versioning Enabled --region ${var.aws_region}"
+  }
+
+  depends_on = [aws_lightsail_bucket.uploads]
 }
 
 resource "aws_lightsail_bucket_access_key" "app" {
