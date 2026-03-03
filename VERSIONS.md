@@ -1,5 +1,8 @@
 # Version History
 
+## 0.31.1
+- Update trivy-action from 0.33.1 to 0.34.2 to fix binary install failure
+
 ## 0.31.0
 - Add container vulnerability scanning with Trivy between build and deploy stages
 - Block deployment of images with CRITICAL or HIGH severity vulnerabilities
