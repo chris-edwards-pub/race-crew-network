@@ -20,13 +20,14 @@
     background-color: #0d9488;
     color: #fff !important;
     border-radius: 50%;
-    width: 42px;
+    min-width: 42px;
     height: 42px;
+    padding: 0 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .rsvp-yes { color: #198754; font-weight: bold; }
@@ -46,6 +47,7 @@
     margin-right: 4px;
     text-decoration: none;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .crew-badge:hover {
