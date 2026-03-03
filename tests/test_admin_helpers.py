@@ -1,9 +1,7 @@
 """Tests for helper functions in app.admin.routes."""
 
-import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from bs4 import BeautifulSoup
 
 from app.admin.routes import (_extract_data_attributes,

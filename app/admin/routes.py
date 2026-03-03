@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from socket import getaddrinfo
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -18,7 +18,7 @@ from app import db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
-from app.models import Document, Regatta
+from app.models import Document, ImportCache, Regatta
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,36 @@ def _find_duplicate(name: str, start_date) -> Regatta | None:
         func.lower(Regatta.name) == name.lower(),
         Regatta.start_date == start_date,
     ).first()
+
+
+def _cache_age_days(extracted_at: datetime) -> int:
+    """Return the number of days since extraction, handling naive/aware datetimes."""
+    now = datetime.now(timezone.utc)
+    if extracted_at.tzinfo is None:
+        extracted_at = extracted_at.replace(tzinfo=timezone.utc)
+    return (now - extracted_at).days
+
+
+def _upsert_import_cache(url: str, year: int, regattas: list[dict]) -> None:
+    """Insert or update an ImportCache entry for the given URL."""
+    cached = ImportCache.query.filter_by(url=url).first()
+    now = datetime.now(timezone.utc)
+    results_json = json.dumps(regattas)
+    if cached:
+        cached.year = year
+        cached.results_json = results_json
+        cached.regatta_count = len(regattas)
+        cached.extracted_at = now
+    else:
+        cached = ImportCache(
+            url=url,
+            year=year,
+            results_json=results_json,
+            regatta_count=len(regattas),
+            extracted_at=now,
+        )
+        db.session.add(cached)
+    db.session.commit()
 
 
 def _is_private_ip(hostname: str) -> bool:
@@ -268,7 +298,13 @@ def import_multiple():
     denied = _require_admin()
     if denied:
         return denied
-    return render_template("admin/import_multiple.html")
+    prefill_url = request.args.get("url", "")
+    prefill_force = request.args.get("force", "")
+    return render_template(
+        "admin/import_multiple.html",
+        prefill_url=prefill_url,
+        prefill_force=prefill_force,
+    )
 
 
 @bp.route("/admin/import-paste")
@@ -290,6 +326,7 @@ def import_schedule_extract():
 
     schedule_text = request.form.get("schedule_text", "").strip()
     schedule_url = request.form.get("schedule_url", "").strip()
+    force_extract = request.form.get("force_extract") == "1"
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
@@ -299,38 +336,86 @@ def import_schedule_extract():
 
     def generate():
         content = schedule_text
+        from_cache = False
 
-        if schedule_url:
-            yield _sse({"type": "progress", "message": f"Fetching {schedule_url}..."})
-            try:
-                content = _fetch_url_content(schedule_url)
-            except (ValueError, requests.RequestException) as e:
-                yield _sse({"type": "error", "message": f"Could not fetch URL: {e}"})
+        # Check cache for URL-based imports (not pasted text)
+        if schedule_url and not force_extract:
+            cached = ImportCache.query.filter_by(url=schedule_url).first()
+            if cached:
+                try:
+                    regattas = json.loads(cached.results_json)
+                except (json.JSONDecodeError, ValueError):
+                    regattas = None
+
+                if regattas is not None:
+                    from_cache = True
+                    days = _cache_age_days(cached.extracted_at)
+                    if days == 0:
+                        age_str = "today"
+                    elif days == 1:
+                        age_str = "1 day ago"
+                    else:
+                        age_str = f"{days} days ago"
+
+                    yield _sse(
+                        {
+                            "type": "progress",
+                            "message": (
+                                f"Using cached results from {age_str}"
+                                f" ({cached.regatta_count} regattas)"
+                            ),
+                        }
+                    )
+
+        if not from_cache:
+            if schedule_url:
+                if force_extract:
+                    yield _sse(
+                        {
+                            "type": "progress",
+                            "message": "Force re-extract requested...",
+                        }
+                    )
+                yield _sse(
+                    {"type": "progress", "message": f"Fetching {schedule_url}..."}
+                )
+                try:
+                    content = _fetch_url_content(schedule_url)
+                except (ValueError, requests.RequestException) as e:
+                    yield _sse(
+                        {"type": "error", "message": f"Could not fetch URL: {e}"}
+                    )
+                    yield _sse({"type": "failed"})
+                    return
+            elif content:
+                yield _sse({"type": "progress", "message": "Processing pasted text..."})
+
+            if not content:
+                yield _sse({"type": "error", "message": "No content to process."})
                 yield _sse({"type": "failed"})
                 return
-        elif content:
-            yield _sse({"type": "progress", "message": "Processing pasted text..."})
 
-        if not content:
-            yield _sse({"type": "error", "message": "No content to process."})
-            yield _sse({"type": "failed"})
-            return
+            yield _sse(
+                {"type": "progress", "message": "Sending to AI for extraction..."}
+            )
 
-        yield _sse({"type": "progress", "message": "Sending to AI for extraction..."})
+            try:
+                regattas = extract_regattas(content, year)
+            except (ValueError, ConnectionError) as e:
+                yield _sse({"type": "error", "message": str(e)})
+                yield _sse({"type": "failed"})
+                return
 
-        try:
-            regattas = extract_regattas(content, year)
-        except (ValueError, ConnectionError) as e:
-            yield _sse({"type": "error", "message": str(e)})
-            yield _sse({"type": "failed"})
-            return
+            yield _sse(
+                {
+                    "type": "result",
+                    "message": f"AI returned {len(regattas)} event(s)",
+                }
+            )
 
-        yield _sse(
-            {
-                "type": "result",
-                "message": f"AI returned {len(regattas)} event(s)",
-            }
-        )
+            # Cache results for URL-based imports
+            if schedule_url and regattas:
+                _upsert_import_cache(schedule_url, year, regattas)
 
         # If source was a URL and only one regatta extracted, use it as
         # detail_url when the AI didn't provide one (e.g. clubspot pages).
@@ -385,12 +470,16 @@ def import_schedule_extract():
         _extraction_results[task_id] = {
             "regattas": regattas,
             "year": year,
+            "from_cache": from_cache,
+            "source_url": schedule_url,
         }
 
         upcoming = len(regattas) - past_count
         summary = f"Found {len(regattas)} regatta(s)"
         if past_count:
             summary += f" ({upcoming} upcoming, {past_count} past)"
+        if from_cache:
+            summary += " (cached)"
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
@@ -412,6 +501,7 @@ def import_schedule_extract_single():
         return denied
 
     schedule_url = request.form.get("schedule_url", "").strip()
+    force_extract = request.form.get("force_extract") == "1"
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
@@ -425,23 +515,73 @@ def import_schedule_extract_single():
             yield _sse({"type": "failed"})
             return
 
-        yield _sse({"type": "progress", "message": f"Fetching {schedule_url}..."})
+        from_cache = False
+        regattas = None
 
-        try:
-            content = _fetch_url_content(schedule_url)
-        except (ValueError, requests.RequestException) as e:
-            yield _sse({"type": "error", "message": f"Could not fetch URL: {e}"})
-            yield _sse({"type": "failed"})
-            return
+        # Check cache unless force re-extract
+        if not force_extract:
+            cached = ImportCache.query.filter_by(url=schedule_url).first()
+            if cached:
+                try:
+                    regattas = json.loads(cached.results_json)
+                except (json.JSONDecodeError, ValueError):
+                    regattas = None
 
-        yield _sse({"type": "progress", "message": "Sending to AI for extraction..."})
+                if regattas is not None:
+                    from_cache = True
+                    days = _cache_age_days(cached.extracted_at)
+                    if days == 0:
+                        age_str = "today"
+                    elif days == 1:
+                        age_str = "1 day ago"
+                    else:
+                        age_str = f"{days} days ago"
 
-        try:
-            regattas = extract_regattas(content, year)
-        except (ValueError, ConnectionError) as e:
-            yield _sse({"type": "error", "message": str(e)})
-            yield _sse({"type": "failed"})
-            return
+                    yield _sse(
+                        {
+                            "type": "progress",
+                            "message": (
+                                f"Using cached results from {age_str}"
+                                f" ({cached.regatta_count} regattas)"
+                            ),
+                        }
+                    )
+
+        if not from_cache:
+            if force_extract:
+                yield _sse(
+                    {
+                        "type": "progress",
+                        "message": "Force re-extract requested...",
+                    }
+                )
+            yield _sse({"type": "progress", "message": f"Fetching {schedule_url}..."})
+
+            try:
+                content = _fetch_url_content(schedule_url)
+            except (ValueError, requests.RequestException) as e:
+                yield _sse({"type": "error", "message": f"Could not fetch URL: {e}"})
+                yield _sse({"type": "failed"})
+                return
+
+            yield _sse(
+                {"type": "progress", "message": "Sending to AI for extraction..."}
+            )
+
+            try:
+                regattas = extract_regattas(content, year)
+            except (ValueError, ConnectionError) as e:
+                yield _sse({"type": "error", "message": str(e)})
+                yield _sse({"type": "failed"})
+                return
+
+            if not regattas:
+                yield _sse({"type": "error", "message": "No regatta found on page."})
+                yield _sse({"type": "failed"})
+                return
+
+            # Cache results
+            _upsert_import_cache(schedule_url, year, regattas)
 
         if not regattas:
             yield _sse({"type": "error", "message": "No regatta found on page."})
@@ -476,9 +616,13 @@ def import_schedule_extract_single():
         _extraction_results[task_id] = {
             "regatta": r,
             "year": year,
+            "from_cache": from_cache,
+            "source_url": schedule_url,
         }
 
         summary = r.get("name", "Regatta")
+        if from_cache:
+            summary += " (cached)"
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
@@ -530,12 +674,26 @@ def import_schedule_preview():
         "start_over_url", url_for("admin.import_multiple")
     )
 
+    # Build cache info for the template
+    from_cache = data.get("from_cache", False)
+    source_url = data.get("source_url", "")
+    cache_info = None
+    if from_cache and source_url:
+        cached = ImportCache.query.filter_by(url=source_url).first()
+        if cached:
+            cache_info = {
+                "extracted_at": cached.extracted_at,
+                "regatta_count": cached.regatta_count,
+                "source_url": source_url,
+            }
+
     return render_template(
         "admin/import_preview.html",
         regattas=data["regattas"],
         confirm_url=url_for("admin.import_schedule_confirm"),
         start_over_url=start_over_url,
         show_discover_btn=True,
+        cache_info=cache_info,
     )
 
 

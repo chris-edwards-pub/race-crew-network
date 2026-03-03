@@ -1,8 +1,10 @@
 """Tests for admin routes (access control and basic flows)."""
 
-from datetime import date
+import json
+from datetime import date, datetime, timezone
+from unittest.mock import patch
 
-from app.models import Regatta, User
+from app.models import ImportCache, Regatta, User
 
 
 class TestAdminAccessUnauthenticated:
@@ -212,3 +214,244 @@ class TestDocumentReview:
             follow_redirects=True,
         )
         assert b"Document discovery results not found" in resp.data
+
+
+class TestImportCacheMultiple:
+    """Tests for cache behavior in the multiple-regattas extract endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        """Parse SSE events from a response."""
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_cache_miss_calls_ai_and_saves(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """First import of a URL should call AI and save to cache."""
+        mock_fetch.return_value = "page content"
+        mock_extract.return_value = [
+            {
+                "name": "Midwinters",
+                "start_date": "2026-12-01",
+                "location": "Test YC",
+            }
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={"schedule_url": "https://example.com/schedule", "year": "2026"},
+        )
+        self._consume_sse(resp)
+
+        mock_extract.assert_called_once()
+
+        # Verify cache was created
+        cached = ImportCache.query.filter_by(url="https://example.com/schedule").first()
+        assert cached is not None
+        assert cached.regatta_count == 1
+        assert "Midwinters" in cached.results_json
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_cache_hit_skips_ai(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Repeat import of same URL should use cache (no AI call)."""
+        # Pre-populate cache
+        cache = ImportCache(
+            url="https://example.com/cached",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Cached Regatta",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={"schedule_url": "https://example.com/cached", "year": "2026"},
+        )
+        events = self._consume_sse(resp)
+
+        # AI should NOT have been called
+        mock_extract.assert_not_called()
+        mock_fetch.assert_not_called()
+
+        # Should have a "cached" message
+        messages = [e.get("message", "") for e in events]
+        assert any("cached" in m.lower() for m in messages)
+
+        # Should reach 'done'
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_force_extract_bypasses_cache(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Force re-extract should call AI even with cached results."""
+        # Pre-populate cache
+        cache = ImportCache(
+            url="https://example.com/force-test",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Old Regatta",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        mock_fetch.return_value = "page content"
+        mock_extract.return_value = [
+            {
+                "name": "New Regatta",
+                "start_date": "2026-12-15",
+                "location": "Test YC",
+            }
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={
+                "schedule_url": "https://example.com/force-test",
+                "year": "2026",
+                "force_extract": "1",
+            },
+        )
+        self._consume_sse(resp)
+
+        # AI SHOULD have been called
+        mock_extract.assert_called_once()
+
+        # Cache should be updated
+        cached = ImportCache.query.filter_by(
+            url="https://example.com/force-test"
+        ).first()
+        assert "New Regatta" in cached.results_json
+
+    def test_pasted_text_not_cached(self, app, logged_in_client, db):
+        """Pasted text imports should not create cache entries."""
+        with patch("app.admin.routes.extract_regattas") as mock_extract:
+            mock_extract.return_value = [
+                {
+                    "name": "Pasted Regatta",
+                    "start_date": "2026-12-01",
+                    "location": "Test YC",
+                }
+            ]
+
+            resp = logged_in_client.post(
+                "/admin/import-schedule/extract",
+                data={"schedule_text": "Some regatta schedule text", "year": "2026"},
+            )
+            self._consume_sse(resp)
+
+        assert ImportCache.query.count() == 0
+
+
+class TestImportCacheSingle:
+    """Tests for cache behavior in the single-regatta extract endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_single_cache_hit(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Single import should use cache on repeat URL."""
+        cache = ImportCache(
+            url="https://example.com/single-cached",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Single Cached",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-single",
+            data={
+                "schedule_url": "https://example.com/single-cached",
+                "year": "2026",
+            },
+        )
+        events = self._consume_sse(resp)
+
+        mock_extract.assert_not_called()
+        mock_fetch.assert_not_called()
+
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_single_force_extract(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Single import with force_extract should bypass cache."""
+        cache = ImportCache(
+            url="https://example.com/single-force",
+            year=2026,
+            results_json=json.dumps(
+                [{"name": "Old", "start_date": "2026-12-01", "location": "YC"}]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        mock_fetch.return_value = "content"
+        mock_extract.return_value = [
+            {"name": "Fresh", "start_date": "2026-12-10", "location": "YC"}
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-single",
+            data={
+                "schedule_url": "https://example.com/single-force",
+                "year": "2026",
+                "force_extract": "1",
+            },
+        )
+        self._consume_sse(resp)
+
+        mock_extract.assert_called_once()

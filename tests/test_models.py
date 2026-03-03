@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.models import RSVP, Document, Regatta, User
+from app.models import RSVP, Document, ImportCache, Regatta, User
 
 
 class TestUserModel:
@@ -145,3 +145,41 @@ class TestDocumentModel:
         assert doc.id is not None
         assert doc.url == "https://example.com/regatta"
         assert doc.stored_filename is None
+
+
+class TestImportCacheModel:
+    def test_create_cache_entry(self, app, db):
+        cache = ImportCache(
+            url="https://example.com/schedule",
+            year=2026,
+            results_json='[{"name": "Test Regatta"}]',
+            regatta_count=1,
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        assert cache.id is not None
+        assert cache.url == "https://example.com/schedule"
+        assert cache.regatta_count == 1
+        assert cache.extracted_at is not None
+
+    def test_url_unique_constraint(self, app, db):
+        cache1 = ImportCache(
+            url="https://example.com/unique",
+            year=2026,
+            results_json="[]",
+            regatta_count=0,
+        )
+        db.session.add(cache1)
+        db.session.commit()
+
+        cache2 = ImportCache(
+            url="https://example.com/unique",
+            year=2026,
+            results_json="[]",
+            regatta_count=0,
+        )
+        db.session.add(cache2)
+        with pytest.raises(Exception):
+            db.session.commit()
+        db.session.rollback()

@@ -1,5 +1,12 @@
 # Version History
 
+## 0.33.0
+- Cache AI import extraction results per URL to eliminate redundant AI calls on repeat imports
+- Cache hit serves instant results with zero token usage and no URL fetch
+- "Force re-extract" checkbox on import forms to bypass cache when source page has been updated
+- Preview page shows cache info banner with extraction date and re-extract link
+- New `ImportCache` database model stores URL, extracted JSON, and timestamp
+
 ## 0.32.2
 - Add continue-on-error to SARIF steps so transient GitHub outages don't block deployment
 
