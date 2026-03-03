@@ -1,5 +1,12 @@
 # Version History
 
+## 0.29.0
+- Add SVG favicon with PNG fallbacks for all devices (16x16, 32x32, 180x180 apple-touch-icon, 192x192 and 512x512 android-chrome)
+- Remove legacy favicon.ico, consolidate all favicon assets into img/ directory
+- Update base.html with proper icon link tags (SVG primary, PNG fallback, apple-touch-icon)
+- Fix avatar badge overflow for long initials (min-width, padding, smaller font)
+- Add nowrap to crew badges to prevent mid-badge line breaks
+
 ## 0.28.0
 - Add site summary with feature list to login page (two-column layout, stacks on mobile)
 - Serve login page at `/` for anonymous users instead of redirecting to `/login?next=%2F`
