@@ -112,6 +112,7 @@ jobs:
 
       - name: Run Trivy for SARIF output
         if: always()
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.34.2
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -123,6 +124,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
