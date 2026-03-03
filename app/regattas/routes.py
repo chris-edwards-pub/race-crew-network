@@ -14,8 +14,10 @@ from app.regattas import bp
 
 
 @bp.route("/")
-@login_required
 def index():
+    if not current_user.is_authenticated:
+        return render_template("login.html")
+
     today = date.today()
     upcoming = (
         Regatta.query.filter(Regatta.start_date >= today)
