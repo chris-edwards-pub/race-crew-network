@@ -97,6 +97,19 @@ jobs:
           path: trivy-results.txt
           retention-days: 30
 
+      - name: Write Trivy results to job summary
+        if: always()
+        run: |
+          if [ -f trivy-results.txt ]; then
+            echo "## 🔍 Trivy Vulnerability Scan Results" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat trivy-results.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## 🔍 Trivy Vulnerability Scan Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ trivy-results.txt was not found — the scan may not have produced output." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Run Trivy for SARIF output
         if: always()
         uses: aquasecurity/trivy-action@0.34.2
