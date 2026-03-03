@@ -9,34 +9,39 @@
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('regattas.index') }}">
-                <img src="{{ url_for('static', filename='img/race-crew-network-1536x1024.png') }}" alt="Race Crew Network" height="160" class="navbar-logo">
+                <img src="{{ url_for('static', filename='img/race-crew-network-1536x1024.png') }}" alt="Race Crew Network" class="navbar-logo">
             </a>
             {% if current_user.is_authenticated %}
-            <div class="navbar-nav ms-auto align-items-center gap-2 nav-menu-position">
-                <a class="nav-link nav-pill-link" href="{{ url_for('regattas.index') }}">Home</a>
-                <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
-                {% if current_user.is_admin %}
-                <a class="nav-link nav-pill-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
-                <li class="nav-item dropdown">
-                    <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ url_for('admin.import_single') }}">Single Regatta</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('admin.import_multiple') }}">Multiple Regattas</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('admin.import_paste') }}">Paste Schedule Text</a></li>
-                    </ul>
-                </li>
-                {% endif %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle nav-avatar" href="#" role="button" data-bs-toggle="dropdown">{{ current_user.initials }}</a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
-                    </ul>
-                </li>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <div class="navbar-nav ms-auto align-items-center gap-2">
+                    <a class="nav-link nav-pill-link" href="{{ url_for('regattas.index') }}">Home</a>
+                    <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
+                    {% if current_user.is_admin %}
+                    <a class="nav-link nav-pill-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.import_single') }}">Single Regatta</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.import_multiple') }}">Multiple Regattas</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.import_paste') }}">Paste Schedule Text</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle nav-avatar" href="#" role="button" data-bs-toggle="dropdown">{{ current_user.initials }}</a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
+                </div>
             </div>
             {% endif %}
         </div>

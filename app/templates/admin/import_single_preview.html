@@ -47,9 +47,11 @@
             </div>
             <input type="hidden" name="detail_url_0" value="{{ regatta.detail_url or '' }}">
 
-            <button type="submit" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
-            <button type="button" id="btn-no-docs" class="btn btn-success ms-2">Import Without Documents</button>
-            <a href="{{ url_for('admin.import_single') }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
+                <button type="button" id="btn-no-docs" class="btn btn-success">Import Without Documents</button>
+                <a href="{{ url_for('admin.import_single') }}" class="btn btn-outline-secondary">Start Over</a>
+            </div>
         </form>
 
         <!-- Hidden form for import without documents -->

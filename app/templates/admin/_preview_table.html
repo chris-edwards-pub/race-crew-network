@@ -1,7 +1,7 @@
 <form id="import-form" method="POST" action="{{ confirm_url }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="table-responsive">
-        <table class="table table-sm table-bordered align-middle">
+        <table class="table table-sm table-bordered align-middle" style="min-width: 800px;">
             <thead class="table-light">
                 <tr>
                     <th style="width: 40px;">
@@ -56,11 +56,13 @@
             </tbody>
         </table>
     </div>
-    {% if show_discover_btn %}
-    <button type="button" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
-    {% endif %}
-    <button type="submit" class="btn btn-success{% if show_discover_btn %} ms-2{% endif %}">Import Without Documents</button>
-    <a href="{{ start_over_url }}" class="btn btn-outline-secondary ms-2">Start Over</a>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        {% if show_discover_btn %}
+        <button type="button" id="btn-find-docs" class="btn btn-primary">Find Documents &amp; Import</button>
+        {% endif %}
+        <button type="submit" class="btn btn-success">Import Without Documents</button>
+        <a href="{{ start_over_url }}" class="btn btn-outline-secondary">Start Over</a>
+    </div>
 </form>
 
 <script>

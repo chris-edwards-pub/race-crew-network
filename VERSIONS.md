@@ -1,5 +1,14 @@
 # Version History
 
+## 0.27.0
+- Make website fully responsive for phone, tablet, and desktop
+- Add hamburger menu toggler and collapsible navbar (collapses below 768px)
+- Responsive logo sizing: 80px (phone), 120px (tablet), 160px (desktop)
+- Mobile card layout for regatta schedule (replaces table on small screens)
+- Responsive admin users table with progressive column hiding
+- Stack form inputs on small screens (regatta dates, document upload, invite form)
+- Wrap button groups with flex-wrap to prevent overflow on narrow screens
+
 ## 0.26.1
 - Make favicon background transparent using edge flood fill
 
