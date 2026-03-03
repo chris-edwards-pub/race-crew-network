@@ -1,5 +1,8 @@
 # Version History
 
+## 0.31.2
+- Use GHCR as Trivy vulnerability DB source instead of broken mirror.gcr.io default
+
 ## 0.31.1
 - Update trivy-action from 0.33.1 to 0.34.2 to fix binary install failure
 
