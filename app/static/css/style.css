@@ -16,11 +16,6 @@
     color: #5eead4 !important;
 }
 
-.nav-menu-position {
-    align-self: flex-end;
-    padding-bottom: 20px;
-}
-
 .nav-avatar {
     background-color: #0d9488;
     color: #fff !important;
@@ -74,6 +69,39 @@
 
 .location-link:hover {
     color: #333;
+}
+
+/* Responsive logo */
+.navbar-logo {
+    height: 80px;
+}
+@media (min-width: 768px) {
+    .navbar-logo { height: 120px; }
+}
+@media (min-width: 992px) {
+    .navbar-logo { height: 160px; }
+}
+
+/* Mobile nav pills */
+@media (max-width: 767.98px) {
+    .nav-pill-link {
+        display: block;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+}
+
+/* Button bar wrap */
+.btn-bar {
+    flex-wrap: wrap;
+}
+
+/* Mobile card toggle */
+@media (max-width: 767.98px) {
+    .regatta-table-desktop { display: none !important; }
+}
+@media (min-width: 768px) {
+    .regatta-cards-mobile { display: none !important; }
 }
 
 /* Print styles */

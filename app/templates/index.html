@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="mb-3 d-flex gap-2">
+<div class="mb-3 d-flex gap-2 btn-bar">
     {% if current_user.is_admin %}
     <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>
     {% endif %}
@@ -14,7 +14,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endif %}
-<div class="table-responsive">
+<div class="table-responsive regatta-table-desktop">
     <table class="table table-hover align-middle{% if is_past %} regatta-past{% endif %}">
         <thead>
             <tr>
@@ -91,10 +91,66 @@
     </table>
 </div>
 {% if current_user.is_admin %}
-<div class="text-end">
+<div class="text-end regatta-table-desktop">
     <button type="submit" form="{{ table_id }}-form" class="btn btn-sm btn-outline-danger">Delete Selected</button>
 </div>
 {% endif %}
+
+<div class="regatta-cards-mobile">
+    {% for regatta in regattas %}
+    <div class="card mb-2{% if is_past %} regatta-past{% endif %}">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{ regatta.name }}</strong>
+                    {% if regatta.boat_class %}
+                    <span class="badge bg-secondary ms-1">{{ regatta.boat_class }}</span>
+                    {% endif %}
+                </div>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}" class="btn btn-sm btn-outline-secondary ms-2">Edit</a>
+                {% endif %}
+            </div>
+            <small class="text-muted">
+                {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
+                {% if regatta.location %}
+                &middot;
+                {% if regatta.location_url %}
+                <a href="{{ regatta.location_url }}" target="_blank" class="location-link">{{ regatta.location }}</a>
+                {% else %}
+                {{ regatta.location }}
+                {% endif %}
+                {% endif %}
+            </small>
+            {% if regatta.notes %}
+            <br><small class="text-muted">{{ regatta.notes }}</small>
+            {% endif %}
+            <div class="mt-1">
+                {% for doc in regatta.documents|sort(attribute='doc_type') %}
+                <a href="{% if doc.url %}{{ doc.url }}{% else %}{{ url_for('regattas.download_doc', doc_id=doc.id) }}{% endif %}" class="badge bg-info text-decoration-none doc-link" target="_blank">{{ doc.doc_type }}</a>
+                {% endfor %}
+                {% for rsvp in regatta.rsvps|sort_rsvps %}
+                <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
+                {% endfor %}
+            </div>
+            {% if not is_past %}
+            <div class="mt-1">
+                <form method="POST" action="{{ url_for('regattas.rsvp', regatta_id=regatta.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% set my_rsvp = regatta.rsvps.filter_by(user_id=current_user.id).first() %}
+                    <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                        <option value="" {% if not my_rsvp %}selected{% endif %}>—</option>
+                        <option value="yes" {% if my_rsvp and my_rsvp.status == 'yes' %}selected{% endif %}>Yes</option>
+                        <option value="no" {% if my_rsvp and my_rsvp.status == 'no' %}selected{% endif %}>No</option>
+                        <option value="maybe" {% if my_rsvp and my_rsvp.status == 'maybe' %}selected{% endif %}>Maybe</option>
+                    </select>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
 {% endmacro %}
 
 {% if upcoming %}

@@ -23,11 +23,11 @@
                 <input type="url" class="form-control" id="location_url" name="location_url" value="{{ regatta.location_url if regatta and regatta.location_url else '' }}" placeholder="Leave blank to auto-generate, or paste a custom link">
             </div>
             <div class="row mb-3">
-                <div class="col">
+                <div class="col-12 col-sm-6">
                     <label for="start_date" class="form-label">Start Date</label>
                     <input type="date" class="form-control" id="start_date" name="start_date" required value="{{ regatta.start_date.isoformat() if regatta else '' }}">
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm-6">
                     <label for="end_date" class="form-label">End Date (optional)</label>
                     <input type="date" class="form-control" id="end_date" name="end_date" value="{{ regatta.end_date.isoformat() if regatta and regatta.end_date else '' }}">
                 </div>
@@ -46,7 +46,7 @@
         <hr>
         <h5>Documents</h5>
         {% for doc in regatta.documents %}
-        <div class="d-flex align-items-center mb-2">
+        <div class="d-flex flex-wrap align-items-center mb-2">
             <a href="{{ url_for('regattas.download_doc', doc_id=doc.id) }}" class="badge bg-info text-decoration-none me-2" target="_blank">{{ doc.doc_type }}</a>
             <span class="me-2 text-truncate" style="max-width: 300px;">
                 {% if doc.url %}{{ doc.url }}{% else %}{{ doc.original_filename }}{% endif %}
@@ -60,7 +60,7 @@
         <form method="POST" action="{{ url_for('regattas.upload_doc', regatta_id=regatta.id) }}" enctype="multipart/form-data" class="mt-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row g-2 align-items-end">
-                <div class="col-auto">
+                <div class="col-12 col-sm-auto">
                     <label class="form-label">Type</label>
                     <select name="doc_type" class="form-select form-select-sm">
                         <option value="NOR">NOR</option>
@@ -68,15 +68,15 @@
                         <option value="WWW">WWW</option>
                     </select>
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm">
                     <label class="form-label">URL</label>
                     <input type="url" name="doc_url" class="form-control form-control-sm" placeholder="https://...">
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm">
                     <label class="form-label">or File</label>
                     <input type="file" name="file" class="form-control form-control-sm" accept=".pdf,.doc,.docx">
                 </div>
-                <div class="col-auto">
+                <div class="col-12 col-sm-auto">
                     <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
                 </div>
             </div>

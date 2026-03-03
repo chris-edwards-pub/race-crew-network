@@ -19,7 +19,7 @@ A simple web app for organizing sailboat regattas. Track dates, locations, NOR/S
 - MySQL 8 (Lightsail Managed Database in production)
 - Gunicorn
 - Docker Compose (local dev)
-- Bootstrap 5
+- Bootstrap 5 (fully responsive — phone, tablet, desktop)
 - GitHub Container Registry (GHCR) for container images
 - GitHub Actions for CI/CD
 

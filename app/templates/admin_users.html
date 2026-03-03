@@ -8,53 +8,57 @@
         <h5 class="card-title">Invite New Crew Member</h5>
         <form method="POST" action="{{ url_for('auth.invite_user') }}" class="row g-2 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="col-auto">
+            <div class="col-12 col-sm">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required placeholder="crew@example.com">
             </div>
-            <div class="col-auto">
+            <div class="col-12 col-sm-auto">
                 <button type="submit" class="btn btn-primary">Send Invite</button>
             </div>
         </form>
     </div>
 </div>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Initials</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for user in users %}
-        <tr>
-            <td>{{ user.display_name }}</td>
-            <td><span class="badge bg-secondary">{{ user.initials }}</span></td>
-            <td>{{ user.email }}</td>
-            <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
-            <td>
-                {% if user.invite_token %}
-                <span class="badge bg-warning">Pending</span>
-                {% else %}
-                <span class="badge bg-success">Active</span>
-                {% endif %}
-            </td>
-            <td class="text-nowrap">
-                <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                {% if user.id != current_user.id %}
-                <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th class="d-none d-sm-table-cell">Initials</th>
+                <th class="d-none d-md-table-cell">Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.display_name }}</td>
+                <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ user.initials }}</span></td>
+                <td class="d-none d-md-table-cell">{{ user.email }}</td>
+                <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
+                <td>
+                    {% if user.invite_token %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% else %}
+                    <span class="badge bg-success">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="d-flex flex-wrap gap-1">
+                        <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        {% if user.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}
