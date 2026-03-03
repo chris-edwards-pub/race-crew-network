@@ -19,7 +19,7 @@ def upgrade():
     op.create_table(
         "import_cache",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("url", sa.String(length=2000), nullable=False),
+        sa.Column("url", sa.String(length=500), nullable=False),
         sa.Column("year", sa.Integer(), nullable=False),
         sa.Column("results_json", sa.Text(), nullable=False),
         sa.Column("regatta_count", sa.Integer(), nullable=False, server_default="0"),

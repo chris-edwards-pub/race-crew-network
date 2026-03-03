@@ -115,7 +115,7 @@ class ImportCache(db.Model):
     __tablename__ = "import_cache"
 
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(2000), nullable=False, unique=True)
+    url = db.Column(db.String(500), nullable=False, unique=True)
     year = db.Column(db.Integer, nullable=False)
     results_json = db.Column(db.Text, nullable=False)
     regatta_count = db.Column(db.Integer, nullable=False, default=0)
