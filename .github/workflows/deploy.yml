@@ -73,6 +73,10 @@ jobs:
       contents: read
       security-events: write
 
+    env:
+      TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+      TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
     steps:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.34.2
