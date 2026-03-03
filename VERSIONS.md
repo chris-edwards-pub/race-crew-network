@@ -1,5 +1,11 @@
 # Version History
 
+## 0.31.0
+- Add container vulnerability scanning with Trivy between build and deploy stages
+- Block deployment of images with CRITICAL or HIGH severity vulnerabilities
+- Scan results uploaded as GitHub Actions artifact and to GitHub Security tab (SARIF)
+- Upgrade base Docker image from python:3.11-slim to python:3.13-slim for fewer CVEs
+
 ## 0.30.0
 - Enable automated daily database backups with 7-day retention and point-in-time recovery
 - Set preferred backup window to 06:00–06:30 UTC (2:00–2:30 AM ET)

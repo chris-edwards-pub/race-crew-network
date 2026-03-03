@@ -64,11 +64,57 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  scan-image:
+    name: Scan Image for Vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-and-push
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          output: trivy-results.txt
+
+      - name: Upload scan results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-vulnerability-report
+          path: trivy-results.txt
+          retention-days: 30
+
+      - name: Run Trivy for SARIF output
+        if: always()
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: build-and-push
+    needs: scan-image
 
     steps:
       - name: Configure AWS credentials

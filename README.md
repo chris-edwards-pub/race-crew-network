@@ -15,7 +15,7 @@ A simple web app for organizing sailboat regattas. Track dates, locations, NOR/S
 
 ## Tech Stack
 
-- Python 3.11, Flask, SQLAlchemy, Flask-Login
+- Python 3.13, Flask, SQLAlchemy, Flask-Login
 - MySQL 8 (Lightsail Managed Database in production)
 - Gunicorn
 - Docker Compose (local dev)
@@ -317,14 +317,18 @@ terraform destroy \
 ## Deployment
 
 Every push to `master` triggers automatic deployment via GitHub Actions. The
-workflow has two stages:
+workflow has three stages:
 
 1. **Build & Push** — Builds the Docker image in GitHub Actions using BuildKit
    with layer caching, then pushes to GHCR with three tags:
    - `latest` — for docker-compose simplicity
    - Git SHA (e.g. `065d419e...`) — for traceability and rollback
    - Semantic version (e.g. `0.18.0`) — for release tracking
-2. **Deploy** — Uses AWS CLI to create a new container service deployment with
+2. **Scan Image** — Runs Trivy vulnerability scanner against the pushed image.
+   Blocks deployment if CRITICAL or HIGH severity vulnerabilities are found
+   (unfixed CVEs are ignored). Results are uploaded as a GitHub Actions artifact
+   and to the GitHub Security tab in SARIF format.
+3. **Deploy** — Uses AWS CLI to create a new container service deployment with
    the SHA-tagged image and environment variables from GitHub Secrets/Variables.
 
 The container service handles HTTPS termination, health checks, and rolling
