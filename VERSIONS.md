@@ -1,5 +1,9 @@
 # Version History
 
+## 0.32.1
+- Upgrade cryptography 44.0.0 → 46.0.5 (CVE-2026-26007, HIGH)
+- Upgrade weasyprint 63.1 → 68.1 (CVE-2025-68616, HIGH, SSRF)
+
 ## 0.32.0
 - Append Trivy vulnerability scan results to GitHub Actions job summary via $GITHUB_STEP_SUMMARY
 
