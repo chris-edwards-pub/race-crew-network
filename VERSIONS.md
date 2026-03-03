@@ -1,5 +1,8 @@
 # Version History
 
+## 0.32.0
+- Append Trivy vulnerability scan results to GitHub Actions job summary via $GITHUB_STEP_SUMMARY
+
 ## 0.31.2
 - Use GHCR as Trivy vulnerability DB source instead of broken mirror.gcr.io default
 
