@@ -1,5 +1,8 @@
 # Version History
 
+## 0.32.2
+- Add continue-on-error to SARIF steps so transient GitHub outages don't block deployment
+
 ## 0.32.1
 - Upgrade cryptography 44.0.0 → 46.0.5 (CVE-2026-26007, HIGH)
 - Upgrade weasyprint 63.1 → 68.1 (CVE-2025-68616, HIGH, SSRF)
