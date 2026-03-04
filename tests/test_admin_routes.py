@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, timezone
 from unittest.mock import patch
 
-from app.models import ImportCache, Regatta, User
+from app.models import Document, ImportCache, Regatta, User
 
 
 class TestAdminAccessUnauthenticated:
@@ -455,3 +455,193 @@ class TestImportCacheSingle:
         self._consume_sse(resp)
 
         mock_extract.assert_called_once()
+
+
+class TestImportConfirmSourceUrl:
+    """Tests that source_url is persisted during import confirm."""
+
+    def test_imports_regatta_with_source_url(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "Source URL Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-15",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "detail_url_0": "https://example.com/regatta/detail",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 regatta" in resp.data
+
+        regatta = Regatta.query.filter_by(name="Source URL Regatta").first()
+        assert regatta is not None
+        assert regatta.source_url == "https://example.com/regatta/detail"
+
+    def test_imports_regatta_without_source_url(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "No Source Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-16",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 regatta" in resp.data
+
+        regatta = Regatta.query.filter_by(name="No Source Regatta").first()
+        assert regatta is not None
+        assert regatta.source_url is None
+
+
+class TestDiscoverDocumentsForRegatta:
+    """Tests for the discover-documents SSE endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    def test_no_source_url_returns_error(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="No URL Regatta",
+            location="Test YC",
+            start_date=date(2026, 9, 20),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/discover-documents",
+        )
+        events = self._consume_sse(resp)
+        assert any(e.get("type") == "error" for e in events)
+        assert any("No source URL" in e.get("message", "") for e in events)
+
+    @patch("app.admin.routes.discover_documents")
+    @patch("app.admin.routes._fetch_url_content")
+    def test_discover_documents_success(
+        self, mock_fetch, mock_discover, app, logged_in_client, db, admin_user
+    ):
+        regatta = Regatta(
+            name="Discover Test",
+            location="Test YC",
+            start_date=date(2026, 9, 21),
+            source_url="https://example.com/regatta/test",
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        mock_fetch.return_value = "page content"
+        mock_discover.return_value = [
+            {"doc_type": "NOR", "url": "https://example.com/nor.pdf", "label": "NOR"},
+        ]
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/discover-documents",
+        )
+        events = self._consume_sse(resp)
+
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+        assert "task_id" in done_events[0]
+
+
+class TestReviewDocumentsForRegatta:
+    """Tests for the review-documents page."""
+
+    def test_missing_task_id_redirects(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="Review Test",
+            location="Test YC",
+            start_date=date(2026, 9, 25),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.get(
+            f"/admin/regattas/{regatta.id}/review-documents",
+            follow_redirects=True,
+        )
+        assert b"Document discovery results not found" in resp.data
+
+    def test_regatta_not_found_redirects(self, logged_in_client):
+        resp = logged_in_client.get(
+            "/admin/regattas/99999/review-documents?task_id=bogus",
+            follow_redirects=True,
+        )
+        assert b"Regatta not found" in resp.data
+
+
+class TestAttachDocumentsForRegatta:
+    """Tests for the attach-documents endpoint."""
+
+    def test_attach_documents(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="Attach Test",
+            location="Test YC",
+            start_date=date(2026, 9, 28),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/attach-documents",
+            data={
+                "doc_count": "2",
+                "doc_0": "1",
+                "doc_type_0": "NOR",
+                "doc_url_0": "https://example.com/nor.pdf",
+                "doc_1": "1",
+                "doc_type_1": "WWW",
+                "doc_url_1": "https://example.com/regatta",
+            },
+            follow_redirects=True,
+        )
+        assert b"2 document(s) attached" in resp.data
+
+        docs = Document.query.filter_by(regatta_id=regatta.id).all()
+        assert len(docs) == 2
+        doc_types = {d.doc_type for d in docs}
+        assert doc_types == {"NOR", "WWW"}
+
+    def test_attach_no_selection(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="No Select Test",
+            location="Test YC",
+            start_date=date(2026, 9, 29),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/attach-documents",
+            data={"doc_count": "1"},
+            follow_redirects=True,
+        )
+        assert b"No documents selected" in resp.data
+
+    def test_regatta_not_found(self, logged_in_client):
+        resp = logged_in_client.post(
+            "/admin/regattas/99999/attach-documents",
+            data={"doc_count": "0"},
+            follow_redirects=True,
+        )
+        assert b"Regatta not found" in resp.data

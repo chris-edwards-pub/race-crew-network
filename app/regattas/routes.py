@@ -255,6 +255,7 @@ def _save_regatta(regatta: Regatta | None):
     start_date_str = request.form.get("start_date", "")
     end_date_str = request.form.get("end_date", "")
     notes = request.form.get("notes", "").strip()
+    source_url = request.form.get("source_url", "").strip()
 
     if not name or not location or not start_date_str:
         flash("Name, location, and start date are required.", "error")
@@ -284,6 +285,7 @@ def _save_regatta(regatta: Regatta | None):
     regatta.start_date = start_date
     regatta.end_date = end_date
     regatta.notes = notes or None
+    regatta.source_url = source_url or None
 
     db.session.commit()
     flash(f"Regatta '{name}' saved.", "success")

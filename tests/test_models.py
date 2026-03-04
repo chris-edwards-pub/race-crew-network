@@ -72,6 +72,31 @@ class TestRegattaModel:
 
         assert regatta.boat_class == "Thistle"
 
+    def test_source_url_nullable(self, app, db, admin_user):
+        regatta = Regatta(
+            name="No Source URL",
+            location="Test YC",
+            start_date=date(2026, 6, 22),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.source_url is None
+
+    def test_source_url_explicit_value(self, app, db, admin_user):
+        regatta = Regatta(
+            name="With Source URL",
+            location="Test YC",
+            start_date=date(2026, 6, 23),
+            source_url="https://example.com/regatta/123",
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.source_url == "https://example.com/regatta/123"
+
     def test_regatta_cascade_delete_documents(self, app, db, admin_user):
         regatta = Regatta(
             name="Cascade Test",

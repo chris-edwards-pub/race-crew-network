@@ -747,6 +747,8 @@ def import_schedule_confirm():
         if not location_url and location:
             location_url = f"https://www.google.com/maps/search/{quote_plus(location)}"
 
+        detail_url = request.form.get(f"detail_url_{idx}", "").strip()
+
         regatta = Regatta(
             name=name,
             boat_class=boat_class,
@@ -755,6 +757,7 @@ def import_schedule_confirm():
             start_date=start_date,
             end_date=end_date,
             notes=notes or None,
+            source_url=detail_url or None,
             created_by=current_user.id,
         )
         db.session.add(regatta)
@@ -1025,3 +1028,215 @@ def import_schedule_documents():
         regattas=regatta_data,
         start_over_url=start_over_url,
     )
+
+
+@bp.route("/admin/regattas/<int:regatta_id>/discover-documents", methods=["POST"])
+@login_required
+def discover_documents_for_regatta(regatta_id: int):
+    """SSE endpoint: discover NOR/SI/WWW documents for an existing regatta."""
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta or not regatta.source_url:
+        msg = json.dumps({"type": "error", "message": "No source URL set."})
+        return Response(
+            f"data: {msg}\n\ndata: " + json.dumps({"type": "failed"}) + "\n\n",
+            content_type="text/event-stream",
+        )
+
+    source_url = regatta.source_url
+    force_extract = request.form.get("force_extract") == "1"
+    task_id = str(uuid.uuid4())
+
+    def _sse(event: dict) -> str:
+        return f"data: {json.dumps(event)}\n\n"
+
+    def generate():
+        total_docs = 0
+        documents = []
+
+        if force_extract:
+            yield _sse({"type": "progress", "message": "Force re-extract requested..."})
+
+        yield _sse({"type": "progress", "message": f"Fetching {source_url}..."})
+
+        try:
+            cs_id = _parse_clubspot_regatta_id(source_url)
+            if cs_id:
+                docs = _fetch_clubspot_documents(cs_id)
+                docs.append(
+                    {
+                        "doc_type": "WWW",
+                        "url": source_url,
+                        "label": "Regatta website",
+                    }
+                )
+            else:
+                content = _fetch_url_content(source_url)
+                docs = discover_documents(content, regatta.name, source_url)
+
+            documents.extend(docs)
+            total_docs += len(docs)
+
+            if docs:
+                doc_types = ", ".join(d["doc_type"] for d in docs)
+                yield _sse({"type": "result", "message": f"Found: {doc_types}"})
+            else:
+                yield _sse({"type": "result", "message": "No documents found"})
+
+            # Level 2: check WWW links for NOR/SI
+            www_docs = [d for d in docs if d["doc_type"] == "WWW" and not cs_id]
+            existing_types = {d["doc_type"] for d in docs}
+            for www_doc in www_docs:
+                if "NOR" in existing_types and "SI" in existing_types:
+                    break
+
+                www_url = www_doc["url"]
+                yield _sse(
+                    {
+                        "type": "progress",
+                        "message": "Checking regatta website for documents...",
+                    }
+                )
+
+                try:
+                    deep_cs_id = _parse_clubspot_regatta_id(www_url)
+                    if deep_cs_id:
+                        deep_docs = _fetch_clubspot_documents(deep_cs_id)
+                    else:
+                        www_content = _fetch_url_content(www_url)
+                        deep_docs = discover_documents_deep(
+                            www_content, regatta.name, www_url
+                        )
+
+                    new_docs = [
+                        d for d in deep_docs if d["doc_type"] not in existing_types
+                    ]
+                    if new_docs:
+                        documents.extend(new_docs)
+                        total_docs += len(new_docs)
+                        existing_types.update(d["doc_type"] for d in new_docs)
+                        deep_types = ", ".join(d["doc_type"] for d in new_docs)
+                        yield _sse(
+                            {
+                                "type": "result",
+                                "message": f"Found on regatta website: {deep_types}",
+                            }
+                        )
+                    else:
+                        yield _sse(
+                            {
+                                "type": "result",
+                                "message": "No additional documents found",
+                            }
+                        )
+                except Exception as e:
+                    logger.warning("Level-2 crawl failed for %s: %s", www_url, e)
+                    yield _sse(
+                        {
+                            "type": "result",
+                            "message": "Could not check regatta website",
+                        }
+                    )
+
+        except (ValueError, requests.RequestException) as e:
+            yield _sse({"type": "error", "message": f"Could not fetch page: {e}"})
+            yield _sse({"type": "failed"})
+            return
+        except (ConnectionError, Exception) as e:
+            yield _sse({"type": "error", "message": f"Error: {e}"})
+            yield _sse({"type": "failed"})
+            return
+
+        documents.sort(key=lambda d: d["doc_type"])
+
+        _discovery_results[task_id] = {
+            "regatta_id": regatta_id,
+            "documents": documents,
+        }
+
+        summary = f"Found {total_docs} document(s)"
+        yield _sse({"type": "done", "task_id": task_id, "summary": summary})
+
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@bp.route("/admin/regattas/<int:regatta_id>/review-documents")
+@login_required
+def review_documents_for_regatta(regatta_id: int):
+    """Show discovered documents with checkboxes for an existing regatta."""
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta:
+        flash("Regatta not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    task_id = request.args.get("task_id", "")
+    if not task_id or task_id not in _discovery_results:
+        flash("Document discovery results not found or expired.", "error")
+        return redirect(url_for("regattas.edit", regatta_id=regatta_id))
+
+    data = _discovery_results.pop(task_id)
+    return render_template(
+        "admin/regatta_discover_documents.html",
+        regatta=regatta,
+        documents=data["documents"],
+    )
+
+
+@bp.route("/admin/regattas/<int:regatta_id>/attach-documents", methods=["POST"])
+@login_required
+def attach_documents_for_regatta(regatta_id: int):
+    """Create Document records for selected discovered documents."""
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta:
+        flash("Regatta not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    doc_count_str = request.form.get("doc_count", "0")
+    try:
+        doc_count = int(doc_count_str)
+    except ValueError:
+        doc_count = 0
+
+    created = 0
+    for i in range(doc_count):
+        checkbox = request.form.get(f"doc_{i}")
+        if not checkbox:
+            continue
+        doc_type = request.form.get(f"doc_type_{i}", "").strip()
+        doc_url = request.form.get(f"doc_url_{i}", "").strip()
+        if doc_type and doc_url:
+            doc = Document(
+                regatta_id=regatta_id,
+                doc_type=doc_type,
+                url=doc_url,
+                uploaded_by=current_user.id,
+            )
+            db.session.add(doc)
+            created += 1
+
+    db.session.commit()
+
+    if created:
+        flash(f"{created} document(s) attached.", "success")
+    else:
+        flash("No documents selected.", "warning")
+
+    return redirect(url_for("regattas.edit", regatta_id=regatta_id))

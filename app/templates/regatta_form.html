@@ -36,6 +36,10 @@
                 <label for="notes" class="form-label">Notes (optional)</label>
                 <textarea class="form-control" id="notes" name="notes" rows="2">{{ regatta.notes if regatta and regatta.notes else '' }}</textarea>
             </div>
+            <div class="mb-3">
+                <label for="source_url" class="form-label">Source URL (optional — page where this regatta was imported from)</label>
+                <input type="url" class="form-control" id="source_url" name="source_url" value="{{ regatta.source_url if regatta and regatta.source_url else '' }}" placeholder="https://...">
+            </div>
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Save</button>
                 <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -57,6 +61,17 @@
             </form>
         </div>
         {% endfor %}
+
+        {% if regatta.source_url %}
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-success" id="find-documents-btn">Find Documents</button>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="force-extract" value="1">
+                <label class="form-check-label" for="force-extract">Force re-extract</label>
+            </div>
+        </div>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('regattas.upload_doc', regatta_id=regatta.id) }}" enctype="multipart/form-data" class="mt-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row g-2 align-items-end">
@@ -85,4 +100,52 @@
         {% endif %}
     </div>
 </div>
+
+{% if regatta and regatta.source_url %}
+{% include "admin/_terminal_modal.html" %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if regatta and regatta.source_url %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+(function() {
+    var btn = document.getElementById('find-documents-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', function() {
+        var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+        var output = document.getElementById('terminal-output');
+        var startOverBtn = document.getElementById('terminal-start-over');
+        var title = document.getElementById('terminalModalTitle');
+        var forceExtract = document.getElementById('force-extract').checked;
+
+        output.innerHTML = '';
+        title.textContent = 'Discovering Documents...';
+        if (startOverBtn) {
+            startOverBtn.style.display = 'none';
+            startOverBtn.href = '{{ url_for("regattas.edit", regatta_id=regatta.id) }}';
+        }
+        modal.show();
+
+        var formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+        if (forceExtract) {
+            formData.append('force_extract', '1');
+        }
+
+        fetch('{{ url_for("admin.discover_documents_for_regatta", regatta_id=regatta.id) }}', {
+            method: 'POST',
+            body: formData
+        }).then(function(response) {
+            var redirectUrl = function(event) {
+                return '{{ url_for("admin.review_documents_for_regatta", regatta_id=regatta.id) }}' + '?task_id=' + event.task_id;
+            };
+            readSSE(response, output, handleSSEEvents(output, modal, redirectUrl, startOverBtn));
+        });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

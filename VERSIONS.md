@@ -1,5 +1,13 @@
 # Version History
 
+## 0.34.0
+- Store source URL on regattas during AI import (detail_url persisted as source_url)
+- Source URL field on regatta edit form allows admins to view and update the import source
+- "Find Documents" button on edit page discovers NOR/SI/WWW documents via AI from the source URL
+- SSE streaming progress in terminal modal during document discovery
+- Review page with checkboxes to select which discovered documents to attach
+- "Force re-extract" checkbox bypasses cached content for fresh discovery
+
 ## 0.33.0
 - Cache AI import extraction results per URL to eliminate redundant AI calls on repeat imports
 - Cache hit serves instant results with zero token usage and no URL fetch

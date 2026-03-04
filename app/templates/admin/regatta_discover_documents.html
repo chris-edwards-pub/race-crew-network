@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Discovered Documents — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">Discovered Documents</h2>
+        <p class="text-muted">Review the documents found for <strong>{{ regatta.name }}</strong>. Uncheck any you don't want to attach.</p>
+
+        <form method="POST" action="{{ url_for('admin.attach_documents_for_regatta', regatta_id=regatta.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="doc_count" value="{{ documents|length }}">
+
+            {% if documents %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>{{ regatta.name }}</strong>
+                    <span class="text-muted ms-2">{{ regatta.start_date.isoformat() }}{% if regatta.end_date %} — {{ regatta.end_date.isoformat() }}{% endif %}</span>
+                </div>
+                <div class="card-body">
+                    {% for doc in documents %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="doc_{{ loop.index0 }}" value="1" checked>
+                        <input type="hidden" name="doc_type_{{ loop.index0 }}" value="{{ doc.doc_type }}">
+                        <input type="hidden" name="doc_url_{{ loop.index0 }}" value="{{ doc.url }}">
+                        <label class="form-check-label">
+                            <span class="badge bg-info text-dark me-1">{{ doc.doc_type }}</span>
+                            {{ doc.label }}
+                            — <a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.url|truncate(60) }}</a>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No documents found.</div>
+            {% endif %}
+
+            <div class="d-flex flex-wrap gap-2">
+                {% if documents %}
+                <button type="submit" class="btn btn-success">Attach Selected</button>
+                {% endif %}
+                <a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}" class="btn btn-outline-secondary">Back to Edit</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
