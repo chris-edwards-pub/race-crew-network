@@ -1,0 +1,190 @@
+================================================================================
+                   DAY 6: RSVP SYSTEM & DATABASE RELATIONSHIPS
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- Many-to-many relationships via join tables
+- Upsert pattern (update or insert)
+- SQLAlchemy lazy loading strategies
+- Custom Jinja2 template filters
+- Status tracking and display logic
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Many-to-many relationships
+- Join table pattern
+- Upsert operations
+- Template filters
+- Query optimization
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+- thistle-regatta-schedule/app/regattas/routes.py:139-159 - RSVP route
+- thistle-regatta-schedule/app/models.py:96-112 - RSVP model
+- thistle-regatta-schedule/app/__init__.py:46-51 - sort_rsvps filter
+
+================================================================================
+                    PART 1: MANY-TO-MANY RELATIONSHIPS
+================================================================================
+
+THE RELATIONSHIP
+--------------------------------------------------------------------------------
+Users and Regattas have a many-to-many relationship:
+- One user can RSVP to many regattas
+- One regatta can have RSVPs from many users
+
+This requires a join table: RSVP.
+
+RSVP MODEL REVIEW
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/models.py:96-112
+
+```python
+class RSVP(db.Model):
+    __tablename__ = "rsvps"
+
+    id = db.Column(db.Integer, primary_key=True)
+    regatta_id = db.Column(db.Integer, db.ForeignKey("regattas.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    status = db.Column(db.String(10), nullable=False)  # yes, no, maybe
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint("regatta_id", "user_id"),
+    )
+```
+
+TWO FOREIGN KEYS:
+- regatta_id → links to Regatta
+- user_id → links to User
+
+UNIQUE CONSTRAINT:
+Ensures one user can only have one RSVP per regatta.
+
+================================================================================
+                    PART 2: RSVP ROUTE (UPSERT PATTERN)
+================================================================================
+
+RSVP ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:139-159
+
+```python
+@bp.route("/regattas/<int:regatta_id>/rsvp", methods=["POST"])
+@login_required
+def rsvp(regatta_id: int):
+    status = request.form.get("status", "").lower()
+    if status not in ("yes", "no", "maybe"):
+        flash("Invalid RSVP status.", "error")
+        return redirect(url_for("regattas.index"))
+
+    existing = RSVP.query.filter_by(
+        regatta_id=regatta_id, user_id=current_user.id
+    ).first()
+
+    if existing:
+        existing.status = status
+    else:
+        db.session.add(
+            RSVP(regatta_id=regatta_id, user_id=current_user.id, status=status)
+        )
+
+    db.session.commit()
+    return redirect(url_for("regattas.index"))
+```
+
+UPSERT PATTERN:
+```python
+existing = RSVP.query.filter_by(...).first()
+
+if existing:
+    existing.status = status      # UPDATE
+else:
+    db.session.add(RSVP(...))    # INSERT
+```
+
+This is "upsert": update if exists, insert if not.
+
+WHY UPSERT?
+The unique constraint prevents duplicate RSVPs. Upsert allows users to change
+their status without creating duplicate entries.
+
+================================================================================
+                    PART 3: TEMPLATE FILTER
+================================================================================
+
+SORT_RSVPS FILTER
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/__init__.py:46-51
+
+```python
+@app.template_filter("sort_rsvps")
+def sort_rsvps(rsvps):
+    order = {"yes": 0, "no": 1, "maybe": 2}
+    return sorted(rsvps, key=lambda r: (order.get(r.status, 3), r.user.display_name))
+```
+
+USAGE IN TEMPLATES:
+```html
+{% for rsvp in regatta.rsvps|sort_rsvps %}
+    <span>{{ rsvp.user.initials }}</span>
+{% endfor %}
+```
+
+SORTING LOGIC:
+1. Primary sort: status (yes=0, no=1, maybe=2)
+2. Secondary sort: user display_name alphabetically
+
+Result: "Yes" responses first, then "No", then "Maybe", each group
+alphabetically.
+
+================================================================================
+                    PART 4: LAZY LOADING
+================================================================================
+
+RELATIONSHIP LOADING
+--------------------------------------------------------------------------------
+From Regatta model:
+```python
+rsvps = db.relationship("RSVP", backref="regatta", lazy="dynamic")
+```
+
+lazy="dynamic" returns a query object instead of loading all RSVPs immediately.
+
+LAZY LOADING OPTIONS:
+- **select** (default): Load when accessed (N+1 query problem)
+- **dynamic**: Return query object (can filter further)
+- **joined**: Load with JOIN (single query)
+- **subquery**: Load with subquery
+
+DYNAMIC EXAMPLE:
+```python
+regatta.rsvps                    # Returns query object
+regatta.rsvps.count()            # SELECT COUNT(*)
+regatta.rsvps.filter_by(status='yes').all()  # Can add filters
+```
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **Many-to-many relationships** require a join table with two foreign keys.
+   RSVP connects Users and Regattas.
+
+2. **Upsert pattern** (update or insert) is common for unique relationships.
+   Check if exists, update if yes, insert if no.
+
+3. **Template filters** transform data in templates. Register with
+   @app.template_filter() decorator.
+
+4. **Lazy loading strategies** control when related objects are loaded.
+   lazy="dynamic" provides maximum flexibility.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 7, we'll explore document uploads and file handling with secure UUID
+filenames and Docker volume management.
+
+================================================================================

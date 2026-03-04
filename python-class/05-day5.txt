@@ -1,0 +1,341 @@
+================================================================================
+                   DAY 5: REGATTA MANAGEMENT (CRUD OPERATIONS)
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- RESTful route design in Flask
+- Create, Read, Update, Delete (CRUD) operations
+- Form processing with request.form
+- Date handling in Python
+- Permission checks for admin-only routes
+- Flash messages for user feedback
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- CRUD pattern
+- RESTful routing
+- Form validation
+- Date parsing with fromisoformat()
+- Conditional logic in save operations
+- URL generation with url_for()
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+For this session, examine:
+- thistle-regatta-schedule/app/regattas/routes.py - CRUD operations
+
+================================================================================
+                    PART 1: RESTful ROUTING
+================================================================================
+
+CRUD OPERATIONS
+--------------------------------------------------------------------------------
+**Create**: Add new regatta
+**Read**: View regatta list
+**Update**: Edit existing regatta
+**Delete**: Remove regatta
+
+ROUTES IN THIS APP
+--------------------------------------------------------------------------------
+| Operation    | HTTP Method | Route                    | Function      |
+|--------------|-------------|--------------------------|---------------|
+| Read         | GET         | /                        | index()       |
+| PDF          | GET         | /schedule.pdf            | pdf()         |
+| Create       | GET         | /regattas/new            | create()      |
+| Create       | POST        | /regattas/new            | create()      |
+| Update       | GET         | /regattas/<id>/edit      | edit()        |
+| Update       | POST        | /regattas/<id>/edit      | edit()        |
+| Delete       | POST        | /regattas/<id>/delete    | delete()      |
+| Bulk Delete  | POST        | /regattas/bulk-delete    | bulk_delete() |
+
+GET shows forms, POST processes them.
+
+================================================================================
+                    PART 2: READ (INDEX)
+================================================================================
+
+INDEX ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:16-35
+
+```python
+@bp.route("/")
+def index():
+    if not current_user.is_authenticated:
+        return render_template("login.html")
+
+    today = date.today()
+    upcoming = (
+        Regatta.query.filter(Regatta.start_date >= today)
+        .order_by(Regatta.start_date)
+        .all()
+    )
+    past = (
+        Regatta.query.filter(Regatta.start_date < today)
+        .order_by(Regatta.start_date.desc())
+        .all()
+    )
+    users = User.query.filter(User.invite_token.is_(None)).order_by(User.display_name).all()
+    return render_template("index.html", upcoming=upcoming, past=past, users=users)
+```
+
+NOTE: The index route serves the login page for anonymous users instead of
+redirecting. This avoids an ugly /login?next=%2F URL and provides a cleaner
+user experience.
+
+QUERYING PATTERNS:
+- **filter()**: WHERE clause conditions
+- **order_by()**: Sort results
+- **.desc()**: Descending order
+- **.all()**: Execute and return list
+
+SPLITTING UPCOMING AND PAST:
+```python
+today = date.today()
+upcoming = Regatta.query.filter(Regatta.start_date >= today)...
+past = Regatta.query.filter(Regatta.start_date < today)...
+```
+
+Past regattas show most recent first (.desc()), upcoming show nearest first.
+
+================================================================================
+                    PART 3: CREATE
+================================================================================
+
+CREATE ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:65-75
+
+```python
+@bp.route("/regattas/new", methods=["GET", "POST"])
+@login_required
+def create():
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if request.method == "POST":
+        return _save_regatta(None)
+
+    return render_template("regatta_form.html", regatta=None)
+```
+
+PATTERN:
+- GET: Show empty form (regatta=None)
+- POST: Process form via _save_regatta()
+- Admin check at top
+
+SAVE FUNCTION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:250-293
+
+```python
+def _save_regatta(regatta: Regatta | None):
+    name = request.form.get("name", "").strip()
+    boat_class = request.form.get("boat_class", "").strip() or "TBD"
+    location = request.form.get("location", "").strip()
+    location_url = request.form.get("location_url", "").strip()
+    start_date_str = request.form.get("start_date", "")
+    end_date_str = request.form.get("end_date", "")
+    notes = request.form.get("notes", "").strip()
+    source_url = request.form.get("source_url", "").strip()
+
+    if not name or not location or not start_date_str:
+        flash("Name, location, and start date are required.", "error")
+        return render_template("regatta_form.html", regatta=regatta)
+
+    try:
+        start_date = date.fromisoformat(start_date_str)
+        end_date = date.fromisoformat(end_date_str) if end_date_str else None
+    except ValueError:
+        flash("Invalid date format.", "error")
+        return render_template("regatta_form.html", regatta=regatta)
+
+    if regatta is None:
+        regatta = Regatta(created_by=current_user.id)
+        db.session.add(regatta)
+
+    regatta.name = name
+    regatta.boat_class = boat_class
+    regatta.location = location
+    if location_url:
+        regatta.location_url = location_url
+    else:
+        regatta.location_url = f"https://www.google.com/maps/search/{quote_plus(location)}"
+    regatta.start_date = start_date
+    regatta.end_date = end_date
+    regatta.notes = notes or None
+    regatta.source_url = source_url or None
+
+    db.session.commit()
+    flash(f"Regatta '{name}' saved.", "success")
+    return redirect(url_for("regattas.index"))
+```
+
+FORM EXTRACTION:
+```python
+name = request.form.get("name", "").strip()
+```
+request.form is a dict-like object with form data. .get() with default avoids KeyError.
+
+DATE PARSING:
+```python
+start_date = date.fromisoformat(start_date_str)
+```
+Converts "2024-01-15" to date object. Raises ValueError if invalid.
+
+CREATE VS UPDATE:
+```python
+if regatta is None:
+    regatta = Regatta(created_by=current_user.id)
+    db.session.add(regatta)
+```
+If None, create new. Otherwise update existing.
+
+AUTO-GENERATED GOOGLE MAPS:
+```python
+if location_url:
+    regatta.location_url = location_url
+else:
+    regatta.location_url = f"https://www.google.com/maps/search/{quote_plus(location)}"
+```
+If no URL provided, generate Google Maps search link.
+
+================================================================================
+                    PART 4: UPDATE
+================================================================================
+
+EDIT ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:78-93
+
+```python
+@bp.route("/regattas/<int:regatta_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(regatta_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta:
+        flash("Regatta not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if request.method == "POST":
+        return _save_regatta(regatta)
+
+    return render_template("regatta_form.html", regatta=regatta)
+```
+
+KEY DIFFERENCE FROM CREATE:
+- Loads existing regatta: `db.session.get(Regatta, regatta_id)`
+- Passes to _save_regatta(regatta) instead of None
+- Same form template handles both create and edit
+
+================================================================================
+                    PART 5: DELETE
+================================================================================
+
+DELETE ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:96-108
+
+```python
+@bp.route("/regattas/<int:regatta_id>/delete", methods=["POST"])
+@login_required
+def delete(regatta_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if regatta:
+        db.session.delete(regatta)
+        db.session.commit()
+        flash(f"Regatta '{regatta.name}' deleted.", "success")
+    return redirect(url_for("regattas.index"))
+```
+
+DELETE CASCADE:
+Remember from Day 3, Regatta has:
+```python
+documents = db.relationship(..., cascade="all, delete-orphan")
+rsvps = db.relationship(..., cascade="all, delete-orphan")
+```
+Deleting a regatta automatically deletes its documents and RSVPs.
+
+================================================================================
+                    PART 6: PDF GENERATION & BULK DELETE
+================================================================================
+
+PDF SCHEDULE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:38-62
+
+```python
+@bp.route("/schedule.pdf")
+@login_required
+def pdf():
+    today = date.today()
+    upcoming = Regatta.query.filter(Regatta.start_date >= today)...
+    past = Regatta.query.filter(Regatta.start_date < today)...
+    html_str = render_template("pdf_schedule.html", upcoming=upcoming, past=past, ...)
+    pdf_bytes = HTML(string=html_str).write_pdf()
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    return response
+```
+
+This uses WeasyPrint to render an HTML template to PDF. The same query logic
+as the index route provides upcoming/past regattas for the PDF layout.
+
+BULK DELETE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:111-136
+
+Admins can select multiple regattas via checkboxes and delete them at once:
+
+```python
+@bp.route("/regattas/bulk-delete", methods=["POST"])
+@login_required
+def bulk_delete():
+    selected = request.form.getlist("selected")
+    ...
+    for regatta_id in selected:
+        regatta = db.session.get(Regatta, int(regatta_id))
+        if regatta:
+            db.session.delete(regatta)
+            count += 1
+    db.session.commit()
+```
+
+request.form.getlist() returns all values for checkboxes with the same name
+attribute, enabling multi-select operations.
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **CRUD operations follow consistent patterns**: GET shows forms, POST
+   processes them. Shared logic in helper functions.
+
+2. **Form data comes from request.form**, a dict-like object. Always provide
+   defaults with .get() to handle missing fields.
+
+3. **Date parsing with fromisoformat()** converts ISO format strings
+   ("2024-01-15") to date objects. Wrap in try/except for validation.
+
+4. **Flash messages provide feedback** to users after operations. They persist
+   across one redirect.
+
+5. **Admin checks protect routes**. Manual checks work well for small apps.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 6, we'll explore the RSVP system and many-to-many relationships through
+the join table pattern.
+
+================================================================================

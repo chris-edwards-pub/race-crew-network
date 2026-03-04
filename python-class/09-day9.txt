@@ -1,0 +1,340 @@
+================================================================================
+                   DAY 9: DOCKER & CONTAINERIZATION
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- Dockerfile structure and best practices
+- Multi-container orchestration with docker-compose
+- Container networking and service discovery
+- Volume persistence for data
+- Health checks for dependencies
+- Gunicorn production configuration
+- GitHub Container Registry (GHCR)
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Docker images and containers
+- Multi-stage builds (not used here, but good to know)
+- Docker networking
+- Named volumes
+- Service dependencies
+- WSGI servers (Gunicorn)
+- Container registries (GHCR)
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+- thistle-regatta-schedule/Dockerfile - Web container build
+- thistle-regatta-schedule/docker-compose.yml - Local dev orchestration
+- thistle-regatta-schedule/gunicorn.conf.py - WSGI server config
+
+================================================================================
+                    PART 1: DOCKERFILE
+================================================================================
+
+DOCKERFILE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/Dockerfile
+
+```dockerfile
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-libmysqlclient-dev gcc pkg-config \
+    libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+    libffi-dev libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+RUN mkdir -p /app/uploads
+
+EXPOSE 8000
+
+CMD ["./entrypoint.sh"]
+```
+
+STEP-BY-STEP:
+
+**1. Base Image**:
+```dockerfile
+FROM python:3.13-slim
+```
+Official Python 3.13 slim image (Debian-based, minimal packages). Using
+the latest Python version reduces CVE exposure in the base image.
+
+**2. Working Directory**:
+```dockerfile
+WORKDIR /app
+```
+All subsequent commands run in /app.
+
+**3. System Dependencies**:
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-libmysqlclient-dev gcc pkg-config \
+    libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+    libffi-dev libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+- default-libmysqlclient-dev: MySQL client libraries
+- gcc: C compiler (needed for some Python packages)
+- pkg-config: Package configuration helper
+- libpango, libcairo, etc.: Required by WeasyPrint for PDF generation
+- rm -rf /var/lib/apt/lists/*: Clean up to reduce image size
+
+**4. Install Python Dependencies**:
+```dockerfile
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+```
+
+Copy requirements first (before copying app code) for better caching. If code
+changes but requirements don't, Docker reuses this layer.
+
+**5. Copy Application**:
+```dockerfile
+COPY . .
+```
+
+Copy entire application directory to /app in container.
+
+**6. Create Upload Directory**:
+```dockerfile
+RUN mkdir -p /app/uploads
+```
+
+Ensure directory exists (though volume will override this).
+
+**7. Expose Port**:
+```dockerfile
+EXPOSE 8000
+```
+
+Documentation that container listens on port 8000. Doesn't actually publish.
+
+**8. Default Command**:
+```dockerfile
+CMD ["./entrypoint.sh"]
+```
+
+Run entrypoint script on container start.
+
+================================================================================
+                    PART 2: DOCKER COMPOSE
+================================================================================
+
+DOCKER-COMPOSE.YML REVIEW
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/docker-compose.yml (from Day 1)
+
+Two services: web, db (local development only)
+Two volumes: mysql_data, uploads
+
+Note: nginx was removed from the local setup. In production, the Lightsail
+Container Service handles HTTPS termination and load balancing.
+
+SERVICE DISCOVERY:
+Docker creates a network where services can reach each other by name:
+- web can connect to mysql://db:3306
+
+DEPENDS_ON:
+```yaml
+web:
+  depends_on:
+    db:
+      condition: service_healthy
+```
+
+web waits for db to pass health check before starting.
+
+HEALTH CHECKS:
+```yaml
+db:
+  healthcheck:
+    test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+    interval: 5s
+    timeout: 5s
+    retries: 10
+```
+
+Docker repeatedly runs health check until it passes (or retries exhausted).
+
+VOLUMES:
+```yaml
+volumes:
+  - mysql_data:/var/lib/mysql
+  - uploads:/app/uploads
+```
+
+Named volumes persist across container recreations.
+
+RESTART POLICY:
+```yaml
+restart: unless-stopped
+```
+
+Container restarts automatically unless manually stopped.
+
+================================================================================
+                    PART 3: GUNICORN CONFIGURATION
+================================================================================
+
+WHAT IS GUNICORN?
+--------------------------------------------------------------------------------
+Gunicorn (Green Unicorn) is a Python WSGI HTTP server. It:
+- Runs Flask in production (never use `flask run` in production)
+- Manages multiple worker processes
+- Handles concurrent requests
+- Provides process supervision
+
+GUNICORN CONFIG
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/gunicorn.conf.py
+
+```python
+bind = "0.0.0.0:8000"
+workers = 2
+accesslog = "-"
+errorlog = "-"
+```
+
+**bind**:
+Listen on all interfaces (0.0.0.0) port 8000. Inside Docker, this is necessary
+for the port mapping to work.
+
+**workers**:
+Number of worker processes. Rule of thumb: 2-4 x CPU cores. Two is fine for
+small traffic.
+
+**accesslog / errorlog**:
+"-" means stdout/stderr. Docker captures container output.
+
+WSGI ENTRY POINT:
+```bash
+gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+This loads gunicorn.conf.py for settings, then imports `app` from wsgi.py.
+
+================================================================================
+                    PART 4: GITHUB CONTAINER REGISTRY (GHCR)
+================================================================================
+
+CONTAINER IMAGE PUBLISHING
+--------------------------------------------------------------------------------
+Docker images are built and published to GitHub Container Registry (GHCR)
+via GitHub Actions. This means production deployments pull pre-built images
+instead of building on the server.
+
+IMAGE TAGS:
+Each build produces images tagged with:
+- **latest**: Always points to the most recent build
+- **git SHA**: Specific commit (e.g., ghcr.io/chris-edwards-pub/race-crew-network:abc1234)
+- **semantic version**: Release tag (e.g., :v0.34.2)
+
+DOCKER-COMPOSE.YML REFERENCE:
+```yaml
+web:
+  build: .
+  image: ghcr.io/chris-edwards-pub/race-crew-network:latest
+```
+
+The `build` directive builds locally for development. The `image` directive
+names the image so it can be pulled from GHCR in production.
+
+BENEFITS:
+- **Zero-downtime deploys**: No building on server (no stopping containers to free RAM)
+- **Reproducible**: Same image in staging and production
+- **Fast rollback**: Previous image tags are always available
+- **Build caching**: GitHub Actions caches Docker layers for fast builds
+
+================================================================================
+                    PART 5: REQUEST FLOW
+================================================================================
+
+FULL REQUEST PATH (LOCAL DEVELOPMENT)
+--------------------------------------------------------------------------------
+
+  Client (Browser)
+    |
+    | HTTP request on port 80
+    v
+  Docker port mapping (80 → 8000)
+    |
+    v
+  Gunicorn (web container)
+    |
+    | WSGI interface
+    v
+  Flask application
+    |
+    | Query database
+    v
+  MySQL (db container) on port 3306
+    |
+    v
+  Flask renders template
+    |
+    v
+  Gunicorn returns response to client
+
+NETWORK ISOLATION:
+- Only the web container's port 8000 is mapped to host port 80
+- db communicates on Docker's internal network
+- Database is never exposed to the internet
+
+PRODUCTION REQUEST PATH:
+In production (Lightsail Container Service), the path is:
+  Client → Lightsail HTTPS endpoint → Gunicorn → Flask → Managed MySQL
+
+================================================================================
+                    PART 6: PRODUCTION ENHANCEMENTS
+================================================================================
+
+PRODUCTION ARCHITECTURE (AWS LIGHTSAIL):
+
+This app uses Lightsail Container Service for production:
+- **Container Service**: Manages the web container (auto-restart, scaling)
+- **Managed MySQL**: Lightsail database with automated backups
+- **Object Storage**: S3-compatible bucket for file uploads
+- **HTTPS**: Lightsail handles SSL certificate and termination
+- **Custom Domain**: SSL cert provisioned for racecrew.net
+
+No nginx container needed in production — Lightsail's load balancer
+handles HTTPS termination and routes traffic to the Gunicorn container.
+
+See Day 10 for full deployment details and CI/CD pipeline.
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **Docker Compose orchestrates multiple containers**. Service names provide
+   DNS for inter-container communication.
+
+2. **Gunicorn is the production WSGI server** for Flask. It manages worker
+   processes and handles concurrent requests.
+
+3. **GHCR stores pre-built Docker images**. Production deployments pull
+   images instead of building on the server, enabling fast rollbacks.
+
+4. **Named volumes persist data** across container recreations. Critical for
+   database and uploaded files in local development.
+
+5. **Health checks ensure startup order**. web waits for db to be ready
+   before starting.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 10, we'll explore database migrations with Flask-Migrate and Alembic,
+and discuss production deployment strategies.
+
+================================================================================

@@ -1,0 +1,299 @@
+================================================================================
+                   DAY 7: DOCUMENT UPLOAD & FILE HANDLING
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- File upload processing in Flask
+- UUID-based secure filename generation
+- Supporting both file uploads and external URLs
+- S3-compatible cloud storage abstraction
+- Presigned URLs for secure file downloads
+- File deletion and cleanup
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- File uploads with request.files
+- UUID for unique filenames
+- Storage abstraction layer (local vs S3)
+- Presigned URLs for secure downloads
+- boto3 S3 client
+- File size limits
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+- thistle-regatta-schedule/app/regattas/routes.py:162-247 - Upload/download
+- thistle-regatta-schedule/app/storage.py - S3 storage abstraction
+- thistle-regatta-schedule/app/models.py:81-93 - Document model
+- thistle-regatta-schedule/app/config.py - MAX_CONTENT_LENGTH, BUCKET_NAME
+
+================================================================================
+                    PART 1: DOCUMENT MODEL
+================================================================================
+
+DUAL-MODE DOCUMENTS
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/models.py:81-93
+
+```python
+class Document(db.Model):
+    __tablename__ = "documents"
+
+    id = db.Column(db.Integer, primary_key=True)
+    regatta_id = db.Column(db.Integer, db.ForeignKey("regattas.id"))
+    doc_type = db.Column(db.String(20), nullable=False)  # NOR, SI, WWW
+    original_filename = db.Column(db.String(255), nullable=True)
+    stored_filename = db.Column(db.String(255), nullable=True)
+    url = db.Column(db.String(500), nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+```
+
+TWO MODES:
+- **File upload**: stored_filename set, url is None
+- **External link**: url set, stored_filename is None
+
+================================================================================
+                    PART 2: FILE UPLOAD
+================================================================================
+
+UPLOAD ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:176-223
+
+```python
+@bp.route("/regattas/<int:regatta_id>/upload", methods=["POST"])
+@login_required
+def upload_doc(regatta_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    doc_type = request.form.get("doc_type", "Other")
+    doc_url = request.form.get("doc_url", "").strip()
+    file = request.files.get("file")
+
+    if doc_url:
+        # URL-based document
+        doc = Document(
+            regatta_id=regatta_id,
+            doc_type=doc_type,
+            url=doc_url,
+            uploaded_by=current_user.id,
+        )
+        db.session.add(doc)
+        db.session.commit()
+        flash(f"{doc_type} link added.", "success")
+    elif file and file.filename:
+        # File-based document
+        ext = os.path.splitext(file.filename)[1].lower()
+        stored_filename = f"{uuid.uuid4().hex}{ext}"
+
+        storage.upload_file(file, stored_filename)
+
+        doc = Document(
+            regatta_id=regatta_id,
+            doc_type=doc_type,
+            original_filename=file.filename,
+            stored_filename=stored_filename,
+            uploaded_by=current_user.id,
+        )
+        db.session.add(doc)
+        db.session.commit()
+        flash(f"{doc_type} uploaded.", "success")
+    else:
+        flash("Provide either a URL or a file.", "error")
+
+    return redirect(url_for("regattas.edit", regatta_id=regatta_id))
+```
+
+FILE EXTRACTION:
+```python
+file = request.files.get("file")
+```
+request.files contains uploaded files as FileStorage objects.
+
+UUID FILENAME:
+```python
+ext = os.path.splitext(file.filename)[1].lower()
+stored_filename = f"{uuid.uuid4().hex}{ext}"
+```
+
+Why UUID?
+- Prevents filename collisions
+- Prevents path traversal attacks (../../../etc/passwd)
+- Keeps original filename separate for display
+
+STORAGE ABSTRACTION:
+```python
+storage.upload_file(file, stored_filename)
+```
+
+Instead of saving directly to disk, the app uses a storage module that
+uploads to S3-compatible object storage (Lightsail bucket in production).
+See the Storage Module section below for details.
+
+================================================================================
+                    PART 3: FILE DOWNLOAD
+================================================================================
+
+DOWNLOAD ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:162-173
+
+```python
+@bp.route("/docs/<int:doc_id>")
+@login_required
+def download_doc(doc_id: int):
+    doc = db.session.get(Document, doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if doc.url:
+        return redirect(doc.url)
+
+    return redirect(storage.get_file_url(doc.stored_filename))
+```
+
+PRESIGNED URL:
+```python
+return redirect(storage.get_file_url(doc.stored_filename))
+```
+Instead of serving files directly from the Flask process, the storage module
+generates a time-limited presigned URL. The browser is redirected to download
+directly from S3, which offloads bandwidth from the application server.
+
+URL VS FILE:
+```python
+if doc.url:
+    return redirect(doc.url)
+```
+If URL-based, redirect to external site.
+
+================================================================================
+                    PART 4: FILE DELETION
+================================================================================
+
+DELETE ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/regattas/routes.py:226-247
+
+```python
+@bp.route("/docs/<int:doc_id>/delete", methods=["POST"])
+@login_required
+def delete_doc(doc_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    doc = db.session.get(Document, doc_id)
+    if not doc:
+        flash("Document not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    regatta_id = doc.regatta_id
+
+    # Delete file from S3 if it's a file-based document
+    if doc.stored_filename:
+        storage.delete_file(doc.stored_filename)
+
+    db.session.delete(doc)
+    db.session.commit()
+    flash("Document removed.", "success")
+    return redirect(url_for("regattas.edit", regatta_id=regatta_id))
+```
+
+CLEANUP PATTERN:
+1. If file-based, delete from S3 storage
+2. Delete database record
+3. storage.delete_file() silently ignores missing files (no error)
+
+================================================================================
+                    PART 5: STORAGE MODULE
+================================================================================
+
+S3-COMPATIBLE STORAGE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/storage.py
+
+In production, file uploads go to Lightsail Object Storage (S3-compatible).
+The storage module abstracts this behind three simple functions:
+
+```python
+import boto3
+
+def upload_file(file, stored_filename: str) -> None:
+    """Upload a file-like object to the S3 bucket."""
+    bucket = current_app.config["BUCKET_NAME"]
+    client = _get_client()
+    client.upload_fileobj(file, bucket, stored_filename)
+
+def get_file_url(stored_filename: str) -> str:
+    """Return a presigned URL (valid 1 hour) for downloading a file."""
+    bucket = current_app.config["BUCKET_NAME"]
+    client = _get_client()
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": stored_filename},
+        ExpiresIn=3600,
+    )
+
+def delete_file(stored_filename: str) -> None:
+    """Delete a file from the S3 bucket. Silently ignores missing files."""
+    bucket = current_app.config["BUCKET_NAME"]
+    client = _get_client()
+    client.delete_object(Bucket=bucket, Key=stored_filename)
+```
+
+KEY DESIGN PATTERNS:
+- **Abstraction**: Routes call storage.upload_file() instead of S3 directly
+- **Presigned URLs**: Downloads bypass Flask entirely — browser fetches from S3
+- **Time-limited access**: Presigned URLs expire after 1 hour (security)
+- **Silent delete**: Missing files don't cause errors (idempotent)
+- **boto3**: AWS SDK for Python, works with any S3-compatible service
+
+LOCAL DEVELOPMENT:
+For local development, the BUCKET_NAME config is empty. Files are stored in
+a Docker volume (uploads:/app/uploads) using the same interface.
+
+================================================================================
+                    PART 6: FILE SIZE LIMITS
+================================================================================
+
+MAX_CONTENT_LENGTH
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/config.py
+
+```python
+MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB
+```
+
+Flask automatically rejects requests larger than this. In production, the
+Lightsail Container Service also enforces request size limits.
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **UUID filenames** prevent collisions and security issues. Store original
+   filename separately for display.
+
+2. **Presigned URLs** let the browser download directly from S3, offloading
+   bandwidth from the application server. They expire after a set time.
+
+3. **Storage abstraction** (app/storage.py) hides S3 details behind simple
+   functions. Routes call storage.upload_file() without knowing about boto3.
+
+4. **Two-mode documents** (file or URL) provide flexibility without separate
+   models or tables.
+
+5. **File cleanup** requires deleting both database record and S3 object.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 8, we'll explore calendar integration with iCal format and the
+icalendar library for generating .ics feeds.
+
+================================================================================

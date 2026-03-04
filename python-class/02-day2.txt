@@ -1,0 +1,543 @@
+================================================================================
+                   DAY 2: FLASK APPLICATION FACTORY PATTERN
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- The application factory pattern and why it's used
+- How Flask extensions are initialized and attached to the app
+- Configuration management with environment variables
+- Blueprint registration and organization
+- The application lifecycle from startup to serving requests
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Application factory pattern
+- Flask extensions (SQLAlchemy, Flask-Login, Flask-Migrate, CSRF)
+- Configuration classes and environment variables
+- Blueprint registration
+- WSGI (Web Server Gateway Interface)
+- Context processors and template filters
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+For this session, examine these files:
+- thistle-regatta-schedule/app/__init__.py - Application factory
+- thistle-regatta-schedule/app/config.py - Configuration class
+- thistle-regatta-schedule/wsgi.py - WSGI entry point
+- thistle-regatta-schedule/entrypoint.sh - Container startup script
+- thistle-regatta-schedule/.env.example - Environment variable template
+
+================================================================================
+                    PART 1: THE APPLICATION FACTORY
+================================================================================
+
+WHAT IS THE FACTORY PATTERN?
+--------------------------------------------------------------------------------
+The factory pattern is a design pattern where a function creates and returns a
+configured object. In Flask, this means using a create_app() function instead
+of creating the app instance at module level.
+
+**Without Factory (simple approach):**
+```python
+from flask import Flask
+
+app = Flask(__name__)  # Created at import time
+
+@app.route('/')
+def index():
+    return "Hello"
+```
+
+**With Factory (this application's approach):**
+```python
+from flask import Flask
+
+def create_app():
+    app = Flask(__name__)
+    # ... configuration and setup
+    return app
+```
+
+WHY USE A FACTORY?
+--------------------------------------------------------------------------------
+1. **Testing**: Create separate app instances for tests with different configs
+2. **Multiple Instances**: Run dev and production apps simultaneously
+3. **Extension Initialization**: Extensions need the app context to work
+4. **Deferred Configuration**: Load config based on environment at runtime
+5. **Circular Imports**: Avoid import issues when models need db and db needs app
+
+THE CREATE_APP FUNCTION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/__init__.py:17-53
+
+```python
+def create_app(test_config=None):
+    app = Flask(__name__)
+    app.config.from_object("app.config.Config")
+    if test_config:
+        app.config.update(test_config)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    csrf.init_app(app)
+
+    from app.admin import bp as admin_bp
+    from app.auth import bp as auth_bp
+    from app.calendar import bp as calendar_bp
+    from app.regattas import bp as regattas_bp
+
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(calendar_bp)
+    app.register_blueprint(regattas_bp)
+
+    from app.commands import register_commands
+    register_commands(app)
+
+    @app.context_processor
+    def inject_version():
+        return {"app_version": __version__}
+
+    @app.template_filter("sort_rsvps")
+    def sort_rsvps(rsvps):
+        order = {"yes": 0, "no": 1, "maybe": 2}
+        return sorted(rsvps, key=lambda r: (order.get(r.status, 3), r.user.display_name))
+
+    return app
+```
+
+STEP-BY-STEP BREAKDOWN
+--------------------------------------------------------------------------------
+
+**Step 1: Create Flask instance**
+```python
+app = Flask(__name__)
+```
+Creates the Flask application object. __name__ helps Flask locate templates
+and static files relative to this module.
+
+**Step 2: Load configuration**
+```python
+app.config.from_object("app.config.Config")
+```
+Loads all UPPERCASE attributes from the Config class as configuration values.
+This is Flask's recommended way to manage settings.
+
+**Step 3: Initialize extensions**
+```python
+db.init_app(app)
+migrate.init_app(app, db)
+login_manager.init_app(app)
+csrf.init_app(app)
+```
+Each extension was created at module level (lines 9-14), but they need to be
+attached to the app instance. This two-step initialization is required for
+the factory pattern.
+
+**Step 4: Register blueprints**
+```python
+app.register_blueprint(admin_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(calendar_bp)
+app.register_blueprint(regattas_bp)
+```
+Imports and registers all four route blueprints. This makes their routes
+available in the application.
+
+**Step 5: Register CLI commands**
+```python
+register_commands(app)
+```
+Adds custom Flask CLI commands like `flask create-admin`.
+
+**Step 6: Add context processors**
+```python
+@app.context_processor
+def inject_version():
+    return {"app_version": __version__}
+```
+Context processors add variables to every template render. This makes
+app_version available in all templates without passing it explicitly.
+
+**Step 7: Add template filters**
+```python
+@app.template_filter("sort_rsvps")
+def sort_rsvps(rsvps):
+    # ... sorting logic
+```
+Template filters transform data in templates. This custom filter sorts RSVPs
+by status (yes, no, maybe) and then by user name.
+
+**Step 8: Return the configured app**
+```python
+return app
+```
+The fully configured app is returned and ready to handle requests.
+
+================================================================================
+                    PART 2: CONFIGURATION MANAGEMENT
+================================================================================
+
+THE CONFIG CLASS
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/config.py
+
+```python
+import os
+
+class Config:
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL",
+        "mysql+pymysql://racecrew:racecrew@localhost:3306/racecrew",
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max upload
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
+    BUCKET_NAME = os.environ.get("BUCKET_NAME", "")
+    AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+```
+
+CONFIGURATION PATTERN
+--------------------------------------------------------------------------------
+Each setting follows the pattern:
+```python
+SETTING = os.environ.get("ENV_VAR_NAME", "default_value")
+```
+
+This reads from environment variables with fallback defaults. Benefits:
+- **Security**: Secrets not hardcoded in source code
+- **Flexibility**: Change config without code changes
+- **Environment-specific**: Different values for dev/staging/production
+
+KEY CONFIGURATION VALUES
+--------------------------------------------------------------------------------
+
+**SECRET_KEY**:
+Used for cryptographic signing of session cookies, CSRF tokens, and other
+security features. Must be random and secret. Generate with:
+```python
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**SQLALCHEMY_DATABASE_URI**:
+Database connection string format:
+```
+mysql+pymysql://username:password@host:port/database
+```
+- mysql+pymysql: SQLAlchemy dialect + driver
+- racecrew:racecrew: username and password
+- @db:3306: host (Docker service name) and port
+- /racecrew: database name
+
+**BUCKET_NAME**:
+S3-compatible bucket for file uploads in production (Lightsail Object Storage).
+Empty string for local development (uses local file system).
+
+**ANTHROPIC_API_KEY**:
+API key for the Anthropic Claude API, used for AI-powered schedule import
+and document discovery features.
+
+**SQLALCHEMY_TRACK_MODIFICATIONS**:
+Set to False to disable SQLAlchemy's event system that tracks object changes.
+This reduces memory overhead and is recommended unless you need it.
+
+**MAX_CONTENT_LENGTH**:
+Limits HTTP request body size to 10MB. Prevents users from uploading huge
+files that could fill disk space or cause memory issues.
+
+**UPLOAD_FOLDER**:
+Directory path where uploaded files are stored. Must be writable by the app.
+
+ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/.env.example
+
+```
+SECRET_KEY=change-me-to-a-random-string
+DATABASE_URL=mysql+pymysql://racecrew:racecrew@db:3306/racecrew
+UPLOAD_FOLDER=/app/uploads
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=racecrew
+MYSQL_USER=racecrew
+MYSQL_PASSWORD=racecrew
+INIT_ADMIN_EMAIL=admin@example.com
+INIT_ADMIN_PASSWORD=changeme123
+```
+
+The .env file is loaded by Docker Compose (via env_file: .env). These
+variables are available to both the web and db containers.
+
+**Important**: .env is in .gitignore and never committed. Each environment
+(dev, staging, production) has its own .env file.
+
+================================================================================
+                    PART 3: FLASK EXTENSIONS
+================================================================================
+
+WHAT ARE EXTENSIONS?
+--------------------------------------------------------------------------------
+Flask extensions add functionality to the core framework. This app uses four:
+
+1. **Flask-SQLAlchemy**: Database ORM (Object-Relational Mapping)
+2. **Flask-Login**: User authentication and session management
+3. **Flask-Migrate**: Database schema migrations (Alembic wrapper)
+4. **Flask-WTF**: CSRF protection and form handling
+
+TWO-STEP INITIALIZATION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/__init__.py:9-14
+
+```python
+db = SQLAlchemy()
+migrate = Migrate()
+login_manager = LoginManager()
+login_manager.login_view = "auth.login"
+csrf = CSRFProtect()
+```
+
+Extensions are created at module level without an app instance. They're
+initialized later in create_app():
+
+```python
+db.init_app(app)
+migrate.init_app(app, db)
+login_manager.init_app(app)
+csrf.init_app(app)
+```
+
+This pattern allows the extensions to be imported anywhere while ensuring they
+work with the correct app context.
+
+FLASK-SQLALCHEMY (db)
+--------------------------------------------------------------------------------
+Provides a clean API for database operations:
+```python
+# Query
+user = db.session.query(User).filter_by(email='test@example.com').first()
+
+# Create
+new_regatta = Regatta(name="Mid-Winters", date=date(2024, 1, 15))
+db.session.add(new_regatta)
+db.session.commit()
+
+# Update
+regatta.name = "Mid-Winters Championship"
+db.session.commit()
+
+# Delete
+db.session.delete(regatta)
+db.session.commit()
+```
+
+We'll explore this deeply in Day 3 (Database Models).
+
+FLASK-LOGIN (login_manager)
+--------------------------------------------------------------------------------
+Manages user sessions:
+- Stores user ID in encrypted session cookie
+- Provides @login_required decorator for protected routes
+- Makes current_user available in routes and templates
+- Handles login/logout
+
+Configuration:
+```python
+login_manager.login_view = "auth.login"
+```
+Sets the route to redirect to when @login_required fails. "auth.login" refers
+to the login function in the auth blueprint.
+
+We'll explore this in Day 4 (Authentication).
+
+FLASK-MIGRATE (migrate)
+--------------------------------------------------------------------------------
+Manages database schema changes:
+```bash
+flask db migrate -m "Add calendar_token to users"
+flask db upgrade
+```
+
+Generates migration scripts when models change, and applies them to the
+database. We'll cover this in Day 10 (Migrations & Deployment).
+
+FLASK-WTF (csrf)
+--------------------------------------------------------------------------------
+Protects against Cross-Site Request Forgery attacks by:
+- Generating unique tokens for each session
+- Validating tokens on POST/PUT/DELETE requests
+- Automatically rejecting requests with invalid tokens
+
+Templates must include {{ csrf_token() }} in forms for this to work.
+
+================================================================================
+                    PART 4: APPLICATION LIFECYCLE
+================================================================================
+
+FROM CONTAINER START TO HANDLING REQUESTS
+--------------------------------------------------------------------------------
+
+STARTUP SEQUENCE DIAGRAM
+--------------------------------------------------------------------------------
+
+  [Docker Compose Start]
+           |
+           v
+  [entrypoint.sh executes]
+           |
+           +---> flask db upgrade (apply migrations)
+           |
+           +---> gunicorn -c gunicorn.conf.py wsgi:app
+                       |
+                       v
+              [wsgi.py loads]
+                       |
+                       v
+              from app import create_app
+              app = create_app()
+                       |
+                       v
+              [create_app() runs]
+                       |
+                       +---> Load config
+                       +---> Initialize extensions
+                       +---> Register blueprints
+                       +---> Add context processors
+                       |
+                       v
+              [Gunicorn workers start]
+                       |
+                       v
+              [App ready for requests]
+
+
+ENTRYPOINT SCRIPT
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/entrypoint.sh
+
+```bash
+#!/bin/sh
+set -e
+
+echo "Running database migrations..."
+flask db upgrade
+
+echo "Initializing admin account if needed..."
+flask init-admin
+
+echo "Starting Gunicorn..."
+exec gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+**set -e**: Exit immediately if any command fails
+**flask db upgrade**: Apply pending database migrations
+**flask init-admin**: Creates admin user from INIT_ADMIN_EMAIL/PASSWORD env vars
+**exec**: Replace shell with Gunicorn (proper signal handling)
+
+This ensures the database schema is current and admin user exists before the
+app starts.
+
+WSGI ENTRY POINT
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/wsgi.py
+
+```python
+from app import create_app
+
+app = create_app()
+```
+
+WSGI (Web Server Gateway Interface) is Python's standard for web servers
+(Gunicorn) to communicate with web apps (Flask).
+
+Gunicorn imports wsgi.py and calls the app object for each request.
+
+REQUEST HANDLING FLOW
+--------------------------------------------------------------------------------
+
+1. **Client sends HTTP request** → host port 80
+2. **Docker maps port 80** → web container port 8000
+3. **Gunicorn receives request** → picks a worker process
+4. **Worker calls Flask app** → WSGI interface (wsgi:app)
+5. **Flask routes request** → matches URL to blueprint route
+6. **Route function executes** → accesses database, renders template
+7. **Response returned** → Gunicorn → client
+
+BLUEPRINTS IN DEPTH
+--------------------------------------------------------------------------------
+Blueprints organize routes into modules. This app has four:
+
+**admin** (thistle-regatta-schedule/app/admin/__init__.py):
+```python
+from flask import Blueprint
+
+bp = Blueprint("admin", __name__)
+
+from app.admin import routes
+```
+Routes: /admin/import-schedule, /admin/import-single, /admin/regattas/discover
+
+**auth** (thistle-regatta-schedule/app/auth/__init__.py):
+```python
+from flask import Blueprint
+
+bp = Blueprint("auth", __name__)
+
+from app.auth import routes  # Import after to avoid circular imports
+```
+Routes: /login, /logout, /register/<token>, /profile, /admin/users
+
+**Registration in create_app()**:
+```python
+from app.admin import bp as admin_bp
+from app.auth import bp as auth_bp
+app.register_blueprint(admin_bp)
+app.register_blueprint(auth_bp)
+```
+
+This makes all blueprint routes available. Flask automatically combines
+blueprint route prefixes with route paths.
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **The application factory pattern** uses a create_app() function to build a
+   configured Flask instance. This enables testing, multiple configs, and
+   proper extension initialization.
+
+2. **Configuration is loaded from environment variables** via a Config class.
+   This keeps secrets out of source code and allows per-environment settings.
+
+3. **Flask extensions are initialized in two steps**: Create at module level,
+   then attach to app in create_app() with init_app(). This supports the
+   factory pattern.
+
+4. **Blueprints organize routes** into logical modules (admin, auth, regattas,
+   calendar). They keep code organized and promote reusability.
+
+5. **The application lifecycle** starts with entrypoint.sh running migrations,
+   then Gunicorn loading wsgi.py which calls create_app(). The configured app
+   then handles requests via WSGI.
+
+6. **Context processors and template filters** customize template rendering.
+   Context processors add variables to all templates. Filters transform data.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 3, we'll explore the database layer with SQLAlchemy. You'll learn how
+Python classes (models) map to database tables, and how to define
+relationships between data. We'll examine all five models in this application:
+User, Regatta, Document, RSVP, and ImportCache.
+
+Questions to ponder:
+- Why does Flask use a two-step initialization for extensions?
+- What would happen if SECRET_KEY changed between server restarts?
+- How does Flask know which blueprint a route belongs to?
+
+See you in Day 3!
+
+================================================================================
