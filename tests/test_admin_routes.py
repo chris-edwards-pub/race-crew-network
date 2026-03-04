@@ -638,6 +638,51 @@ class TestAttachDocumentsForRegatta:
         )
         assert b"No documents selected" in resp.data
 
+    def test_attach_replaces_duplicates(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="Dup Replace Test",
+            location="Test YC",
+            start_date=date(2026, 9, 30),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        # Pre-attach a document as NOR
+        existing = Document(
+            regatta_id=regatta.id,
+            doc_type="NOR",
+            url="https://example.com/nor.pdf",
+            uploaded_by=admin_user.id,
+        )
+        db.session.add(existing)
+        db.session.commit()
+        existing_id = existing.id
+
+        # Attach same URL (updated type) plus a new one
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/attach-documents",
+            data={
+                "doc_count": "2",
+                "doc_0": "1",
+                "doc_type_0": "SI",
+                "doc_url_0": "https://example.com/nor.pdf",
+                "doc_1": "1",
+                "doc_type_1": "WWW",
+                "doc_url_1": "https://example.com/regatta",
+            },
+            follow_redirects=True,
+        )
+        assert b"1 document(s) attached" in resp.data
+        assert b"1 existing document(s) updated" in resp.data
+
+        docs = Document.query.filter_by(regatta_id=regatta.id).all()
+        assert len(docs) == 2  # updated existing + new WWW
+
+        # Verify the existing doc was updated in place
+        updated = db.session.get(Document, existing_id)
+        assert updated.doc_type == "SI"
+
     def test_regatta_not_found(self, logged_in_client):
         resp = logged_in_client.post(
             "/admin/regattas/99999/attach-documents",

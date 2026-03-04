@@ -267,12 +267,43 @@ def _extract_jsonld_events(html: str) -> str:
     for ev in events:
         loc = ev.get("location", {})
         loc_name = loc.get("name", "") if isinstance(loc, dict) else ""
-        lines.append(
-            f"- {ev.get('name', 'Unknown')}"
-            f" | {ev.get('startDate', '')}"
-            f" - {ev.get('endDate', '')}"
-            f" | {loc_name}"
-        )
+        loc_addr = ""
+        if isinstance(loc, dict):
+            loc_addr = loc.get("address", "")
+            if isinstance(loc_addr, dict):
+                loc_addr = loc_addr.get("streetAddress", "")
+
+        parts = [
+            f"- {ev.get('name', 'Unknown')}",
+            f"  Dates: {ev.get('startDate', '')} - {ev.get('endDate', '')}",
+            f"  Location: {loc_name}",
+        ]
+        if loc_addr:
+            parts.append(f"  Address: {loc_addr}")
+
+        organizer = ev.get("organizer", {})
+        if isinstance(organizer, dict) and organizer.get("name"):
+            parts.append(f"  Organizer: {organizer['name']}")
+
+        offers = ev.get("offers", {})
+        if isinstance(offers, dict) and offers.get("url"):
+            parts.append(f"  URL: {offers['url']}")
+
+        url = ev.get("url", "")
+        if url and url != (offers.get("url") if isinstance(offers, dict) else ""):
+            parts.append(f"  URL: {url}")
+
+        desc = ev.get("description", "")
+        if desc:
+            # Clean up HTML entities and excessive whitespace
+            desc = re.sub(r"&nbsp;", " ", desc)
+            desc = re.sub(r"&amp;", "&", desc)
+            desc = re.sub(r"\s+", " ", desc).strip()
+            if len(desc) > 500:
+                desc = desc[:500] + "..."
+            parts.append(f"  Details: {desc}")
+
+        lines.append("\n".join(parts))
     return "\n".join(lines)
 
 
@@ -1191,10 +1222,15 @@ def review_documents_for_regatta(regatta_id: int):
         return redirect(url_for("regattas.edit", regatta_id=regatta_id))
 
     data = _discovery_results.pop(task_id)
+
+    # Build a map of existing doc URLs to doc_type for duplicate detection
+    existing_docs = {doc.url: doc.doc_type for doc in regatta.documents if doc.url}
+
     return render_template(
         "admin/regatta_discover_documents.html",
         regatta=regatta,
         documents=data["documents"],
+        existing_docs=existing_docs,
     )
 
 
@@ -1217,7 +1253,11 @@ def attach_documents_for_regatta(regatta_id: int):
     except ValueError:
         doc_count = 0
 
+    # Map existing doc URLs to their Document objects for replacement
+    existing_by_url = {doc.url: doc for doc in regatta.documents if doc.url}
+
     created = 0
+    replaced = 0
     for i in range(doc_count):
         checkbox = request.form.get(f"doc_{i}")
         if not checkbox:
@@ -1225,19 +1265,31 @@ def attach_documents_for_regatta(regatta_id: int):
         doc_type = request.form.get(f"doc_type_{i}", "").strip()
         doc_url = request.form.get(f"doc_url_{i}", "").strip()
         if doc_type and doc_url:
-            doc = Document(
-                regatta_id=regatta_id,
-                doc_type=doc_type,
-                url=doc_url,
-                uploaded_by=current_user.id,
-            )
-            db.session.add(doc)
-            created += 1
+            existing = existing_by_url.get(doc_url)
+            if existing:
+                existing.doc_type = doc_type
+                existing.uploaded_by = current_user.id
+                replaced += 1
+            else:
+                doc = Document(
+                    regatta_id=regatta_id,
+                    doc_type=doc_type,
+                    url=doc_url,
+                    uploaded_by=current_user.id,
+                )
+                db.session.add(doc)
+                existing_by_url[doc_url] = doc
+                created += 1
 
     db.session.commit()
 
+    parts = []
     if created:
-        flash(f"{created} document(s) attached.", "success")
+        parts.append(f"{created} document(s) attached")
+    if replaced:
+        parts.append(f"{replaced} existing document(s) updated")
+    if parts:
+        flash(". ".join(parts) + ".", "success")
     else:
         flash("No documents selected.", "warning")
 

@@ -1,5 +1,11 @@
 # Version History
 
+## 0.34.2
+- Extract JSON-LD description, organizer, address, and URLs for richer AI extraction (fixes missing notes)
+- Duplicate detection on document discovery review page with yellow warning rows
+- Attaching a duplicate document replaces the existing one instead of creating a copy
+- Add responsive design requirement to CLAUDE.md
+
 ## 0.34.1
 - Fix detail_url fallback to apply to all regattas in multi-regatta imports (source_url was not being saved)
 - Fix flaky test cleanup with gc.collect() for SQLAlchemy identity map stale weakrefs

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from bs4 import BeautifulSoup
 
-from app.admin.routes import (_extract_data_attributes,
+from app.admin.routes import (_extract_data_attributes, _extract_jsonld_events,
                               _fetch_clubspot_documents, _is_private_ip,
                               _parse_clubspot_regatta_id)
 
@@ -95,6 +95,91 @@ class TestExtractDataAttributes:
         html = "<html><body data-broken='{\"unclosed: true'></body></html>"
         soup = BeautifulSoup(html, "html.parser")
         result = _extract_data_attributes(soup)
+        assert result == ""
+
+
+# --- _extract_jsonld_events ---
+
+
+class TestExtractJsonldEvents:
+    def test_extracts_basic_fields(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Event",
+            "name": "Test Regatta",
+            "startDate": "2026-06-01",
+            "endDate": "2026-06-02",
+            "location": {"@type": "Place", "name": "Yacht Club"}
+        }</script>"""
+        result = _extract_jsonld_events(html)
+        assert "Test Regatta" in result
+        assert "2026-06-01" in result
+        assert "Yacht Club" in result
+
+    def test_includes_description(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Event",
+            "name": "Test",
+            "startDate": "2026-06-01",
+            "description": "Entry fee $50. Contact: john@example.com"
+        }</script>"""
+        result = _extract_jsonld_events(html)
+        assert "Entry fee $50" in result
+        assert "john@example.com" in result
+
+    def test_includes_organizer(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Event",
+            "name": "Test",
+            "startDate": "2026-06-01",
+            "organizer": {"@type": "Person", "name": "Jane Doe"}
+        }</script>"""
+        result = _extract_jsonld_events(html)
+        assert "Jane Doe" in result
+
+    def test_includes_address(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Event",
+            "name": "Test",
+            "startDate": "2026-06-01",
+            "location": {
+                "@type": "Place",
+                "name": "Yacht Club",
+                "address": "123 Main St, Anytown, USA"
+            }
+        }</script>"""
+        result = _extract_jsonld_events(html)
+        assert "123 Main St" in result
+
+    def test_truncates_long_description(self):
+        long_desc = "A" * 600
+        html = f"""<script type="application/ld+json">{{
+            "@type": "Event",
+            "name": "Test",
+            "startDate": "2026-06-01",
+            "description": "{long_desc}"
+        }}</script>"""
+        result = _extract_jsonld_events(html)
+        assert "..." in result
+        # Description portion should be truncated to ~500 chars
+        assert long_desc[:500] in result
+        assert long_desc[:501] not in result
+
+    def test_includes_offers_url(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Event",
+            "name": "Test",
+            "startDate": "2026-06-01",
+            "offers": {"url": "https://register.example.com/event/123"}
+        }</script>"""
+        result = _extract_jsonld_events(html)
+        assert "https://register.example.com/event/123" in result
+
+    def test_no_events_returns_empty(self):
+        html = """<script type="application/ld+json">{
+            "@type": "Organization",
+            "name": "Not an event"
+        }</script>"""
+        result = _extract_jsonld_events(html)
         assert result == ""
 
 

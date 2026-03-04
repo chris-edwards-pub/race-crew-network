@@ -67,6 +67,11 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 - Check each PR for known security issues
 - When planning take security into consideration
 
+## Design
+- All pages and components must be responsive — designed to work on phones, tablets, and desktop screens
+- Use Bootstrap's responsive grid, breakpoints, and utility classes to ensure layouts adapt to all screen sizes
+- Test views at mobile (< 576px), tablet (768px), and desktop (1200px+) widths
+
 ## Documentation
 - Keep the README.md file up to date with each PR
 

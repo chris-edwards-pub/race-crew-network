@@ -18,8 +18,9 @@
                 </div>
                 <div class="card-body">
                     {% for doc in documents %}
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="doc_{{ loop.index0 }}" value="1" checked>
+                    {% set is_dup = doc.url in existing_docs %}
+                    <div class="form-check mb-2 p-2 ps-4 rounded{% if is_dup %} bg-warning bg-opacity-25{% endif %}">
+                        <input class="form-check-input" type="checkbox" name="doc_{{ loop.index0 }}" value="1" {% if not is_dup %}checked{% endif %}>
                         <input type="hidden" name="doc_type_{{ loop.index0 }}" value="{{ doc.doc_type }}">
                         <input type="hidden" name="doc_url_{{ loop.index0 }}" value="{{ doc.url }}">
                         <label class="form-check-label">
@@ -27,6 +28,11 @@
                             {{ doc.label }}
                             — <a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.url|truncate(60) }}</a>
                         </label>
+                        {% if is_dup %}
+                        <small class="d-block mt-1" style="color: #856404;">
+                            &#9888; Duplicate of existing {{ existing_docs[doc.url] }} document already attached to this regatta
+                        </small>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
