@@ -1,3 +1,5 @@
+import gc
+
 import pytest
 
 from app import create_app
@@ -28,9 +30,13 @@ def app():
 def _clean_db(app):
     """Delete all rows after each test (no schema rebuild)."""
     yield
+    _db.session.rollback()
     for table in reversed(_db.metadata.sorted_tables):
         _db.session.execute(table.delete())
     _db.session.commit()
+    # Force GC to collect stale weakrefs in SQLAlchemy's identity map
+    # before the next test creates objects with recycled primary keys.
+    gc.collect()
 
 
 @pytest.fixture()
