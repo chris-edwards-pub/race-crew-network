@@ -1,5 +1,9 @@
 # Version History
 
+## 0.34.1
+- Fix detail_url fallback to apply to all regattas in multi-regatta imports (source_url was not being saved)
+- Fix flaky test cleanup with gc.collect() for SQLAlchemy identity map stale weakrefs
+
 ## 0.34.0
 - Store source URL on regattas during AI import (detail_url persisted as source_url)
 - Source URL field on regatta edit form allows admins to view and update the import source

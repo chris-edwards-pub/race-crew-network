@@ -417,10 +417,12 @@ def import_schedule_extract():
             if schedule_url and regattas:
                 _upsert_import_cache(schedule_url, year, regattas)
 
-        # If source was a URL and only one regatta extracted, use it as
-        # detail_url when the AI didn't provide one (e.g. clubspot pages).
-        if schedule_url and len(regattas) == 1 and not regattas[0].get("detail_url"):
-            regattas[0]["detail_url"] = schedule_url
+        # If source was a URL, use it as fallback detail_url for any regatta
+        # the AI didn't provide an individual page URL for.
+        if schedule_url:
+            for r in regattas:
+                if not r.get("detail_url"):
+                    r["detail_url"] = schedule_url
 
         # Mark past events
         today = date.today().isoformat()
