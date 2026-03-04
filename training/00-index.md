@@ -1,26 +1,23 @@
-================================================================================
-        RACE CREW NETWORK - FLASK APPLICATION TRAINING
-                        10-DAY CURRICULUM
-================================================================================
+# Race Crew Network - Flask Application Training: 10-Day Curriculum
 
-COURSE OVERVIEW
---------------------------------------------------------------------------------
+## Course Overview
+
 This training program teaches you how to build and deploy a production-ready
 Flask web application through the study of the Race Crew Network app.
 Over 10 days, you'll learn Flask fundamentals, database management with
 SQLAlchemy, authentication, file uploads, calendar integration, AI-powered
 data import, cloud storage, and containerized cloud deployment.
 
-TARGET AUDIENCE
---------------------------------------------------------------------------------
+## Target Audience
+
 IT professionals with:
 - Basic Python knowledge (variables, functions, classes)
 - Docker familiarity (containers, images, compose)
 - Interest in web application development
 - Little to no Flask experience (we'll teach you!)
 
-WHAT YOU'LL BUILD UNDERSTANDING OF
---------------------------------------------------------------------------------
+## What You'll Build Understanding of
+
 A complete web application for managing sailing regatta events:
 - User authentication with role-based access (Admin/Crew)
 - Invite-based registration system
@@ -34,8 +31,8 @@ A complete web application for managing sailing regatta events:
 - S3-compatible cloud storage for file uploads
 - Production deployment with Docker on AWS Lightsail
 
-TECHNICAL STACK YOU'LL MASTER
---------------------------------------------------------------------------------
+## Technical Stack You'll Master
+
 - Python 3.13 & Flask 3.1.0 web framework
 - SQLAlchemy ORM for database operations
 - Flask-Login for authentication
@@ -49,8 +46,8 @@ TECHNICAL STACK YOU'LL MASTER
 - WeasyPrint for PDF generation
 - Bootstrap 5 for responsive frontend
 
-PREREQUISITES
---------------------------------------------------------------------------------
+## Prerequisites
+
 Before starting, ensure you have:
 1. Docker and Docker Compose installed
 2. Text editor or IDE (VS Code, PyCharm, etc.)
@@ -58,8 +55,8 @@ Before starting, ensure you have:
 4. Git (optional, for version control)
 5. Web browser for testing
 
-DAILY SESSION STRUCTURE
---------------------------------------------------------------------------------
+## Daily Session Structure
+
 Each session includes:
 - Learning Objectives (what you'll achieve)
 - Concepts Covered (technical topics)
@@ -68,8 +65,8 @@ Each session includes:
 - Architecture Diagrams (visual representations)
 - Key Takeaways (summary and next steps)
 
-RECOMMENDED APPROACH
---------------------------------------------------------------------------------
+## Recommended Approach
+
 1. Read each session sequentially (Day 1 → Day 10)
 2. Have the code repository open while reading
 3. Follow along by examining the referenced files
@@ -77,18 +74,16 @@ RECOMMENDED APPROACH
 5. Pause to explore code sections in detail
 6. Return to earlier sessions as needed for review
 
-TIME COMMITMENT
---------------------------------------------------------------------------------
+## Time Commitment
+
 Each session: 1-2 hours of focused reading and code exploration
 Total course: ~15-20 hours spread over 10 workdays
 Best pace: One session per day with hands-on exploration
 
-================================================================================
-                            SESSION ROADMAP
-================================================================================
+# Session Roadmap
 
-DAY 1: INTRODUCTION & ENVIRONMENT SETUP
-File: 01-day1.txt
+### Day 1: Introduction and Environment Setup
+File: 01-day1.md
 Topics:
   - Application overview and feature tour
   - Docker Compose setup (web, db containers)
@@ -96,8 +91,8 @@ Topics:
   - Creating your first admin account
   - Flask basics: routes, templates, blueprints
 
-DAY 2: FLASK APPLICATION FACTORY PATTERN
-File: 02-day2.txt
+### Day 2: Flask Application Factory Pattern
+File: 02-day2.md
 Topics:
   - The create_app() factory pattern
   - Flask extensions initialization
@@ -105,8 +100,8 @@ Topics:
   - Blueprint registration and organization
   - Application context and lifecycle
 
-DAY 3: DATABASE MODELS & SQLALCHEMY
-File: 03-day3.txt
+### Day 3: Database Models and SQLAlchemy
+File: 03-day3.md
 Topics:
   - Object-Relational Mapping (ORM) concepts
   - User, Regatta, Document, and RSVP models
@@ -114,8 +109,8 @@ Topics:
   - Password hashing with bcrypt
   - Database schema design
 
-DAY 4: AUTHENTICATION & USER MANAGEMENT
-File: 04-day4.txt
+### Day 4: Authentication and User Management
+File: 04-day4.md
 Topics:
   - Flask-Login integration
   - Login/logout implementation
@@ -124,8 +119,8 @@ Topics:
   - User profile management
   - Admin user administration
 
-DAY 5: REGATTA MANAGEMENT (CRUD OPERATIONS)
-File: 05-day5.txt
+### Day 5: Regatta Management (CRUD Operations)
+File: 05-day5.md
 Topics:
   - RESTful route design in Flask
   - Create, Read, Update, Delete operations
@@ -134,8 +129,8 @@ Topics:
   - Permission checks and admin-only routes
   - Flash messages for user feedback
 
-DAY 6: RSVP SYSTEM & DATABASE RELATIONSHIPS
-File: 06-day6.txt
+### Day 6: RSVP System and Database Relationships
+File: 06-day6.md
 Topics:
   - Many-to-many relationships
   - Upsert pattern (update or insert)
@@ -143,8 +138,8 @@ Topics:
   - Custom Jinja2 template filters
   - Status tracking and display
 
-DAY 7: DOCUMENT UPLOAD & FILE HANDLING
-File: 07-day7.txt
+### Day 7: Document Upload and File Handling
+File: 07-day7.md
 Topics:
   - File upload processing with Flask
   - UUID-based secure filename generation
@@ -153,8 +148,8 @@ Topics:
   - Presigned URLs for secure file downloads
   - File size limits and validation
 
-DAY 8: CALENDAR INTEGRATION (ICAL FEEDS)
-File: 08-day8.txt
+### Day 8: Calendar Integration (iCal Feeds)
+File: 08-day8.md
 Topics:
   - iCalendar format (RFC 5545)
   - icalendar Python library
@@ -163,8 +158,8 @@ Topics:
   - All-day event handling
   - Calendar subscription URLs
 
-DAY 9: DOCKER & CONTAINERIZATION
-File: 09-day9.txt
+### Day 9: Docker and Containerization
+File: 09-day9.md
 Topics:
   - Dockerfile structure and best practices
   - Multi-container orchestration with docker-compose
@@ -174,8 +169,8 @@ Topics:
   - Gunicorn production configuration
   - GitHub Container Registry (GHCR)
 
-DAY 10: DATABASE MIGRATIONS & DEPLOYMENT
-File: 10-day10.txt
+### Day 10: Database Migrations and Deployment
+File: 10-day10.md
 Topics:
   - Flask-Migrate and Alembic
   - Creating and applying database migrations
@@ -185,8 +180,8 @@ Topics:
   - Environment variables in production
   - Managed database and automated backups
 
-APPENDIX: QUICK REFERENCE
-File: 99-appendix.txt
+### Appendix: Quick Reference
+File: 99-appendix.md
 Topics:
   - Flask routing patterns
   - SQLAlchemy query examples
@@ -197,41 +192,41 @@ Topics:
   - Security best practices
   - Further reading resources
 
-================================================================================
-                        NAVIGATING THE MATERIALS
-================================================================================
+# Navigating the Materials
 
-FILE NAMING CONVENTION
---------------------------------------------------------------------------------
-00-index.txt       This file - course overview and roadmap
-01-day1.txt        Day 1 session
-02-day2.txt        Day 2 session
+## File Naming Convention
+
+00-index.md       This file - course overview and roadmap
+01-day1.md        Day 1 session
+02-day2.md        Day 2 session
 ...
-10-day10.txt       Day 10 session
-99-appendix.txt    Reference materials and cheat sheets
+10-day10.md       Day 10 session
+99-appendix.md    Reference materials and cheat sheets
 
-READING THE CODE REFERENCES
---------------------------------------------------------------------------------
+## Reading the Code References
+
 Throughout the materials, you'll see references like:
 
   File: app/models.py:15-20
 
 This means "open the file app/models.py and look at lines 15 through 20."
-All file paths are relative to the thistle-regatta-schedule/ directory.
+All file paths are relative to the race-crew-network/ directory.
 
-ARCHITECTURE DIAGRAMS
---------------------------------------------------------------------------------
+## Architecture Diagrams
+
 ASCII diagrams show system architecture and data flow. Read them carefully:
 
+```
   [Component A] ---> [Component B]
        |                  ^
        |                  |
        +------------------+
+```
 
 Arrows show direction of data flow or dependencies.
 
-CODE WALKTHROUGH FORMAT
---------------------------------------------------------------------------------
+## Code Walkthrough Format
+
 Code snippets are formatted as:
 
   ```python
@@ -242,20 +237,18 @@ Code snippets are formatted as:
 
 Explanation follows the code, connecting it to broader concepts.
 
-================================================================================
-                        GETTING STARTED
-================================================================================
+# Getting Started
 
-STEP 1: SET UP YOUR ENVIRONMENT
---------------------------------------------------------------------------------
-1. Navigate to the thistle-regatta-schedule/ directory
+## Step 1: Set Up Your Environment
+
+1. Navigate to the race-crew-network/ directory
 2. Copy .env.example to .env
 3. Generate a secret key:
    python3 -c "import secrets; print(secrets.token_hex(32))"
 4. Update SECRET_KEY in .env with the generated value
 
-STEP 2: START THE APPLICATION
---------------------------------------------------------------------------------
+## Step 2: Start the Application
+
 1. Build and start containers:
    docker compose up --build
 
@@ -265,71 +258,67 @@ STEP 2: START THE APPLICATION
 
 4. Access the app at http://localhost
 
-STEP 3: BEGIN DAY 1
---------------------------------------------------------------------------------
-Open 01-day1.txt and start your learning journey!
+## Step 3: Begin Day 1
 
-================================================================================
-                        LEARNING OBJECTIVES
-================================================================================
+Open 01-day1.md and start your learning journey!
+
+# Learning Objectives
 
 By the end of this 10-day program, you will understand:
 
-FLASK FUNDAMENTALS
-  ✓ Application factory pattern
-  ✓ Blueprint organization
-  ✓ Route handlers and HTTP methods
-  ✓ Template rendering with Jinja2
-  ✓ Form processing
-  ✓ Flash messages
-  ✓ Configuration management
+### Flask Fundamentals
+- Application factory pattern
+- Blueprint organization
+- Route handlers and HTTP methods
+- Template rendering with Jinja2
+- Form processing
+- Flash messages
+- Configuration management
 
-DATABASE & ORM
-  ✓ SQLAlchemy models and relationships
-  ✓ Database migrations with Alembic
-  ✓ Query patterns and filtering
-  ✓ Foreign keys and constraints
-  ✓ Transaction management
+### Database and ORM
+- SQLAlchemy models and relationships
+- Database migrations with Alembic
+- Query patterns and filtering
+- Foreign keys and constraints
+- Transaction management
 
-AUTHENTICATION & SECURITY
-  ✓ Flask-Login integration
-  ✓ Password hashing with bcrypt
-  ✓ Token-based authentication
-  ✓ CSRF protection
-  ✓ Role-based access control
-  ✓ Secure file handling
+### Authentication and Security
+- Flask-Login integration
+- Password hashing with bcrypt
+- Token-based authentication
+- CSRF protection
+- Role-based access control
+- Secure file handling
 
-DOCKER & DEPLOYMENT
-  ✓ Multi-container applications
-  ✓ Container networking
-  ✓ Volume management
-  ✓ Production server configuration
-  ✓ Cloud deployment with AWS Lightsail
-  ✓ CI/CD with GitHub Actions
+### Docker and Deployment
+- Multi-container applications
+- Container networking
+- Volume management
+- Production server configuration
+- Cloud deployment with AWS Lightsail
+- CI/CD with GitHub Actions
 
-ADVANCED FEATURES
-  ✓ File upload handling with S3 storage
-  ✓ iCalendar feed generation
-  ✓ AI-powered data import (Anthropic API)
-  ✓ PDF generation with WeasyPrint
-  ✓ Custom CLI commands
-  ✓ Database relationship patterns
-  ✓ Template filters
+### Advanced Features
+- File upload handling with S3 storage
+- iCalendar feed generation
+- AI-powered data import (Anthropic API)
+- PDF generation with WeasyPrint
+- Custom CLI commands
+- Database relationship patterns
+- Template filters
 
-================================================================================
-                            SUPPORT & TIPS
-================================================================================
+# Support and Tips
 
-STUCK ON A CONCEPT?
---------------------------------------------------------------------------------
+## Stuck on a Concept?
+
 1. Re-read the relevant section slowly
 2. Open the referenced file and read the code
-3. Check the 99-appendix.txt for quick reference
+3. Check the 99-appendix.md for quick reference
 4. Search for the topic in Flask documentation
 5. Review earlier sessions for foundational concepts
 
-BEST PRACTICES FOR LEARNING
---------------------------------------------------------------------------------
+## Best Practices for Learning
+
 - Don't rush - take time to understand each concept
 - Type out code examples yourself (don't just read)
 - Experiment with small changes to see what happens
@@ -337,34 +326,30 @@ BEST PRACTICES FOR LEARNING
 - Keep a learning journal of new concepts
 - Draw your own diagrams to solidify understanding
 
-DOCKER TIPS
---------------------------------------------------------------------------------
+## Docker Tips
+
 - Keep Docker Desktop running while working
 - Use 'docker compose logs' to debug issues
 - Restart containers with 'docker compose restart'
 - Fresh start: 'docker compose down -v && docker compose up --build'
 
-TESTING YOUR UNDERSTANDING
---------------------------------------------------------------------------------
+## Testing Your Understanding
+
 After each session, ask yourself:
 1. Can I explain this concept to someone else?
 2. Do I understand why the code is structured this way?
 3. Could I modify this feature or add a similar one?
 4. What security considerations does this code address?
 
-================================================================================
-                         READY TO BEGIN?
-================================================================================
+# Ready to Begin?
 
 You now have everything you need to start your Flask learning journey!
 
-Open 01-day1.txt and let's build something great together.
+Open 01-day1.md and let's build something great together.
 
 Happy coding!
 
-================================================================================
-                        COURSE INFORMATION
-================================================================================
+# Course Information
 
 Application: Race Crew Network
 Version: 0.34.2
@@ -373,7 +358,5 @@ Flask: 3.1.0
 Training Version: 2.0
 Last Updated: 2026-03
 
-Repository: thistle-regatta-schedule/
+Repository: race-crew-network/
 Documentation: README.md, CLAUDE.md
-
-================================================================================

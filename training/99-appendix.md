@@ -1,16 +1,11 @@
-================================================================================
-                          APPENDIX: QUICK REFERENCE
-================================================================================
+# Appendix: Quick Reference
 
 This appendix provides quick reference materials for Flask, SQLAlchemy, Jinja2,
 Docker, and common troubleshooting scenarios.
 
-================================================================================
-                    FLASK ROUTING REFERENCE
-================================================================================
+# Flask Routing Reference
 
-BASIC ROUTES
---------------------------------------------------------------------------------
+## Basic Routes
 ```python
 @app.route("/")
 def index():
@@ -21,8 +16,7 @@ def about():
     return render_template("about.html")
 ```
 
-HTTP METHODS
---------------------------------------------------------------------------------
+## HTTP Methods
 ```python
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -32,8 +26,7 @@ def login():
     return render_template("login.html")
 ```
 
-URL PARAMETERS
---------------------------------------------------------------------------------
+## URL Parameters
 ```python
 @app.route("/user/<int:user_id>")
 def user_profile(user_id: int):
@@ -46,8 +39,7 @@ def search():
     return f"Searching for {query}"
 ```
 
-REDIRECTS AND URL_FOR
---------------------------------------------------------------------------------
+## Redirects and url_for
 ```python
 from flask import redirect, url_for
 
@@ -60,8 +52,7 @@ def new_path():
     return "New location"
 ```
 
-FLASH MESSAGES
---------------------------------------------------------------------------------
+## Flash Messages
 ```python
 from flask import flash
 
@@ -70,8 +61,7 @@ flash("An error occurred.", "error")
 flash("Please note...", "info")
 ```
 
-DECORATORS
---------------------------------------------------------------------------------
+## Decorators
 ```python
 from flask_login import login_required
 
@@ -81,12 +71,9 @@ def protected():
     return "Only logged-in users see this"
 ```
 
-================================================================================
-                    SQLALCHEMY QUERY REFERENCE
-================================================================================
+# SQLAlchemy Query Reference
 
-BASIC QUERIES
---------------------------------------------------------------------------------
+## Basic Queries
 ```python
 # Get all
 users = User.query.all()
@@ -111,8 +98,7 @@ users = User.query.limit(10).all()
 count = User.query.count()
 ```
 
-FILTERING
---------------------------------------------------------------------------------
+## Filtering
 ```python
 # Equals
 User.query.filter_by(email=email)
@@ -143,8 +129,7 @@ from sqlalchemy import or_
 User.query.filter(or_(User.is_admin == True, User.email == email))
 ```
 
-RELATIONSHIPS
---------------------------------------------------------------------------------
+## Relationships
 ```python
 # Access related objects
 user = User.query.first()
@@ -156,8 +141,7 @@ creator = regatta.creator  # Many-to-one (backref)
 documents = regatta.documents  # One-to-many
 ```
 
-CREATE, UPDATE, DELETE
---------------------------------------------------------------------------------
+## Create, Update, Delete
 ```python
 # Create
 user = User(email="test@example.com", display_name="Test")
@@ -180,20 +164,16 @@ except:
     raise
 ```
 
-================================================================================
-                    JINJA2 TEMPLATE REFERENCE
-================================================================================
+# Jinja2 Template Reference
 
-VARIABLES
---------------------------------------------------------------------------------
+## Variables
 ```html
 {{ variable }}
 {{ user.display_name }}
 {{ regatta.start_date.strftime('%B %d, %Y') }}
 ```
 
-FILTERS
---------------------------------------------------------------------------------
+## Filters
 ```html
 {{ name|upper }}
 {{ text|truncate(100) }}
@@ -202,8 +182,7 @@ FILTERS
 {{ rsvps|sort_rsvps }}  <!-- Custom filter -->
 ```
 
-CONTROL FLOW
---------------------------------------------------------------------------------
+## Control Flow
 ```html
 {% if current_user.is_admin %}
     <a href="/admin">Admin Panel</a>
@@ -220,8 +199,7 @@ CONTROL FLOW
 {% endfor %}
 ```
 
-TEMPLATE INHERITANCE
---------------------------------------------------------------------------------
+## Template Inheritance
 ```html
 <!-- base.html -->
 <!DOCTYPE html>
@@ -244,14 +222,12 @@ TEMPLATE INHERITANCE
 {% endblock %}
 ```
 
-INCLUDE
---------------------------------------------------------------------------------
+## Include
 ```html
 {% include "navbar.html" %}
 ```
 
-FORMS
---------------------------------------------------------------------------------
+## Forms
 ```html
 <form method="post">
     {{ csrf_token() }}
@@ -260,20 +236,16 @@ FORMS
 </form>
 ```
 
-URL GENERATION
---------------------------------------------------------------------------------
+## URL Generation
 ```html
 <a href="{{ url_for('auth.login') }}">Login</a>
 <a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}">Edit</a>
 <a href="{{ url_for('static', filename='css/style.css') }}">CSS</a>
 ```
 
-================================================================================
-                    DOCKER COMPOSE REFERENCE
-================================================================================
+# Docker Compose Reference
 
-BASIC COMMANDS
---------------------------------------------------------------------------------
+## Basic Commands
 ```bash
 # Start services
 docker compose up
@@ -305,8 +277,7 @@ docker compose exec db mysql -u racecrew -p
 docker compose ps
 ```
 
-BUILDING AND CLEANING
---------------------------------------------------------------------------------
+## Building and Cleaning
 ```bash
 # Build images without starting
 docker compose build
@@ -322,19 +293,15 @@ docker system prune
 docker volume prune
 ```
 
-================================================================================
-                    FLASK CLI REFERENCE
-================================================================================
+# Flask CLI Reference
 
-CUSTOM COMMANDS (THIS APP)
---------------------------------------------------------------------------------
+## Custom Commands (This App)
 ```bash
 flask create-admin          # Create admin user interactively
 flask init-admin            # Create admin from env vars (INIT_ADMIN_EMAIL/PASSWORD)
 ```
 
-MIGRATION COMMANDS
---------------------------------------------------------------------------------
+## Migration Commands
 ```bash
 flask db init               # Initialize migrations directory
 flask db migrate -m "msg"   # Generate migration
@@ -344,8 +311,7 @@ flask db current            # Show current version
 flask db history            # Show migration history
 ```
 
-FLASK DEVELOPMENT
---------------------------------------------------------------------------------
+## Flask Development
 ```bash
 flask run                   # Start development server (don't use in production!)
 flask run --host=0.0.0.0    # Listen on all interfaces
@@ -353,12 +319,9 @@ flask run --port=5001       # Custom port
 flask shell                 # Interactive Python shell with app context
 ```
 
-================================================================================
-                    TROUBLESHOOTING GUIDE
-================================================================================
+# Troubleshooting Guide
 
-PROBLEM: Can't connect to localhost
---------------------------------------------------------------------------------
+## Problem: Can't Connect to Localhost
 **Symptoms**: Browser shows "can't connect" or "connection refused"
 
 **Solutions**:
@@ -382,8 +345,7 @@ PROBLEM: Can't connect to localhost
    docker compose restart
    ```
 
-PROBLEM: Database connection errors
---------------------------------------------------------------------------------
+## Problem: Database Connection Errors
 **Symptoms**: "Can't connect to MySQL server" or "Unknown database"
 
 **Solutions**:
@@ -408,8 +370,7 @@ PROBLEM: Database connection errors
    docker compose up --build
    ```
 
-PROBLEM: Permission errors
---------------------------------------------------------------------------------
+## Problem: Permission Errors
 **Symptoms**: "Permission denied" when writing files
 
 **Solutions**:
@@ -423,8 +384,7 @@ PROBLEM: Permission errors
    docker compose exec web mkdir -p /app/uploads
    ```
 
-PROBLEM: Migration errors
---------------------------------------------------------------------------------
+## Problem: Migration Errors
 **Symptoms**: "Can't locate revision" or "Multiple heads detected"
 
 **Solutions**:
@@ -440,8 +400,7 @@ PROBLEM: Migration errors
    docker compose up --build
    ```
 
-PROBLEM: Static files not loading
---------------------------------------------------------------------------------
+## Problem: Static Files Not Loading
 **Symptoms**: CSS not applied, images not showing
 
 **Solutions**:
@@ -453,8 +412,7 @@ PROBLEM: Static files not loading
    docker compose logs web
    ```
 
-PROBLEM: Session cookie not persisting
---------------------------------------------------------------------------------
+## Problem: Session Cookie Not Persisting
 **Symptoms**: Logged out after every page refresh
 
 **Solutions**:
@@ -465,42 +423,35 @@ PROBLEM: Session cookie not persisting
    ```
 3. Generate new SECRET_KEY if needed
 
-================================================================================
-                    SECURITY BEST PRACTICES
-================================================================================
+# Security Best Practices
 
-PASSWORDS
---------------------------------------------------------------------------------
+## Passwords
 - Never hardcode passwords in source code
 - Use environment variables for all secrets
 - Generate strong SECRET_KEY (64+ characters)
 - Use bcrypt for password hashing (already implemented)
 - Enforce minimum password length (6+ characters minimum)
 
-FILE UPLOADS
---------------------------------------------------------------------------------
+## File Uploads
 - Validate file types before accepting
 - Use UUID filenames (already implemented)
 - Set MAX_CONTENT_LENGTH (already set to 10MB)
 - Store uploads outside web root
 - Use send_from_directory() for serving (already implemented)
 
-DATABASE
---------------------------------------------------------------------------------
+## Database
 - Use parameterized queries (SQLAlchemy does this)
 - Validate and sanitize all user input
 - Use foreign key constraints
 - Regular backups (see Day 10)
 
-AUTHENTICATION
---------------------------------------------------------------------------------
+## Authentication
 - Use CSRF protection (already implemented with Flask-WTF)
 - Implement rate limiting for login attempts (not implemented)
 - Use HTTPS in production (see Day 10)
 - Set secure cookie flags in production
 
-GENERAL
---------------------------------------------------------------------------------
+## General
 - Keep dependencies updated:
   ```bash
   pip list --outdated
@@ -516,52 +467,40 @@ GENERAL
 - Review Flask security docs:
   https://flask.palletsprojects.com/security/
 
-================================================================================
-                    FURTHER READING
-================================================================================
+# Further Reading
 
-FLASK
---------------------------------------------------------------------------------
+## Flask
 - Official Documentation: https://flask.palletsprojects.com/
 - Flask Mega-Tutorial: https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world
 - Real Python Flask: https://realpython.com/tutorials/flask/
 
-SQLALCHEMY
---------------------------------------------------------------------------------
+## SQLAlchemy
 - Official Documentation: https://docs.sqlalchemy.org/
 - SQLAlchemy ORM Tutorial: https://docs.sqlalchemy.org/orm/tutorial.html
 
-DOCKER
---------------------------------------------------------------------------------
+## Docker
 - Official Documentation: https://docs.docker.com/
 - Docker Compose: https://docs.docker.com/compose/
 - Best Practices: https://docs.docker.com/develop/dev-best-practices/
 
-PYTHON
---------------------------------------------------------------------------------
+## Python
 - Python Documentation: https://docs.python.org/3/
 - PEP 8 Style Guide: https://peps.python.org/pep-0008/
 
-WEB DEVELOPMENT
---------------------------------------------------------------------------------
+## Web Development
 - MDN Web Docs: https://developer.mozilla.org/
 - HTTP Status Codes: https://httpstatuses.com/
 - RESTful API Design: https://restfulapi.net/
 
-SECURITY
---------------------------------------------------------------------------------
+## Security
 - OWASP Top 10: https://owasp.org/www-project-top-ten/
 - Flask Security: https://flask.palletsprojects.com/security/
 - Let's Encrypt: https://letsencrypt.org/
 
-================================================================================
-                          END OF APPENDIX
-================================================================================
+# End of Appendix
 
 You now have a complete reference for Flask development with this application.
 Return to this appendix whenever you need a quick reminder of syntax or
 commands.
 
 Good luck with your Flask journey!
-
-================================================================================

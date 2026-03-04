@@ -1,5 +1,10 @@
 # Version History
 
+## 0.35.1
+- Convert training files from ASCII-formatted text to Markdown (.txt → .md)
+- Replace old project name references (thistle-regatta-schedule → race-crew-network)
+- Update internal cross-references to use .md file extensions
+
 ## 0.35.0
 - Add 10-day Flask training curriculum (training/) with 12 text files
 - Training materials cover app architecture, models, auth, CRUD, RSVP, file uploads, iCal, Docker, and deployment
