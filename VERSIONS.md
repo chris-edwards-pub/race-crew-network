@@ -1,7 +1,7 @@
 # Version History
 
 ## 0.35.0
-- Add 10-day Flask training curriculum (python-class/) with 12 text files
+- Add 10-day Flask training curriculum (training/) with 12 text files
 - Training materials cover app architecture, models, auth, CRUD, RSVP, file uploads, iCal, Docker, and deployment
 - All lessons updated to reflect current codebase at v0.34.2 (Race Crew Network branding, 5 models, 4 blueprints, S3 storage, Lightsail deployment, CI/CD)
 
