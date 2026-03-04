@@ -55,6 +55,7 @@ class Regatta(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
@@ -108,4 +109,19 @@ class RSVP(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("regatta_id", "user_id", name="uq_rsvp_regatta_user"),
+    )
+
+
+class ImportCache(db.Model):
+    __tablename__ = "import_cache"
+
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(500), nullable=False, unique=True)
+    year = db.Column(db.Integer, nullable=False)
+    results_json = db.Column(db.Text, nullable=False)
+    regatta_count = db.Column(db.Integer, nullable=False, default=0)
+    extracted_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )

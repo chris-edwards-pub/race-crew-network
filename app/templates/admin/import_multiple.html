@@ -10,7 +10,11 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="schedule_url" class="form-label">Schedule URL</label>
-                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" required>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" value="{{ prefill_url or '' }}" required>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="force_extract" name="force_extract" value="1" {% if prefill_force %}checked{% endif %}>
+                <label class="form-check-label" for="force_extract">Force re-extract (bypass cache)</label>
             </div>
             <button type="submit" id="btn-submit" class="btn btn-primary">Extract Schedule</button>
             <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>

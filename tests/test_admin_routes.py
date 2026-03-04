@@ -1,8 +1,10 @@
 """Tests for admin routes (access control and basic flows)."""
 
-from datetime import date
+import json
+from datetime import date, datetime, timezone
+from unittest.mock import patch
 
-from app.models import Regatta, User
+from app.models import Document, ImportCache, Regatta, User
 
 
 class TestAdminAccessUnauthenticated:
@@ -212,3 +214,434 @@ class TestDocumentReview:
             follow_redirects=True,
         )
         assert b"Document discovery results not found" in resp.data
+
+
+class TestImportCacheMultiple:
+    """Tests for cache behavior in the multiple-regattas extract endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        """Parse SSE events from a response."""
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_cache_miss_calls_ai_and_saves(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """First import of a URL should call AI and save to cache."""
+        mock_fetch.return_value = "page content"
+        mock_extract.return_value = [
+            {
+                "name": "Midwinters",
+                "start_date": "2026-12-01",
+                "location": "Test YC",
+            }
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={"schedule_url": "https://example.com/schedule", "year": "2026"},
+        )
+        self._consume_sse(resp)
+
+        mock_extract.assert_called_once()
+
+        # Verify cache was created
+        cached = ImportCache.query.filter_by(url="https://example.com/schedule").first()
+        assert cached is not None
+        assert cached.regatta_count == 1
+        assert "Midwinters" in cached.results_json
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_cache_hit_skips_ai(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Repeat import of same URL should use cache (no AI call)."""
+        # Pre-populate cache
+        cache = ImportCache(
+            url="https://example.com/cached",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Cached Regatta",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={"schedule_url": "https://example.com/cached", "year": "2026"},
+        )
+        events = self._consume_sse(resp)
+
+        # AI should NOT have been called
+        mock_extract.assert_not_called()
+        mock_fetch.assert_not_called()
+
+        # Should have a "cached" message
+        messages = [e.get("message", "") for e in events]
+        assert any("cached" in m.lower() for m in messages)
+
+        # Should reach 'done'
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_force_extract_bypasses_cache(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Force re-extract should call AI even with cached results."""
+        # Pre-populate cache
+        cache = ImportCache(
+            url="https://example.com/force-test",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Old Regatta",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        mock_fetch.return_value = "page content"
+        mock_extract.return_value = [
+            {
+                "name": "New Regatta",
+                "start_date": "2026-12-15",
+                "location": "Test YC",
+            }
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract",
+            data={
+                "schedule_url": "https://example.com/force-test",
+                "year": "2026",
+                "force_extract": "1",
+            },
+        )
+        self._consume_sse(resp)
+
+        # AI SHOULD have been called
+        mock_extract.assert_called_once()
+
+        # Cache should be updated
+        cached = ImportCache.query.filter_by(
+            url="https://example.com/force-test"
+        ).first()
+        assert "New Regatta" in cached.results_json
+
+    def test_pasted_text_not_cached(self, app, logged_in_client, db):
+        """Pasted text imports should not create cache entries."""
+        with patch("app.admin.routes.extract_regattas") as mock_extract:
+            mock_extract.return_value = [
+                {
+                    "name": "Pasted Regatta",
+                    "start_date": "2026-12-01",
+                    "location": "Test YC",
+                }
+            ]
+
+            resp = logged_in_client.post(
+                "/admin/import-schedule/extract",
+                data={"schedule_text": "Some regatta schedule text", "year": "2026"},
+            )
+            self._consume_sse(resp)
+
+        assert ImportCache.query.count() == 0
+
+
+class TestImportCacheSingle:
+    """Tests for cache behavior in the single-regatta extract endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_single_cache_hit(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Single import should use cache on repeat URL."""
+        cache = ImportCache(
+            url="https://example.com/single-cached",
+            year=2026,
+            results_json=json.dumps(
+                [
+                    {
+                        "name": "Single Cached",
+                        "start_date": "2026-12-01",
+                        "location": "Test YC",
+                    }
+                ]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-single",
+            data={
+                "schedule_url": "https://example.com/single-cached",
+                "year": "2026",
+            },
+        )
+        events = self._consume_sse(resp)
+
+        mock_extract.assert_not_called()
+        mock_fetch.assert_not_called()
+
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+
+    @patch("app.admin.routes._fetch_url_content")
+    @patch("app.admin.routes.extract_regattas")
+    def test_single_force_extract(
+        self, mock_extract, mock_fetch, app, logged_in_client, db
+    ):
+        """Single import with force_extract should bypass cache."""
+        cache = ImportCache(
+            url="https://example.com/single-force",
+            year=2026,
+            results_json=json.dumps(
+                [{"name": "Old", "start_date": "2026-12-01", "location": "YC"}]
+            ),
+            regatta_count=1,
+            extracted_at=datetime.now(timezone.utc),
+        )
+        db.session.add(cache)
+        db.session.commit()
+
+        mock_fetch.return_value = "content"
+        mock_extract.return_value = [
+            {"name": "Fresh", "start_date": "2026-12-10", "location": "YC"}
+        ]
+
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-single",
+            data={
+                "schedule_url": "https://example.com/single-force",
+                "year": "2026",
+                "force_extract": "1",
+            },
+        )
+        self._consume_sse(resp)
+
+        mock_extract.assert_called_once()
+
+
+class TestImportConfirmSourceUrl:
+    """Tests that source_url is persisted during import confirm."""
+
+    def test_imports_regatta_with_source_url(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "Source URL Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-15",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "detail_url_0": "https://example.com/regatta/detail",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 regatta" in resp.data
+
+        regatta = Regatta.query.filter_by(name="Source URL Regatta").first()
+        assert regatta is not None
+        assert regatta.source_url == "https://example.com/regatta/detail"
+
+    def test_imports_regatta_without_source_url(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "No Source Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-16",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 regatta" in resp.data
+
+        regatta = Regatta.query.filter_by(name="No Source Regatta").first()
+        assert regatta is not None
+        assert regatta.source_url is None
+
+
+class TestDiscoverDocumentsForRegatta:
+    """Tests for the discover-documents SSE endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    def test_no_source_url_returns_error(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="No URL Regatta",
+            location="Test YC",
+            start_date=date(2026, 9, 20),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/discover-documents",
+        )
+        events = self._consume_sse(resp)
+        assert any(e.get("type") == "error" for e in events)
+        assert any("No source URL" in e.get("message", "") for e in events)
+
+    @patch("app.admin.routes.discover_documents")
+    @patch("app.admin.routes._fetch_url_content")
+    def test_discover_documents_success(
+        self, mock_fetch, mock_discover, app, logged_in_client, db, admin_user
+    ):
+        regatta = Regatta(
+            name="Discover Test",
+            location="Test YC",
+            start_date=date(2026, 9, 21),
+            source_url="https://example.com/regatta/test",
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        mock_fetch.return_value = "page content"
+        mock_discover.return_value = [
+            {"doc_type": "NOR", "url": "https://example.com/nor.pdf", "label": "NOR"},
+        ]
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/discover-documents",
+        )
+        events = self._consume_sse(resp)
+
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+        assert "task_id" in done_events[0]
+
+
+class TestReviewDocumentsForRegatta:
+    """Tests for the review-documents page."""
+
+    def test_missing_task_id_redirects(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="Review Test",
+            location="Test YC",
+            start_date=date(2026, 9, 25),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.get(
+            f"/admin/regattas/{regatta.id}/review-documents",
+            follow_redirects=True,
+        )
+        assert b"Document discovery results not found" in resp.data
+
+    def test_regatta_not_found_redirects(self, logged_in_client):
+        resp = logged_in_client.get(
+            "/admin/regattas/99999/review-documents?task_id=bogus",
+            follow_redirects=True,
+        )
+        assert b"Regatta not found" in resp.data
+
+
+class TestAttachDocumentsForRegatta:
+    """Tests for the attach-documents endpoint."""
+
+    def test_attach_documents(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="Attach Test",
+            location="Test YC",
+            start_date=date(2026, 9, 28),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/attach-documents",
+            data={
+                "doc_count": "2",
+                "doc_0": "1",
+                "doc_type_0": "NOR",
+                "doc_url_0": "https://example.com/nor.pdf",
+                "doc_1": "1",
+                "doc_type_1": "WWW",
+                "doc_url_1": "https://example.com/regatta",
+            },
+            follow_redirects=True,
+        )
+        assert b"2 document(s) attached" in resp.data
+
+        docs = Document.query.filter_by(regatta_id=regatta.id).all()
+        assert len(docs) == 2
+        doc_types = {d.doc_type for d in docs}
+        assert doc_types == {"NOR", "WWW"}
+
+    def test_attach_no_selection(self, app, logged_in_client, db, admin_user):
+        regatta = Regatta(
+            name="No Select Test",
+            location="Test YC",
+            start_date=date(2026, 9, 29),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/regattas/{regatta.id}/attach-documents",
+            data={"doc_count": "1"},
+            follow_redirects=True,
+        )
+        assert b"No documents selected" in resp.data
+
+    def test_regatta_not_found(self, logged_in_client):
+        resp = logged_in_client.post(
+            "/admin/regattas/99999/attach-documents",
+            data={"doc_count": "0"},
+            follow_redirects=True,
+        )
+        assert b"Regatta not found" in resp.data

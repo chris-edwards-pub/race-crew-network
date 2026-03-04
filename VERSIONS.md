@@ -1,5 +1,20 @@
 # Version History
 
+## 0.34.0
+- Store source URL on regattas during AI import (detail_url persisted as source_url)
+- Source URL field on regatta edit form allows admins to view and update the import source
+- "Find Documents" button on edit page discovers NOR/SI/WWW documents via AI from the source URL
+- SSE streaming progress in terminal modal during document discovery
+- Review page with checkboxes to select which discovered documents to attach
+- "Force re-extract" checkbox bypasses cached content for fresh discovery
+
+## 0.33.0
+- Cache AI import extraction results per URL to eliminate redundant AI calls on repeat imports
+- Cache hit serves instant results with zero token usage and no URL fetch
+- "Force re-extract" checkbox on import forms to bypass cache when source page has been updated
+- Preview page shows cache info banner with extraction date and re-extract link
+- New `ImportCache` database model stores URL, extracted JSON, and timestamp
+
 ## 0.32.2
 - Add continue-on-error to SARIF steps so transient GitHub outages don't block deployment
 
