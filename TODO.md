@@ -5,3 +5,4 @@
 - [ ] Allow Profile Pictures
 - [ ] Import schedule from PDF
 - [ ] Create a help section with instructions
+- [ ] Update lessons

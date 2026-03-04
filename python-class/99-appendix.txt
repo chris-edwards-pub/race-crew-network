@@ -1,0 +1,567 @@
+================================================================================
+                          APPENDIX: QUICK REFERENCE
+================================================================================
+
+This appendix provides quick reference materials for Flask, SQLAlchemy, Jinja2,
+Docker, and common troubleshooting scenarios.
+
+================================================================================
+                    FLASK ROUTING REFERENCE
+================================================================================
+
+BASIC ROUTES
+--------------------------------------------------------------------------------
+```python
+@app.route("/")
+def index():
+    return "Hello"
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
+```
+
+HTTP METHODS
+--------------------------------------------------------------------------------
+```python
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        # Process form
+        pass
+    return render_template("login.html")
+```
+
+URL PARAMETERS
+--------------------------------------------------------------------------------
+```python
+@app.route("/user/<int:user_id>")
+def user_profile(user_id: int):
+    user = User.query.get_or_404(user_id)
+    return render_template("profile.html", user=user)
+
+@app.route("/search")
+def search():
+    query = request.args.get("q", "")  # /search?q=flask
+    return f"Searching for {query}"
+```
+
+REDIRECTS AND URL_FOR
+--------------------------------------------------------------------------------
+```python
+from flask import redirect, url_for
+
+@app.route("/old-path")
+def old():
+    return redirect(url_for("new_path"))
+
+@app.route("/new-path")
+def new_path():
+    return "New location"
+```
+
+FLASH MESSAGES
+--------------------------------------------------------------------------------
+```python
+from flask import flash
+
+flash("Operation successful!", "success")
+flash("An error occurred.", "error")
+flash("Please note...", "info")
+```
+
+DECORATORS
+--------------------------------------------------------------------------------
+```python
+from flask_login import login_required
+
+@app.route("/protected")
+@login_required
+def protected():
+    return "Only logged-in users see this"
+```
+
+================================================================================
+                    SQLALCHEMY QUERY REFERENCE
+================================================================================
+
+BASIC QUERIES
+--------------------------------------------------------------------------------
+```python
+# Get all
+users = User.query.all()
+
+# Get one
+user = User.query.first()
+user = User.query.get(1)  # By primary key
+user = User.query.get_or_404(1)  # Or 404 error
+
+# Filter
+users = User.query.filter_by(is_admin=True).all()
+users = User.query.filter(User.email.like("%@example.com")).all()
+
+# Order
+users = User.query.order_by(User.display_name).all()
+users = User.query.order_by(User.created_at.desc()).all()
+
+# Limit
+users = User.query.limit(10).all()
+
+# Count
+count = User.query.count()
+```
+
+FILTERING
+--------------------------------------------------------------------------------
+```python
+# Equals
+User.query.filter_by(email=email)
+User.query.filter(User.email == email)
+
+# Not equals
+User.query.filter(User.email != email)
+
+# Greater than / Less than
+Regatta.query.filter(Regatta.start_date >= today)
+
+# IN list
+User.query.filter(User.id.in_([1, 2, 3]))
+
+# LIKE pattern
+User.query.filter(User.email.like("%@example.com"))
+
+# IS NULL
+User.query.filter(User.invite_token.is_(None))
+User.query.filter(User.invite_token.isnot(None))
+
+# AND (multiple filters)
+User.query.filter_by(is_admin=True).filter_by(email=email)
+User.query.filter((User.is_admin == True) & (User.email == email))
+
+# OR
+from sqlalchemy import or_
+User.query.filter(or_(User.is_admin == True, User.email == email))
+```
+
+RELATIONSHIPS
+--------------------------------------------------------------------------------
+```python
+# Access related objects
+user = User.query.first()
+regattas = user.created_regattas  # One-to-many
+rsvps = user.rsvps  # One-to-many
+
+regatta = Regatta.query.first()
+creator = regatta.creator  # Many-to-one (backref)
+documents = regatta.documents  # One-to-many
+```
+
+CREATE, UPDATE, DELETE
+--------------------------------------------------------------------------------
+```python
+# Create
+user = User(email="test@example.com", display_name="Test")
+db.session.add(user)
+db.session.commit()
+
+# Update
+user.display_name = "New Name"
+db.session.commit()
+
+# Delete
+db.session.delete(user)
+db.session.commit()
+
+# Rollback on error
+try:
+    db.session.commit()
+except:
+    db.session.rollback()
+    raise
+```
+
+================================================================================
+                    JINJA2 TEMPLATE REFERENCE
+================================================================================
+
+VARIABLES
+--------------------------------------------------------------------------------
+```html
+{{ variable }}
+{{ user.display_name }}
+{{ regatta.start_date.strftime('%B %d, %Y') }}
+```
+
+FILTERS
+--------------------------------------------------------------------------------
+```html
+{{ name|upper }}
+{{ text|truncate(100) }}
+{{ price|round(2) }}
+{{ items|length }}
+{{ rsvps|sort_rsvps }}  <!-- Custom filter -->
+```
+
+CONTROL FLOW
+--------------------------------------------------------------------------------
+```html
+{% if current_user.is_admin %}
+    <a href="/admin">Admin Panel</a>
+{% elif current_user.is_authenticated %}
+    <p>Welcome, {{ current_user.display_name }}</p>
+{% else %}
+    <a href="/login">Login</a>
+{% endif %}
+
+{% for regatta in regattas %}
+    <li>{{ regatta.name }}</li>
+{% else %}
+    <li>No regattas found.</li>
+{% endfor %}
+```
+
+TEMPLATE INHERITANCE
+--------------------------------------------------------------------------------
+```html
+<!-- base.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Default Title{% endblock %}</title>
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>
+
+<!-- page.html -->
+{% extends "base.html" %}
+
+{% block title %}My Page{% endblock %}
+
+{% block content %}
+    <h1>Page Content</h1>
+{% endblock %}
+```
+
+INCLUDE
+--------------------------------------------------------------------------------
+```html
+{% include "navbar.html" %}
+```
+
+FORMS
+--------------------------------------------------------------------------------
+```html
+<form method="post">
+    {{ csrf_token() }}
+    <input type="text" name="name" value="{{ regatta.name if regatta }}">
+    <button type="submit">Save</button>
+</form>
+```
+
+URL GENERATION
+--------------------------------------------------------------------------------
+```html
+<a href="{{ url_for('auth.login') }}">Login</a>
+<a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}">Edit</a>
+<a href="{{ url_for('static', filename='css/style.css') }}">CSS</a>
+```
+
+================================================================================
+                    DOCKER COMPOSE REFERENCE
+================================================================================
+
+BASIC COMMANDS
+--------------------------------------------------------------------------------
+```bash
+# Start services
+docker compose up
+
+# Start in background
+docker compose up -d
+
+# Rebuild and start
+docker compose up --build
+
+# Stop services
+docker compose down
+
+# Stop and remove volumes
+docker compose down -v
+
+# View logs
+docker compose logs
+docker compose logs -f web  # Follow logs for web service
+
+# Restart a service
+docker compose restart web
+
+# Execute command in container
+docker compose exec web flask create-admin
+docker compose exec db mysql -u racecrew -p
+
+# View running containers
+docker compose ps
+```
+
+BUILDING AND CLEANING
+--------------------------------------------------------------------------------
+```bash
+# Build images without starting
+docker compose build
+
+# Remove all stopped containers
+docker compose down --remove-orphans
+
+# Remove images
+docker compose down --rmi all
+
+# Prune unused Docker resources
+docker system prune
+docker volume prune
+```
+
+================================================================================
+                    FLASK CLI REFERENCE
+================================================================================
+
+CUSTOM COMMANDS (THIS APP)
+--------------------------------------------------------------------------------
+```bash
+flask create-admin          # Create admin user interactively
+flask init-admin            # Create admin from env vars (INIT_ADMIN_EMAIL/PASSWORD)
+```
+
+MIGRATION COMMANDS
+--------------------------------------------------------------------------------
+```bash
+flask db init               # Initialize migrations directory
+flask db migrate -m "msg"   # Generate migration
+flask db upgrade            # Apply migrations
+flask db downgrade          # Undo last migration
+flask db current            # Show current version
+flask db history            # Show migration history
+```
+
+FLASK DEVELOPMENT
+--------------------------------------------------------------------------------
+```bash
+flask run                   # Start development server (don't use in production!)
+flask run --host=0.0.0.0    # Listen on all interfaces
+flask run --port=5001       # Custom port
+flask shell                 # Interactive Python shell with app context
+```
+
+================================================================================
+                    TROUBLESHOOTING GUIDE
+================================================================================
+
+PROBLEM: Can't connect to localhost
+--------------------------------------------------------------------------------
+**Symptoms**: Browser shows "can't connect" or "connection refused"
+
+**Solutions**:
+1. Check containers are running:
+   ```bash
+   docker compose ps
+   ```
+
+2. Check logs for errors:
+   ```bash
+   docker compose logs
+   ```
+
+3. Verify port 80 isn't already in use:
+   ```bash
+   lsof -i :80  # On Mac/Linux
+   ```
+
+4. Restart containers:
+   ```bash
+   docker compose restart
+   ```
+
+PROBLEM: Database connection errors
+--------------------------------------------------------------------------------
+**Symptoms**: "Can't connect to MySQL server" or "Unknown database"
+
+**Solutions**:
+1. Check db container is healthy:
+   ```bash
+   docker compose ps
+   ```
+
+2. Verify DATABASE_URL in .env:
+   ```
+   DATABASE_URL=mysql+pymysql://racecrew:racecrew@db:3306/racecrew
+   ```
+
+3. Check db health check:
+   ```bash
+   docker compose logs db
+   ```
+
+4. Recreate database volume:
+   ```bash
+   docker compose down -v
+   docker compose up --build
+   ```
+
+PROBLEM: Permission errors
+--------------------------------------------------------------------------------
+**Symptoms**: "Permission denied" when writing files
+
+**Solutions**:
+1. Check upload directory permissions:
+   ```bash
+   docker compose exec web ls -la /app/uploads
+   ```
+
+2. Create directory if missing:
+   ```bash
+   docker compose exec web mkdir -p /app/uploads
+   ```
+
+PROBLEM: Migration errors
+--------------------------------------------------------------------------------
+**Symptoms**: "Can't locate revision" or "Multiple heads detected"
+
+**Solutions**:
+1. Check migration history:
+   ```bash
+   docker compose exec web flask db current
+   docker compose exec web flask db history
+   ```
+
+2. If database is corrupted, start fresh:
+   ```bash
+   docker compose down -v
+   docker compose up --build
+   ```
+
+PROBLEM: Static files not loading
+--------------------------------------------------------------------------------
+**Symptoms**: CSS not applied, images not showing
+
+**Solutions**:
+1. Check browser console for 404 errors
+2. Verify file paths in templates
+3. Clear browser cache
+4. Check web container logs:
+   ```bash
+   docker compose logs web
+   ```
+
+PROBLEM: Session cookie not persisting
+--------------------------------------------------------------------------------
+**Symptoms**: Logged out after every page refresh
+
+**Solutions**:
+1. Check SECRET_KEY is set in .env
+2. Ensure .env file is being loaded:
+   ```bash
+   docker compose exec web env | grep SECRET
+   ```
+3. Generate new SECRET_KEY if needed
+
+================================================================================
+                    SECURITY BEST PRACTICES
+================================================================================
+
+PASSWORDS
+--------------------------------------------------------------------------------
+- Never hardcode passwords in source code
+- Use environment variables for all secrets
+- Generate strong SECRET_KEY (64+ characters)
+- Use bcrypt for password hashing (already implemented)
+- Enforce minimum password length (6+ characters minimum)
+
+FILE UPLOADS
+--------------------------------------------------------------------------------
+- Validate file types before accepting
+- Use UUID filenames (already implemented)
+- Set MAX_CONTENT_LENGTH (already set to 10MB)
+- Store uploads outside web root
+- Use send_from_directory() for serving (already implemented)
+
+DATABASE
+--------------------------------------------------------------------------------
+- Use parameterized queries (SQLAlchemy does this)
+- Validate and sanitize all user input
+- Use foreign key constraints
+- Regular backups (see Day 10)
+
+AUTHENTICATION
+--------------------------------------------------------------------------------
+- Use CSRF protection (already implemented with Flask-WTF)
+- Implement rate limiting for login attempts (not implemented)
+- Use HTTPS in production (see Day 10)
+- Set secure cookie flags in production
+
+GENERAL
+--------------------------------------------------------------------------------
+- Keep dependencies updated:
+  ```bash
+  pip list --outdated
+  pip install --upgrade package-name
+  ```
+
+- Don't expose debug mode in production:
+  ```python
+  # NEVER do this in production:
+  app.run(debug=True)
+  ```
+
+- Review Flask security docs:
+  https://flask.palletsprojects.com/security/
+
+================================================================================
+                    FURTHER READING
+================================================================================
+
+FLASK
+--------------------------------------------------------------------------------
+- Official Documentation: https://flask.palletsprojects.com/
+- Flask Mega-Tutorial: https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world
+- Real Python Flask: https://realpython.com/tutorials/flask/
+
+SQLALCHEMY
+--------------------------------------------------------------------------------
+- Official Documentation: https://docs.sqlalchemy.org/
+- SQLAlchemy ORM Tutorial: https://docs.sqlalchemy.org/orm/tutorial.html
+
+DOCKER
+--------------------------------------------------------------------------------
+- Official Documentation: https://docs.docker.com/
+- Docker Compose: https://docs.docker.com/compose/
+- Best Practices: https://docs.docker.com/develop/dev-best-practices/
+
+PYTHON
+--------------------------------------------------------------------------------
+- Python Documentation: https://docs.python.org/3/
+- PEP 8 Style Guide: https://peps.python.org/pep-0008/
+
+WEB DEVELOPMENT
+--------------------------------------------------------------------------------
+- MDN Web Docs: https://developer.mozilla.org/
+- HTTP Status Codes: https://httpstatuses.com/
+- RESTful API Design: https://restfulapi.net/
+
+SECURITY
+--------------------------------------------------------------------------------
+- OWASP Top 10: https://owasp.org/www-project-top-ten/
+- Flask Security: https://flask.palletsprojects.com/security/
+- Let's Encrypt: https://letsencrypt.org/
+
+================================================================================
+                          END OF APPENDIX
+================================================================================
+
+You now have a complete reference for Flask development with this application.
+Return to this appendix whenever you need a quick reminder of syntax or
+commands.
+
+Good luck with your Flask journey!
+
+================================================================================

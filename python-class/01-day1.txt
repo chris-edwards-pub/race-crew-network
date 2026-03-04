@@ -1,0 +1,487 @@
+================================================================================
+                          DAY 1: INTRODUCTION & ENVIRONMENT SETUP
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- What the Race Crew Network application does and who uses it
+- The 2-container Docker architecture (web, db)
+- How to run the application locally with Docker Compose
+- Basic Flask concepts: routes, templates, and blueprints
+- How to create an admin user via Flask CLI commands
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Web application architecture
+- Docker Compose multi-container orchestration
+- Flask framework overview
+- MVC (Model-View-Controller) pattern
+- RESTful routing
+- Flask CLI commands
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+For this session, examine these files:
+- thistle-regatta-schedule/README.md - Setup instructions
+- thistle-regatta-schedule/docker-compose.yml - Container orchestration
+- thistle-regatta-schedule/app/__init__.py - Flask app initialization
+- thistle-regatta-schedule/Dockerfile - Web container build instructions
+
+================================================================================
+                          PART 1: APPLICATION OVERVIEW
+================================================================================
+
+WHAT IS RACE CREW NETWORK?
+--------------------------------------------------------------------------------
+Race Crew Network is a specialized event management system for sailboat
+racing. It solves a common problem for sailing clubs: coordinating crew
+attendance across multiple regatta events.
+
+**Key Features:**
+- Centralized schedule of all regatta dates and locations
+- RSVP system (Yes/No/Maybe) to track crew availability
+- Document management for NOR (Notice of Race) and SI (Sailing Instructions)
+- AI-powered schedule import from regatta websites (Anthropic Claude API)
+- Automatic document discovery from regatta event pages
+- iCal calendar feed integration for personal calendars
+- PDF schedule generation with WeasyPrint
+- Invite-based user registration (no public sign-ups)
+- Role-based access (Admin vs Crew)
+
+**User Roles:**
+- **Admin**: Create/edit/delete regattas, upload documents, invite crew,
+  import schedules via AI, discover documents
+- **Crew**: View schedule, download documents, set RSVP status
+
+WHO USES IT?
+--------------------------------------------------------------------------------
+This app is designed for small to medium sailing clubs (5-50 members) that
+compete in multiple regattas per season. It replaces email chains and
+spreadsheets with a single source of truth.
+
+Example workflow:
+1. Admin creates a new regatta entry with date, location, and links
+2. Admin uploads the NOR and SI PDF documents
+3. Crew members visit the site and set their RSVP
+4. Admin can see at a glance who's attending each event
+5. Crew members subscribe to the calendar feed in their preferred app
+
+================================================================================
+                    PART 2: DOCKER ARCHITECTURE
+================================================================================
+
+TWO-CONTAINER DESIGN (LOCAL DEVELOPMENT)
+--------------------------------------------------------------------------------
+For local development, the application uses Docker Compose to orchestrate
+two containers:
+
+1. **web** - The Flask application running on Gunicorn (WSGI server)
+2. **db** - MySQL 8 database for persistent data storage
+
+In production, the app runs on AWS Lightsail Container Service with a
+managed MySQL database and S3-compatible object storage (see Day 10).
+
+ARCHITECTURE DIAGRAM
+--------------------------------------------------------------------------------
+
+    Browser
+       |
+       | Port 80 (mapped to 8000)
+       v
+  +---------+
+  |   web   |  (Python 3.13, Flask, Gunicorn)
+  +---------+
+       |
+       | MySQL connection
+       v
+  +---------+
+  |   db    |  (MySQL 8)
+  +---------+
+       |
+       v
+  [mysql_data]  (Persistent volume)
+  [uploads]     (Persistent volume)
+
+
+WHY THIS ARCHITECTURE?
+--------------------------------------------------------------------------------
+**Separation of Concerns**:
+- Gunicorn serves the Flask application directly
+- Flask focuses on application logic
+- MySQL manages data persistence
+
+**Security**:
+- Database communicates on Docker's internal network
+- Database is never directly accessible from outside
+
+**Scalability**:
+- Can swap MySQL for a managed database service
+- Production uses Lightsail Container Service with managed MySQL
+- File uploads use S3-compatible object storage in production
+
+DOCKER COMPOSE CONFIGURATION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/docker-compose.yml
+
+```yaml
+# Local development only -- production uses Lightsail Container Service
+services:
+  web:
+    build: .                              # Build from Dockerfile
+    image: ghcr.io/chris-edwards-pub/race-crew-network:latest
+    env_file: .env                        # Load environment variables
+    ports:
+      - "80:8000"                         # Expose Gunicorn to host
+    depends_on:
+      db:
+        condition: service_healthy        # Wait for DB health check
+    volumes:
+      - uploads:/app/uploads              # Persistent file storage
+    restart: unless-stopped               # Auto-restart on failure
+
+  db:
+    image: mysql:8.0                      # Official MySQL image
+    env_file: .env                        # DB credentials
+    volumes:
+      - mysql_data:/var/lib/mysql         # Persistent database
+    healthcheck:                          # Ensure DB is ready
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:                             # Named volume for database
+  uploads:                                # Named volume for uploads
+```
+
+KEY CONCEPTS:
+- **depends_on**: Controls startup order (db starts before web)
+- **service_healthy**: web waits for db to pass health check before starting
+- **volumes**: Named volumes persist data across container restarts
+- **env_file**: Loads secrets from .env (not committed to git)
+- **restart**: unless-stopped ensures high availability
+- **ports**: Maps host port 80 to Gunicorn's port 8000 inside the container
+
+================================================================================
+                    PART 3: RUNNING THE APPLICATION
+================================================================================
+
+PREREQUISITES
+--------------------------------------------------------------------------------
+You need Docker and Docker Compose installed on your system. If you don't have
+them, visit https://docs.docker.com/get-docker/
+
+STEP 1: CONFIGURE ENVIRONMENT
+--------------------------------------------------------------------------------
+The application uses environment variables for configuration. Copy the example
+file and customize it:
+
+```bash
+cd thistle-regatta-schedule
+cp .env.example .env
+```
+
+Generate a secure SECRET_KEY:
+
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Edit .env and paste the generated key:
+
+```
+SECRET_KEY=your-generated-key-here
+DATABASE_URL=mysql+pymysql://racecrew:racecrew@db:3306/racecrew
+UPLOAD_FOLDER=/app/uploads
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=racecrew
+MYSQL_USER=racecrew
+MYSQL_PASSWORD=racecrew
+INIT_ADMIN_EMAIL=admin@example.com
+INIT_ADMIN_PASSWORD=changeme123
+```
+
+**Important**: The SECRET_KEY is used for session encryption and CSRF tokens.
+In production, also change the database passwords to something strong.
+INIT_ADMIN_EMAIL and INIT_ADMIN_PASSWORD are used to create the initial admin
+account automatically on first startup.
+
+STEP 2: START THE CONTAINERS
+--------------------------------------------------------------------------------
+```bash
+docker compose up --build
+```
+
+What happens:
+1. Docker builds the web container from the Dockerfile
+2. Docker downloads the mysql:8.0 image (if needed)
+3. Docker creates the mysql_data and uploads volumes
+4. MySQL starts and runs its health check
+5. Once MySQL is healthy, the web container starts
+6. The web container runs database migrations automatically (via entrypoint.sh)
+7. The entrypoint creates the initial admin account (if configured)
+8. Gunicorn starts and listens on port 8000 (mapped to host port 80)
+
+You'll see logs from both services. Watch for:
+- "Running database migrations..." from web
+- "Initializing admin account if needed..." from web
+- "Starting Gunicorn..." from web
+
+STEP 3: ADMIN ACCOUNT
+--------------------------------------------------------------------------------
+If you set INIT_ADMIN_EMAIL and INIT_ADMIN_PASSWORD in your .env file, the
+admin account is created automatically on first startup. The entrypoint script
+runs `flask init-admin` which reads these environment variables.
+
+Alternatively, you can create an admin account manually:
+
+```bash
+docker compose exec web flask create-admin
+```
+
+This runs the Flask CLI command inside the running web container.
+
+You'll be prompted for:
+- Email address (used for login)
+- Password (at least 8 characters)
+- Display name (shown in the app)
+- Initials (2-3 characters, displayed on RSVP badges)
+
+STEP 4: ACCESS THE APPLICATION
+--------------------------------------------------------------------------------
+Open your browser and navigate to http://localhost
+
+You should see the login page. Log in with the email and password you just
+created.
+
+After login, you'll see:
+- The main regatta schedule (empty initially)
+- Navbar with "Home", "iCal", "Crew", and "Import" links
+- A "+ New Regatta" button (admin only)
+
+STEP 5: EXPLORE THE INTERFACE
+--------------------------------------------------------------------------------
+Try creating your first regatta:
+
+1. Click "+ New Regatta" button
+2. Fill in:
+   - Name: "Mid-Winters Championship"
+   - Date: Pick a future date
+   - Location: "San Francisco, CA"
+   - Google Maps URL: (optional)
+   - Website URL: (optional)
+3. Click "Save"
+
+You'll be redirected to the main schedule. Notice:
+- The regatta appears in the table
+- Your RSVP dropdown shows "-" (not responded yet)
+- Edit and Delete buttons appear (admin only)
+
+Try setting your RSVP:
+- Change the dropdown from "-" to "Yes"
+- The page refreshes and your initials appear in green
+
+STEP 6: STOP THE APPLICATION
+--------------------------------------------------------------------------------
+In the terminal with running logs, press Ctrl+C. Then run:
+
+```bash
+docker compose down
+```
+
+This stops and removes all containers. Your data persists in the named volumes.
+
+To completely reset (delete database and uploads):
+
+```bash
+docker compose down -v
+```
+
+================================================================================
+                    PART 4: FLASK BASICS
+================================================================================
+
+WHAT IS FLASK?
+--------------------------------------------------------------------------------
+Flask is a Python web framework. It handles:
+- HTTP request/response cycle
+- Routing (mapping URLs to Python functions)
+- Template rendering (generating HTML with dynamic data)
+- Session management (keeping users logged in)
+- Form processing and validation
+
+Flask is "micro" because it provides the essentials and lets you add what you
+need via extensions (like SQLAlchemy for databases, Flask-Login for auth).
+
+THE APPLICATION FACTORY PATTERN
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/__init__.py:17-53
+
+Flask apps can be created in two ways:
+1. Direct instantiation: `app = Flask(__name__)` at module level
+2. Factory function: `create_app()` returns a configured app instance
+
+This application uses the factory pattern:
+
+```python
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object("app.config.Config")
+
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    csrf.init_app(app)
+
+    # Register blueprints
+    from app.admin import bp as admin_bp
+    from app.auth import bp as auth_bp
+    from app.calendar import bp as calendar_bp
+    from app.regattas import bp as regattas_bp
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(calendar_bp)
+    app.register_blueprint(regattas_bp)
+
+    return app
+```
+
+**Why use a factory?**
+- Can create multiple app instances (useful for testing)
+- Extensions are initialized with the app context
+- Configuration can vary per instance (dev vs production)
+
+BLUEPRINTS: MODULAR ROUTING
+--------------------------------------------------------------------------------
+Blueprints organize routes into logical groups. This app has four:
+
+1. **admin** - AI-powered schedule import, document discovery
+2. **auth** - Login, logout, registration, user management
+3. **regattas** - Regatta CRUD, RSVP, document handling
+4. **calendar** - iCal feed generation
+
+Example: The auth blueprint (thistle-regatta-schedule/app/auth/routes.py)
+defines routes like:
+- /login
+- /logout
+- /register/<token>
+- /profile
+- /admin/users
+
+When registered, these become available as full routes. Flask automatically
+combines the blueprint's routes with the main app.
+
+ROUTES: MAPPING URLS TO FUNCTIONS
+--------------------------------------------------------------------------------
+A route connects a URL to a Python function:
+
+```python
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # Process login form
+        email = request.form['email']
+        # ... validate and log in user
+    return render_template('login.html')
+```
+
+Key concepts:
+- **@app.route()**: Decorator that registers the function as a route handler
+- **methods**: List of HTTP methods the route accepts (GET, POST, etc.)
+- **request**: Global object containing form data, query params, headers
+- **render_template()**: Renders a Jinja2 template with context data
+
+TEMPLATES: GENERATING HTML
+--------------------------------------------------------------------------------
+Flask uses Jinja2 for templating. Templates are HTML files with special syntax
+for inserting Python expressions and control flow:
+
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Welcome, {{ current_user.display_name }}!</h1>
+<ul>
+{% for regatta in regattas %}
+    <li>{{ regatta.name }} - {{ regatta.date }}</li>
+{% endfor %}
+</ul>
+{% endblock %}
+```
+
+Key features:
+- **{% extends %}**: Template inheritance (DRY principle)
+- **{% block %}**: Define sections that child templates can override
+- **{{ variable }}**: Output a Python variable value
+- **{% for %}**: Loop over iterables
+
+EXTENSIONS: ADDING FUNCTIONALITY
+--------------------------------------------------------------------------------
+Flask extensions add features. This app uses:
+
+- **Flask-SQLAlchemy**: ORM for database operations (Day 3)
+- **Flask-Login**: User session management (Day 4)
+- **Flask-Migrate**: Database schema migrations (Day 10)
+- **Flask-WTF**: CSRF protection (Day 4)
+
+Extensions are initialized at the module level, then attached to the app in
+the factory:
+
+```python
+db = SQLAlchemy()                # Create extension instance
+
+def create_app():
+    app = Flask(__name__)
+    db.init_app(app)             # Attach to app
+    return app
+```
+
+This two-step process is required for the factory pattern to work.
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **Docker Compose orchestrates two containers** for local development:
+   web (Flask/Gunicorn) and db (MySQL). Production uses AWS Lightsail.
+
+2. **The application factory pattern** (`create_app()`) creates a configured
+   Flask instance. This enables testing and multiple configurations.
+
+3. **Blueprints organize routes** into logical modules. This keeps code
+   organized as the application grows.
+
+4. **Flask handles the HTTP request/response cycle**. Routes map URLs to
+   Python functions. Templates render HTML with dynamic data.
+
+5. **Docker volumes persist data** across container restarts. The mysql_data
+   volume stores the database, and uploads stores user files locally.
+   In production, file uploads use S3-compatible object storage.
+
+6. **Flask CLI commands** (like `flask create-admin`) extend the framework
+   with custom administrative tasks.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 2, we'll dive deep into the application factory pattern and understand
+how Flask extensions are initialized. We'll explore configuration management
+with environment variables and see how the app bootstraps itself on startup.
+
+You now have a running Flask application! Before moving on, try:
+- Creating a few more regattas
+- Changing your RSVP status
+- Exploring the Crew page (invite management)
+- Viewing the application logs in the terminal
+
+Questions to ponder:
+- How does Flask know which function to call for a given URL?
+- Where is the HTML for the login page stored?
+- How does the web container know when MySQL is ready?
+
+See you in Day 2!
+
+================================================================================

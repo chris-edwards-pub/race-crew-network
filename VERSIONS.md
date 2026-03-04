@@ -1,5 +1,10 @@
 # Version History
 
+## 0.35.0
+- Add 10-day Flask training curriculum (python-class/) with 12 text files
+- Training materials cover app architecture, models, auth, CRUD, RSVP, file uploads, iCal, Docker, and deployment
+- All lessons updated to reflect current codebase at v0.34.2 (Race Crew Network branding, 5 models, 4 blueprints, S3 storage, Lightsail deployment, CI/CD)
+
 ## 0.34.2
 - Extract JSON-LD description, organizer, address, and URLs for richer AI extraction (fixes missing notes)
 - Duplicate detection on document discovery review page with yellow warning rows

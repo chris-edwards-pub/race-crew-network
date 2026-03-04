@@ -1,0 +1,406 @@
+================================================================================
+                   DAY 10: DATABASE MIGRATIONS & DEPLOYMENT
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- Flask-Migrate and Alembic for database migrations
+- Creating and applying migrations
+- Automatic migration on startup
+- AWS Lightsail Container Service deployment
+- GitHub Actions CI/CD pipeline
+- Environment variable management
+- Managed database and automated backups
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Database schema versioning
+- Migration generation
+- Upgrade and downgrade functions
+- CI/CD pipelines with GitHub Actions
+- Container registries (GHCR)
+- Managed cloud services
+- Infrastructure as Code (Terraform)
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+- thistle-regatta-schedule/migrations/versions/* - Migration files
+- thistle-regatta-schedule/entrypoint.sh - Auto-migration on startup
+
+================================================================================
+                    PART 1: WHAT ARE DATABASE MIGRATIONS?
+================================================================================
+
+THE PROBLEM
+--------------------------------------------------------------------------------
+Your database schema changes as your app evolves:
+- Add new tables
+- Add/remove columns
+- Change column types
+- Add indexes
+
+How do you apply these changes to existing databases without data loss?
+
+THE SOLUTION: MIGRATIONS
+--------------------------------------------------------------------------------
+Migrations are scripts that transform database schema from one version to the
+next. Each migration has:
+- **upgrade()**: Apply the change
+- **downgrade()**: Undo the change
+
+Migrations form a version chain. You can upgrade or downgrade to any version.
+
+ALEMBIC
+--------------------------------------------------------------------------------
+Alembic is Python's database migration tool. Flask-Migrate wraps it for Flask
+apps.
+
+================================================================================
+                    PART 2: MIGRATION FILE STRUCTURE
+================================================================================
+
+EXAMPLE MIGRATION
+--------------------------------------------------------------------------------
+File: migrations/versions/c82d4c9ce2d5_add_calendar_token_to_users.py
+
+```python
+"""Add calendar_token to users
+
+Revision ID: c82d4c9ce2d5
+Revises: b741dd3b02c6
+Create Date: 2026-02-15 13:42:23.880068
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = 'c82d4c9ce2d5'
+down_revision = 'b741dd3b02c6'
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('calendar_token', sa.String(length=64), nullable=True))
+        batch_op.create_unique_constraint(None, ['calendar_token'])
+
+def downgrade():
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.drop_constraint(None, type_='unique')
+        batch_op.drop_column('calendar_token')
+```
+
+KEY ELEMENTS:
+
+**Revision Chain**:
+```python
+revision = 'c82d4c9ce2d5'  # This migration's ID
+down_revision = 'b741dd3b02c6'  # Previous migration
+```
+
+Alembic uses this to track version order.
+
+**upgrade()**:
+Applies the change:
+```python
+batch_op.add_column(sa.Column('calendar_token', sa.String(length=64), nullable=True))
+batch_op.create_unique_constraint(None, ['calendar_token'])
+```
+
+**downgrade()**:
+Reverses the change:
+```python
+batch_op.drop_constraint(None, type_='unique')
+batch_op.drop_column('calendar_token')
+```
+
+BATCH MODE:
+```python
+with op.batch_alter_table('users', schema=None) as batch_op:
+```
+
+Required for SQLite (which doesn't support ALTER TABLE directly). Works with
+all databases.
+
+================================================================================
+                    PART 3: CREATING MIGRATIONS
+================================================================================
+
+WORKFLOW
+--------------------------------------------------------------------------------
+
+1. **Modify models.py**:
+   Add/change model definitions.
+
+2. **Generate migration**:
+   ```bash
+   flask db migrate -m "Add calendar_token to users"
+   ```
+
+   This compares models.py to database and generates migration script.
+
+3. **Review migration**:
+   Check migrations/versions/*.py file. Alembic isn't perfect; you may need
+   to edit.
+
+4. **Apply migration**:
+   ```bash
+   flask db upgrade
+   ```
+
+   Applies pending migrations to database.
+
+INITIAL MIGRATION:
+```bash
+flask db init       # One-time: creates migrations/ directory
+flask db migrate -m "Initial schema"
+flask db upgrade
+```
+
+CHECKING STATUS:
+```bash
+flask db current    # Show current version
+flask db history    # Show migration history
+```
+
+DOWNGRADING:
+```bash
+flask db downgrade  # Undo last migration
+flask db downgrade <revision>  # Downgrade to specific version
+```
+
+================================================================================
+                    PART 4: AUTOMATIC MIGRATIONS ON STARTUP
+================================================================================
+
+ENTRYPOINT SCRIPT REVIEW
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/entrypoint.sh
+
+```bash
+#!/bin/sh
+set -e
+
+echo "Running database migrations..."
+flask db upgrade
+
+echo "Initializing admin account if needed..."
+flask init-admin
+
+echo "Starting Gunicorn..."
+exec gunicorn -c gunicorn.conf.py wsgi:app
+```
+
+**flask db upgrade**:
+Runs before starting Gunicorn. Ensures database schema is current.
+
+**flask init-admin**:
+Creates the initial admin user from INIT_ADMIN_EMAIL and INIT_ADMIN_PASSWORD
+environment variables. Safe to run repeatedly — skips if admin already exists.
+
+WHY THIS IS SAFE:
+- Migrations are idempotent (running twice doesn't break anything)
+- Alembic tracks applied migrations in alembic_version table
+- Already-applied migrations are skipped
+
+BENEFITS:
+- No manual migration step during deployment
+- Can deploy new version with `docker compose up --build`
+- Database always matches code
+
+================================================================================
+                    PART 5: PRODUCTION DEPLOYMENT
+================================================================================
+
+AWS LIGHTSAIL CONTAINER SERVICE
+--------------------------------------------------------------------------------
+This application is deployed on AWS Lightsail Container Service, which provides:
+- **Managed containers**: Auto-restart, health monitoring
+- **HTTPS endpoint**: SSL certificate provisioned and renewed automatically
+- **Custom domain**: racecrew.net with DNS via Route53
+- **Managed MySQL**: Lightsail database with automated daily backups
+- **Object Storage**: S3-compatible bucket for file uploads
+
+ARCHITECTURE:
+
+  Internet
+    |
+    | HTTPS (port 443)
+    v
+  Lightsail Container Service
+    |
+    | Routes to Gunicorn (port 8000)
+    v
+  Web Container (from GHCR image)
+    |
+    +---> Lightsail Managed MySQL
+    |
+    +---> Lightsail Object Storage (S3)
+
+GITHUB ACTIONS CI/CD
+--------------------------------------------------------------------------------
+The deployment pipeline runs automatically on push to master:
+
+1. **Build**: Docker image built with GitHub Actions
+2. **Scan**: Trivy scans image for CRITICAL/HIGH vulnerabilities
+3. **Push**: Image pushed to GHCR with SHA and version tags
+4. **Deploy**: AWS CLI deploys new image to Lightsail Container Service
+
+The pipeline blocks deployment if Trivy finds serious vulnerabilities.
+
+INFRASTRUCTURE AS CODE (TERRAFORM)
+--------------------------------------------------------------------------------
+All AWS resources are managed with Terraform:
+- Lightsail Container Service
+- Managed MySQL database
+- Object Storage bucket
+- SSL certificate
+- Route53 DNS records
+
+Terraform state stored in S3 with versioning. Changes are planned on PR and
+applied on merge to master via GitHub Actions.
+
+ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------------
+Production environment variables are stored in GitHub Secrets and passed to
+the Lightsail Container Service:
+
+```
+SECRET_KEY=<64-character-random-string>
+DATABASE_URL=mysql+pymysql://user:pass@host:3306/dbname
+BUCKET_NAME=<lightsail-bucket-name>
+AWS_REGION=us-east-1
+ANTHROPIC_API_KEY=<api-key>
+INIT_ADMIN_EMAIL=admin@racecrew.net
+INIT_ADMIN_PASSWORD=<strong-password>
+```
+
+**Generate SECRET_KEY**:
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+================================================================================
+                    PART 6: BACKUP STRATEGIES
+================================================================================
+
+DATABASE BACKUP (PRODUCTION)
+--------------------------------------------------------------------------------
+Lightsail Managed MySQL provides automated backups:
+- **Daily snapshots**: Retained for 7 days
+- **Preferred window**: 06:00-06:30 UTC (2:00-2:30 AM ET)
+- **Point-in-time recovery**: Restore to any second within retention period
+- **Final snapshot**: Created automatically on database deletion
+
+No manual backup scripts needed for production.
+
+DATABASE BACKUP (LOCAL DEVELOPMENT)
+--------------------------------------------------------------------------------
+**Manual Backup**:
+```bash
+docker compose exec db mysqldump -u racecrew -pracecrew racecrew > backup.sql
+```
+
+**Restore**:
+```bash
+docker compose exec -T db mysql -u racecrew -pracecrew racecrew < backup.sql
+```
+
+FILE BACKUP
+--------------------------------------------------------------------------------
+File uploads are stored in Lightsail Object Storage (S3-compatible) with
+**versioning enabled**. This protects against accidental deletion — previous
+versions of objects are retained.
+
+DISASTER RECOVERY
+--------------------------------------------------------------------------------
+To restore from scratch:
+1. Provision infrastructure with Terraform
+2. Restore database from Lightsail snapshot
+3. File uploads are already in Object Storage (versioned)
+4. Deploy container via GitHub Actions (or manual AWS CLI deploy)
+5. Admin account is created automatically from env vars on first start
+
+================================================================================
+                    PART 7: MIGRATION BEST PRACTICES
+================================================================================
+
+DO:
+- Review generated migrations before applying
+- Test migrations on dev database first
+- Backup before migrating production
+- Use descriptive migration messages
+- Keep migrations small and focused
+
+DON'T:
+- Edit applied migrations (create new ones instead)
+- Delete migration files
+- Manually modify alembic_version table
+- Skip downgrade() implementation
+
+COMMON MIGRATION TASKS:
+
+**Add column**:
+```python
+batch_op.add_column(sa.Column('new_field', sa.String(100), nullable=True))
+```
+
+**Remove column**:
+```python
+batch_op.drop_column('old_field')
+```
+
+**Change column type**:
+```python
+batch_op.alter_column('field_name', type_=sa.String(255))
+```
+
+**Add index**:
+```python
+batch_op.create_index('idx_email', ['email'])
+```
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **Migrations version database schema**. Each migration transforms schema
+   from one version to the next.
+
+2. **Flask-Migrate wraps Alembic** for Flask apps. Use `flask db` commands
+   to manage migrations.
+
+3. **Automatic migration on startup** ensures database matches code. The
+   entrypoint script runs `flask db upgrade` before starting Gunicorn.
+
+4. **CI/CD automates deployment**. GitHub Actions builds images, scans for
+   vulnerabilities, and deploys to Lightsail on every push to master.
+
+5. **Managed services reduce operations burden**. Lightsail handles HTTPS
+   certificates, database backups, and container health monitoring.
+
+6. **Infrastructure as Code** (Terraform) makes infrastructure reproducible
+   and version-controlled alongside application code.
+
+CONGRATULATIONS!
+--------------------------------------------------------------------------------
+You've completed the 10-day Flask training! You now understand:
+- Flask application architecture (factory pattern, blueprints)
+- Database modeling with SQLAlchemy (5 models, relationships)
+- Authentication and authorization (Flask-Login, invite system)
+- File uploads with S3 cloud storage
+- iCal calendar feeds
+- Docker containerization and GHCR
+- CI/CD with GitHub Actions
+- Production deployment on AWS Lightsail
+
+NEXT STEPS:
+- Deploy your own instance
+- Customize features for your needs
+- Explore the appendix for quick references
+- Review earlier sessions as needed
+
+See you in the appendix for quick reference materials!
+
+================================================================================

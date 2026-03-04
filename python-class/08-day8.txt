@@ -1,0 +1,303 @@
+================================================================================
+                   DAY 8: CALENDAR INTEGRATION (ICAL FEEDS)
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- iCalendar format and RFC 5545 standard
+- Using the icalendar Python library
+- Token-based feed authentication
+- Generating calendar events
+- All-day event handling
+- Calendar subscription URLs
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- iCal (.ics) format
+- Calendar feed generation
+- Token authentication for public feeds
+- All-day events vs timed events
+- MIME types and Content-Disposition headers
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+- thistle-regatta-schedule/app/calendar/routes.py - Calendar feed generation
+
+================================================================================
+                    PART 1: ICALENDAR FORMAT
+================================================================================
+
+WHAT IS ICAL?
+--------------------------------------------------------------------------------
+iCalendar (.ics) is a standard format for calendar data (RFC 5545). It's
+supported by:
+- Google Calendar
+- Apple Calendar
+- Outlook
+- Most calendar applications
+
+SUBSCRIPTION VS IMPORT:
+- **Import**: One-time copy (no updates)
+- **Subscribe**: Live feed (updates automatically)
+
+This app provides subscription feeds.
+
+================================================================================
+                    PART 2: TOKEN AUTHENTICATION
+================================================================================
+
+CALENDAR TOKEN
+--------------------------------------------------------------------------------
+From User model:
+```python
+calendar_token = db.Column(db.String(64), unique=True, nullable=True)
+```
+
+Each user gets a unique token for their calendar feed. Token is generated on
+first subscription request.
+
+SUBSCRIBE ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/calendar/routes.py:14-31
+
+```python
+@bp.route("/calendar/subscribe")
+@login_required
+def subscribe():
+    if not current_user.calendar_token:
+        current_user.calendar_token = secrets.token_urlsafe(32)
+        db.session.commit()
+
+    feed_url = url_for(
+        "calendar.ical_feed", token=current_user.calendar_token, _external=True
+    )
+    flash(Markup(
+        f'Subscribe to this URL in your calendar app: <a href="{feed_url}" class="alert-link">{feed_url}</a>'
+    ), "success")
+    return redirect(url_for("regattas.index"))
+```
+
+LAZY TOKEN GENERATION:
+Token only created when user requests feed URL. Most users never subscribe, so
+this saves database space.
+
+_EXTERNAL=TRUE:
+```python
+url_for("calendar.ical_feed", token=token, _external=True)
+```
+
+Generates full URL with domain:
+`https://example.com/calendar/abc123.ics`
+
+Calendar apps need full URLs to subscribe.
+
+================================================================================
+                    PART 3: FEED GENERATION
+================================================================================
+
+ICAL FEED ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/calendar/routes.py:34-92
+
+```python
+@bp.route("/calendar/<token>.ics")
+def ical_feed(token: str):
+    user = User.query.filter_by(calendar_token=token).first_or_404()
+
+    cal = Calendar()
+    cal.add("prodid", "-//Race Crew Network//EN")
+    cal.add("version", "2.0")
+    cal.add("calscale", "GREGORIAN")
+    cal.add("x-wr-calname", "Race Crew Network")
+    cal.add("method", "PUBLISH")
+
+    regattas = Regatta.query.order_by(Regatta.start_date).all()
+
+    for regatta in regattas:
+        event = Event()
+        event.add("uid", f"regatta-{regatta.id}@racecrew.net")
+        if regatta.boat_class and regatta.boat_class != "TBD":
+            event.add("summary", f"{regatta.boat_class} — {regatta.name}")
+        else:
+            event.add("summary", regatta.name)
+        event.add("dtstart", regatta.start_date)
+        end = (regatta.end_date or regatta.start_date) + timedelta(days=1)
+        event.add("dtend", end)
+        event.add("location", regatta.location)
+
+        if regatta.location_url:
+            event.add("url", regatta.location_url)
+
+        # Build description with RSVPs
+        lines = []
+        if regatta.notes:
+            lines.append(regatta.notes)
+
+        rsvps = regatta.rsvps.all()
+        if rsvps:
+            crew_lines = [f"  {r.user.initials}: {r.status}" for r in rsvps]
+            lines.append("Crew:\n" + "\n".join(crew_lines))
+
+        my_rsvp = RSVP.query.filter_by(
+            regatta_id=regatta.id, user_id=user.id
+        ).first()
+        if my_rsvp:
+            lines.append(f"Your RSVP: {my_rsvp.status.capitalize()}")
+
+        if lines:
+            event.add("description", "\n\n".join(lines))
+
+        cal.add_component(event)
+
+    response = Response(cal.to_ical(), mimetype="text/calendar")
+    response.headers["Content-Disposition"] = (
+        "attachment; filename=race-crew-network.ics"
+    )
+    return response
+```
+
+CALENDAR METADATA:
+```python
+cal.add("prodid", "-//Race Crew Network//EN")
+cal.add("version", "2.0")
+cal.add("x-wr-calname", "Race Crew Network")
+```
+
+Standard iCal properties identifying the calendar.
+
+EVENT PROPERTIES:
+- **uid**: Unique identifier (used for updates)
+- **summary**: Event title (includes boat class when set, e.g. "Thistle — Midwinters")
+- **dtstart**: Start date
+- **dtend**: End date
+- **location**: Location text
+- **url**: Associated URL
+- **description**: Event details
+
+BOAT CLASS IN SUMMARY:
+```python
+if regatta.boat_class and regatta.boat_class != "TBD":
+    event.add("summary", f"{regatta.boat_class} — {regatta.name}")
+else:
+    event.add("summary", regatta.name)
+```
+When a boat class is specified, it's prepended to the event title so
+calendar entries clearly show what class the regatta is for.
+
+ALL-DAY EVENTS:
+```python
+event.add("dtstart", regatta.start_date)
+```
+
+When you pass a date object (not datetime), it's treated as all-day event.
+
+END DATE HANDLING:
+```python
+end = (regatta.end_date or regatta.start_date) + timedelta(days=1)
+event.add("dtend", end)
+```
+
+iCal end dates are EXCLUSIVE. A one-day event from Jan 1 has:
+- dtstart: Jan 1
+- dtend: Jan 2
+
+Adding timedelta(days=1) makes the math correct.
+
+================================================================================
+                    PART 4: BUILDING DESCRIPTIONS
+================================================================================
+
+DESCRIPTION WITH RSVPs
+--------------------------------------------------------------------------------
+```python
+lines = []
+if regatta.notes:
+    lines.append(regatta.notes)
+
+rsvps = regatta.rsvps.all()
+if rsvps:
+    crew_lines = [f"  {r.user.initials}: {r.status}" for r in rsvps]
+    lines.append("Crew:\n" + "\n".join(crew_lines))
+
+my_rsvp = RSVP.query.filter_by(regatta_id=regatta.id, user_id=user.id).first()
+if my_rsvp:
+    lines.append(f"Your RSVP: {my_rsvp.status.capitalize()}")
+
+if lines:
+    event.add("description", "\n\n".join(lines))
+```
+
+PERSONALIZATION:
+Each user's feed includes their own RSVP status in the description. This makes
+the calendar feed personal to each user.
+
+================================================================================
+                    PART 5: RESPONSE FORMAT
+================================================================================
+
+ICAL RESPONSE
+--------------------------------------------------------------------------------
+```python
+response = Response(cal.to_ical(), mimetype="text/calendar")
+response.headers["Content-Disposition"] = "attachment; filename=race-crew-network.ics"
+return response
+```
+
+MIME TYPE:
+`text/calendar` tells browsers and calendar apps this is iCal data.
+
+CONTENT-DISPOSITION:
+`attachment; filename=race-crew-network.ics` suggests a download filename.
+
+TO_ICAL():
+The icalendar library's method to serialize Calendar object to iCal format.
+
+================================================================================
+                    PART 6: SECURITY CONSIDERATIONS
+================================================================================
+
+PUBLIC BUT SECRET
+--------------------------------------------------------------------------------
+The feed URL is:
+- **Public**: No authentication required (calendar apps can't login)
+- **Secret**: URL contains unguessable token
+
+This is standard practice for calendar feeds. Anyone with the URL can access
+it, but the URL itself is the secret.
+
+TOKEN PROPERTIES:
+- 32 bytes from secrets.token_urlsafe()
+- URL-safe characters only
+- Cryptographically random
+
+REVOKING ACCESS:
+To revoke a user's calendar access:
+1. Set calendar_token to NULL
+2. Generate new token on next subscription request
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **iCal format (RFC 5545)** is the standard for calendar data. The
+   icalendar library handles formatting details.
+
+2. **Token-based authentication** allows public access without login. The
+   token itself is the secret.
+
+3. **All-day events** use date objects (not datetime). End dates are
+   EXCLUSIVE in iCal format.
+
+4. **Personalized feeds** include user-specific data (their RSVP status)
+   without exposing other private information.
+
+5. **Calendar subscriptions** update automatically. Users see changes without
+   re-importing.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 9, we'll explore Docker and containerization in depth, covering the
+Dockerfile, docker-compose orchestration, Gunicorn, and GHCR publishing.
+
+================================================================================

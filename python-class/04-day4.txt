@@ -1,0 +1,503 @@
+================================================================================
+                   DAY 4: AUTHENTICATION & USER MANAGEMENT
+================================================================================
+
+LEARNING OBJECTIVES
+--------------------------------------------------------------------------------
+By the end of this session, you will understand:
+- Flask-Login integration and how user sessions work
+- Login and logout implementation
+- The invite-based registration system with tokens
+- User profile management
+- Admin user administration features
+- Authorization patterns (@login_required, role checks)
+
+CONCEPTS COVERED
+--------------------------------------------------------------------------------
+- Flask-Login and session management
+- User authentication flow
+- Token-based invite system
+- Form validation and flash messages
+- Authorization vs authentication
+- Admin-only routes
+- Password change functionality
+
+FILE FOCUS
+--------------------------------------------------------------------------------
+For this session, examine:
+- thistle-regatta-schedule/app/auth/routes.py - All authentication routes
+- thistle-regatta-schedule/app/models.py:9-44 - User model and user_loader
+
+================================================================================
+                    PART 1: FLASK-LOGIN OVERVIEW
+================================================================================
+
+WHAT IS FLASK-LOGIN?
+--------------------------------------------------------------------------------
+Flask-Login manages user sessions. It handles:
+- Storing user ID in encrypted session cookies
+- Loading user from database on each request
+- Protecting routes with @login_required
+- Providing current_user in routes and templates
+
+SETUP AND CONFIGURATION
+--------------------------------------------------------------------------------
+From app/__init__.py:
+```python
+login_manager = LoginManager()
+login_manager.login_view = "auth.login"
+```
+
+login_view sets the route to redirect to when authentication is required.
+
+USER LOADER FUNCTION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/models.py:42-44 (current line numbers)
+
+```python
+@login_manager.user_loader
+def load_user(user_id: str):
+    return db.session.get(User, int(user_id))
+```
+
+Flask-Login calls this on every request to load the user from the session
+cookie. The user_id is stored in the cookie; this function retrieves the full
+User object from the database.
+
+CURRENT_USER OBJECT
+--------------------------------------------------------------------------------
+Flask-Login provides current_user, a proxy to the logged-in user:
+
+```python
+from flask_login import current_user
+
+if current_user.is_authenticated:
+    print(f"Logged in as {current_user.display_name}")
+else:
+    print("Not logged in")
+```
+
+Available everywhere after login_manager is initialized.
+
+================================================================================
+                    PART 2: LOGIN AND LOGOUT
+================================================================================
+
+LOGIN ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:9-26 (current line numbers)
+
+```python
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("regattas.index"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.invite_token is None and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("regattas.index"))
+
+        flash("Invalid email or password.", "error")
+
+    return render_template("login.html")
+```
+
+STEP-BY-STEP LOGIN FLOW
+--------------------------------------------------------------------------------
+
+1. **Check if already logged in**:
+   ```python
+   if current_user.is_authenticated:
+       return redirect(url_for("regattas.index"))
+   ```
+   If already authenticated, send to main page.
+
+2. **Handle POST request** (form submission):
+   ```python
+   if request.method == "POST":
+   ```
+   GET shows the form, POST processes it.
+
+3. **Extract form data**:
+   ```python
+   email = request.form.get("email", "").strip().lower()
+   password = request.form.get("password", "")
+   ```
+   Normalize email to lowercase for case-insensitive matching.
+
+4. **Find user by email**:
+   ```python
+   user = User.query.filter_by(email=email).first()
+   ```
+   Returns User object or None.
+
+5. **Validate credentials**:
+   ```python
+   if user and user.invite_token is None and user.check_password(password):
+   ```
+   Three checks:
+   - user exists
+   - invite_token is None (registration complete)
+   - password matches
+
+6. **Log in the user**:
+   ```python
+   login_user(user)
+   ```
+   Creates session cookie with encrypted user ID.
+
+7. **Redirect to next page**:
+   ```python
+   next_page = request.args.get("next")
+   return redirect(next_page or url_for("regattas.index"))
+   ```
+   If user was redirected to login from a protected page, return them there.
+   Otherwise go to main page.
+
+8. **Show error on failure**:
+   ```python
+   flash("Invalid email or password.", "error")
+   ```
+   Flash message appears on next page render.
+
+LOGOUT ROUTE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:29-33 (current line numbers)
+
+```python
+@bp.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("auth.login"))
+```
+
+@login_required ensures only authenticated users can logout. logout_user()
+clears the session cookie.
+
+================================================================================
+                    PART 3: INVITE-BASED REGISTRATION
+================================================================================
+
+WHY INVITE-BASED?
+--------------------------------------------------------------------------------
+This app doesn't have public registration. Admins must invite users by email.
+This prevents spam accounts and keeps the app private.
+
+INVITE FLOW
+--------------------------------------------------------------------------------
+1. Admin enters email on /admin/users page
+2. System creates User with invite_token set
+3. Admin copies invite link and sends to person
+4. Person visits link, sets name/initials/password
+5. invite_token is cleared, marking registration complete
+
+CREATING AN INVITE
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:122-153 (current line numbers)
+
+```python
+@bp.route("/admin/users/invite", methods=["POST"])
+@login_required
+def invite_user():
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    import secrets
+
+    email = request.form.get("email", "").strip().lower()
+    if not email:
+        flash("Email is required.", "error")
+        return redirect(url_for("auth.admin_users"))
+
+    if User.query.filter_by(email=email).first():
+        flash("A user with that email already exists.", "error")
+        return redirect(url_for("auth.admin_users"))
+
+    token = secrets.token_urlsafe(32)
+    user = User(
+        email=email,
+        password_hash="pending",
+        display_name=email,
+        initials="??",
+        invite_token=token,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    invite_url = url_for("auth.register", token=token, _external=True)
+    flash(f"Invite link: {invite_url}", "success")
+    return redirect(url_for("auth.admin_users"))
+```
+
+KEY POINTS:
+- **Admin check**: Only admins can invite
+- **Token generation**: secrets.token_urlsafe(32) creates a random 32-byte token
+- **Placeholder data**: User created with temporary values
+- **_external=True**: Generates full URL with domain
+
+COMPLETING REGISTRATION
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:36-64 (current line numbers)
+
+```python
+@bp.route("/register/<token>", methods=["GET", "POST"])
+def register(token: str):
+    user = User.query.filter_by(invite_token=token).first_or_404()
+
+    if request.method == "POST":
+        display_name = request.form.get("display_name", "").strip()
+        initials = request.form.get("initials", "").strip().upper()
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+
+        if not display_name or not initials:
+            flash("Name and initials are required.", "error")
+        elif len(initials) < 2 or len(initials) > 3:
+            flash("Initials must be 2-3 characters.", "error")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+        elif password != password2:
+            flash("Passwords do not match.", "error")
+        else:
+            user.display_name = display_name
+            user.initials = initials
+            user.set_password(password)
+            user.invite_token = None  # Mark registration complete
+            db.session.commit()
+            login_user(user)
+            flash("Welcome aboard!", "success")
+            return redirect(url_for("regattas.index"))
+
+    return render_template("register.html", user=user)
+```
+
+VALIDATION CHAIN:
+1. Find user by token (404 if not found)
+2. Validate all required fields present
+3. Validate initials length (2-3 characters)
+4. Validate password length (minimum 6)
+5. Validate passwords match
+6. Update user and clear invite_token
+7. Log user in automatically
+8. Redirect to main page
+
+================================================================================
+                    PART 4: USER PROFILE MANAGEMENT
+================================================================================
+
+PROFILE EDITING
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:67-98 (current line numbers)
+
+Users can edit their own profile. Key features:
+- Change display name, initials, email
+- Optional password change
+- Optional phone number
+- Email uniqueness validation
+
+```python
+@bp.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    if request.method == "POST":
+        # ... validation ...
+
+        current_user.display_name = display_name
+        current_user.initials = initials
+        current_user.email = email
+        current_user.phone = request.form.get("phone", "").strip() or None
+
+        if password:
+            current_user.set_password(password)
+
+        db.session.commit()
+        flash("Profile updated.", "success")
+        return redirect(url_for("auth.profile"))
+
+    return render_template("profile.html")
+```
+
+OPTIONAL PASSWORD CHANGE:
+```python
+if password:
+    current_user.set_password(password)
+```
+Password only updated if provided. Allows users to change other fields without
+changing password.
+
+EMAIL UNIQUENESS CHECK:
+```python
+elif email != current_user.email and User.query.filter_by(email=email).first():
+    flash("That email is already in use.", "error")
+```
+Only check if email changed. Allows user to submit form without changing email.
+
+================================================================================
+                    PART 5: ADMIN USER MANAGEMENT
+================================================================================
+
+ADMIN-ONLY ROUTES
+--------------------------------------------------------------------------------
+All admin routes start with the same authorization check:
+
+```python
+if not current_user.is_admin:
+    flash("Access denied.", "error")
+    return redirect(url_for("regattas.index"))
+```
+
+This is manual authorization checking. Some frameworks have decorators for
+this, but explicit checks work fine for small apps.
+
+USER LISTING
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:111-119 (current line numbers)
+
+```python
+@bp.route("/admin/users")
+@login_required
+def admin_users():
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    users = User.query.order_by(User.display_name).all()
+    return render_template("admin_users.html", users=users)
+```
+
+Shows all users sorted by name. Includes pending invites (invite_token set).
+
+EDITING OTHER USERS
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:156-195 (current line numbers)
+
+Admins can:
+- Change any user's name, initials, email
+- Toggle admin status
+- Reset passwords
+- Cannot delete themselves
+
+```python
+user.is_admin = is_admin
+```
+This allows admins to promote/demote users.
+
+DELETING USERS
+--------------------------------------------------------------------------------
+File: thistle-regatta-schedule/app/auth/routes.py:198-215 (current line numbers)
+
+```python
+@bp.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+def delete_user(user_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "error")
+    elif user.id == current_user.id:
+        flash("You cannot delete yourself.", "error")
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User {user.display_name} deleted.", "success")
+
+    return redirect(url_for("auth.admin_users"))
+```
+
+SAFETY CHECK:
+```python
+elif user.id == current_user.id:
+    flash("You cannot delete yourself.", "error")
+```
+Prevents admins from accidentally locking themselves out.
+
+================================================================================
+                    PART 6: AUTHENTICATION VS AUTHORIZATION
+================================================================================
+
+AUTHENTICATION
+--------------------------------------------------------------------------------
+**Who are you?** Proving identity via login credentials.
+
+In this app:
+- Flask-Login manages sessions
+- login_user() creates session
+- current_user provides identity
+- @login_required ensures authentication
+
+AUTHORIZATION
+--------------------------------------------------------------------------------
+**What can you do?** Determining permissions based on identity.
+
+In this app:
+- is_admin boolean on User model
+- Manual checks: `if not current_user.is_admin`
+- Two roles: Admin (full access) and Crew (view + RSVP)
+
+PROTECTION PATTERNS
+--------------------------------------------------------------------------------
+
+**Require login**:
+```python
+@login_required
+def some_route():
+    # Only authenticated users
+```
+
+**Require admin**:
+```python
+@login_required
+def admin_route():
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+    # Only admins past this point
+```
+
+**Owner-only access**:
+```python
+if resource.owner_id != current_user.id:
+    flash("Access denied.", "error")
+    return redirect(...)
+```
+
+================================================================================
+                          KEY TAKEAWAYS
+================================================================================
+
+1. **Flask-Login manages user sessions** via encrypted cookies. The user_loader
+   function retrieves the full User object on each request.
+
+2. **Login validates three things**: user exists, registration is complete
+   (invite_token is None), and password matches.
+
+3. **Invite-based registration** uses random tokens to prevent public sign-ups.
+   Admins create User with token, invitee completes registration via link.
+
+4. **Flash messages provide feedback** to users. They persist across one
+   redirect and then disappear.
+
+5. **Authorization is separate from authentication**. @login_required handles
+   authentication, manual checks handle authorization.
+
+6. **Password changes are optional** in profile editing. Only update password
+   if provided.
+
+WHAT'S NEXT?
+--------------------------------------------------------------------------------
+In Day 5, we'll explore regatta management with full CRUD operations. You'll
+see how to create, read, update, and delete regattas, with form processing
+and date handling.
+
+================================================================================
