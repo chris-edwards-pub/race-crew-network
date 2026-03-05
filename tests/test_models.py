@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.models import RSVP, Document, ImportCache, Regatta, User
+from app.models import RSVP, Document, ImportCache, Regatta, SiteSetting, User
 
 
 class TestUserModel:
@@ -205,6 +205,29 @@ class TestImportCacheModel:
             regatta_count=0,
         )
         db.session.add(cache2)
+        with pytest.raises(Exception):
+            db.session.commit()
+        db.session.rollback()
+
+
+class TestSiteSettingModel:
+    def test_create_setting(self, app, db):
+        setting = SiteSetting(key="ga_measurement_id", value="G-TEST123")
+        db.session.add(setting)
+        db.session.commit()
+
+        assert setting.id is not None
+        assert setting.key == "ga_measurement_id"
+        assert setting.value == "G-TEST123"
+        assert setting.updated_at is not None
+
+    def test_key_unique_constraint(self, app, db):
+        first = SiteSetting(key="ga_measurement_id", value="G-ONE")
+        db.session.add(first)
+        db.session.commit()
+
+        duplicate = SiteSetting(key="ga_measurement_id", value="G-TWO")
+        db.session.add(duplicate)
         with pytest.raises(Exception):
             db.session.commit()
         db.session.rollback()

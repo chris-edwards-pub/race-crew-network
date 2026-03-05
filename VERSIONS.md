@@ -1,5 +1,12 @@
 # Version History
 
+## 0.36.0
+- Add database-backed site settings table for runtime configuration values
+- Add admin analytics settings page to manage Google Analytics Measurement ID
+- Add Admin navbar dropdown with Analytics Settings menu item
+- Inject GA script in base template only when configured and not in development/testing
+- Add migration and test coverage for site settings model, admin route access, and GA render behavior
+
 ## 0.35.1
 - Convert training files from ASCII-formatted text to Markdown (.txt → .md)
 - Replace old project name references (thistle-regatta-schedule → race-crew-network)
