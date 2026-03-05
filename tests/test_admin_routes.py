@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, timezone
 from unittest.mock import patch
 
-from app.models import Document, ImportCache, Regatta, User
+from app.models import Document, ImportCache, Regatta, SiteSetting, User
 
 
 class TestAdminAccessUnauthenticated:
@@ -22,6 +22,11 @@ class TestAdminAccessUnauthenticated:
 
     def test_import_paste_requires_login(self, client):
         resp = client.get("/admin/import-paste")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_analytics_settings_requires_login(self, client):
+        resp = client.get("/admin/settings/analytics")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
@@ -43,6 +48,25 @@ class TestAdminAccessUnauthenticated:
             follow_redirects=True,
         )
         resp = client.get("/admin/import-multiple", follow_redirects=True)
+        assert b"Access denied" in resp.data
+
+    def test_analytics_settings_requires_admin(self, app, client, db):
+        user = User(
+            email="crew2@test.com",
+            display_name="Crew 2",
+            initials="C2",
+            is_admin=False,
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "crew2@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get("/admin/settings/analytics", follow_redirects=True)
         assert b"Access denied" in resp.data
 
 
@@ -69,6 +93,23 @@ class TestAdminAccessAuthenticated:
         resp = logged_in_client.get("/admin/import-paste")
         assert resp.status_code == 200
         assert b"Paste Schedule Text" in resp.data
+
+    def test_analytics_settings_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/settings/analytics")
+        assert resp.status_code == 200
+        assert b"Analytics Settings" in resp.data
+
+    def test_analytics_settings_persists_measurement_id(self, logged_in_client):
+        resp = logged_in_client.post(
+            "/admin/settings/analytics",
+            data={"ga_measurement_id": "G-TESTABC123"},
+            follow_redirects=True,
+        )
+        assert b"Google Analytics settings updated" in resp.data
+
+        setting = SiteSetting.query.filter_by(key="ga_measurement_id").first()
+        assert setting is not None
+        assert setting.value == "G-TESTABC123"
 
 
 class TestImportSchedulePreview:

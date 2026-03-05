@@ -28,6 +28,12 @@
                     {% if current_user.is_admin %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
                     <li class="nav-item dropdown">
+                        <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.analytics_settings') }}">Analytics Settings</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
                         <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{{ url_for('admin.import_single') }}">Single Regatta</a></li>
@@ -70,6 +76,15 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% if ga_measurement_id and not is_dev_or_test %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', '{{ ga_measurement_id }}');
+    </script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

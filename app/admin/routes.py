@@ -18,7 +18,7 @@ from app import db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
-from app.models import Document, ImportCache, Regatta
+from app.models import Document, ImportCache, Regatta, SiteSetting
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,17 @@ def _upsert_import_cache(url: str, year: int, regattas: list[dict]) -> None:
             extracted_at=now,
         )
         db.session.add(cached)
+    db.session.commit()
+
+
+def _upsert_site_setting(key: str, value: str) -> None:
+    """Insert or update a site setting key-value pair."""
+    setting = SiteSetting.query.filter_by(key=key).first()
+    if setting:
+        setting.value = value
+    else:
+        setting = SiteSetting(key=key, value=value)
+        db.session.add(setting)
     db.session.commit()
 
 
@@ -345,6 +356,37 @@ def import_paste():
     if denied:
         return denied
     return render_template("admin/import_paste.html")
+
+
+@bp.route("/admin/settings/analytics", methods=["GET", "POST"])
+@login_required
+def analytics_settings():
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    if request.method == "POST":
+        ga_measurement_id = request.form.get("ga_measurement_id", "").strip().upper()
+        _upsert_site_setting("ga_measurement_id", ga_measurement_id)
+
+        if ga_measurement_id and not re.match(r"^(G|GT)-[A-Z0-9]+$", ga_measurement_id):
+            flash(
+                "Measurement ID saved, but format looks unusual. Expected examples: G-XXXXXXX or GT-XXXXXXX.",
+                "warning",
+            )
+
+        flash("Google Analytics settings updated.", "success")
+        return redirect(url_for("admin.analytics_settings"))
+
+    ga_measurement_id = ""
+    setting = SiteSetting.query.filter_by(key="ga_measurement_id").first()
+    if setting and setting.value:
+        ga_measurement_id = setting.value
+
+    return render_template(
+        "admin/analytics_settings.html",
+        ga_measurement_id=ga_measurement_id,
+    )
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])

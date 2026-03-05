@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Analytics Settings — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-3">
+    <div class="col-md-6 col-lg-5">
+        <h2 class="mb-3">Analytics Settings</h2>
+        <p class="text-muted">
+            Configure the Google Analytics Measurement ID used for tracking in production.
+            Tracking is automatically disabled in development and testing.
+        </p>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="ga_measurement_id" class="form-label">Measurement ID</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="ga_measurement_id"
+                    name="ga_measurement_id"
+                    value="{{ ga_measurement_id }}"
+                    placeholder="G-XXXXXXXXXX"
+                >
+                <div class="form-text">Example values: G-XXXXXXXXXX or GT-XXXXXXXXXX</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

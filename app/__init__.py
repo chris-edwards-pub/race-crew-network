@@ -3,8 +3,9 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.35.1"
+__version__ = "0.36.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -42,6 +43,27 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_version():
         return {"app_version": __version__}
+
+    @app.context_processor
+    def inject_site_settings():
+        from app.models import SiteSetting
+
+        ga_measurement_id = ""
+        try:
+            ga_setting = SiteSetting.query.filter_by(key="ga_measurement_id").first()
+            if ga_setting and ga_setting.value:
+                ga_measurement_id = ga_setting.value.strip()
+        except SQLAlchemyError:
+            ga_measurement_id = ""
+
+        is_dev_or_test = bool(app.config.get("TESTING")) or (
+            app.config.get("ENV") == "development"
+        )
+
+        return {
+            "ga_measurement_id": ga_measurement_id,
+            "is_dev_or_test": is_dev_or_test,
+        }
 
     @app.template_filter("sort_rsvps")
     def sort_rsvps(rsvps):
