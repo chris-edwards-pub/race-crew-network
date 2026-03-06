@@ -47,7 +47,7 @@ class TestRegattaModel:
         assert regatta.id is not None
         assert regatta.name == "Test Regatta"
 
-    def test_boat_class_defaults_to_tbd(self, app, db, admin_user):
+    def test_boat_class_defaults_to_blank(self, app, db, admin_user):
         regatta = Regatta(
             name="Default Class Test",
             location="Test YC",
@@ -57,7 +57,7 @@ class TestRegattaModel:
         db.session.add(regatta)
         db.session.commit()
 
-        assert regatta.boat_class == "TBD"
+        assert regatta.boat_class == ""
 
     def test_boat_class_explicit_value(self, app, db, admin_user):
         regatta = Regatta(

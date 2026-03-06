@@ -1,5 +1,11 @@
 # Version History
 
+## 0.37.0
+- Remove "TBD" placeholder behavior for regatta boat class and leave class blank when unknown
+- Update regatta create/edit and admin import flows to preserve blank boat class values
+- Add migration to convert existing `TBD` boat class values to blank and set DB default to blank
+- Update calendar summary logic and tests for blank boat class behavior
+
 ## 0.36.0
 - Add database-backed site settings table for runtime configuration values
 - Add admin analytics settings page to manage Google Analytics Measurement ID

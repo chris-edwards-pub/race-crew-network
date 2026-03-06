@@ -249,7 +249,7 @@ def delete_doc(doc_id: int):
 
 def _save_regatta(regatta: Regatta | None):
     name = request.form.get("name", "").strip()
-    boat_class = request.form.get("boat_class", "").strip() or "TBD"
+    boat_class = request.form.get("boat_class", "").strip()
     location = request.form.get("location", "").strip()
     location_url = request.form.get("location_url", "").strip()
     start_date_str = request.form.get("start_date", "")
