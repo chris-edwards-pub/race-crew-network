@@ -1,5 +1,10 @@
 # Version History
 
+## 0.39.0
+- Show day(s) of week below regatta dates in schedule views
+- Format day ranges as: single day `Sat`, two-day `Sat & Sun`, multi-day `Sat thru Mon`
+- Apply day-of-week display in both the main schedule and printable PDF schedule
+
 ## 0.38.1
 - Moved the Google Analyics tag from the footer below the head
 
