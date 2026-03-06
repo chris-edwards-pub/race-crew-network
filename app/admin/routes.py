@@ -790,7 +790,7 @@ def import_schedule_confirm():
 
     for idx in selected:
         name = request.form.get(f"name_{idx}", "").strip()
-        boat_class = request.form.get(f"boat_class_{idx}", "").strip() or "TBD"
+        boat_class = request.form.get(f"boat_class_{idx}", "").strip()
         location = request.form.get(f"location_{idx}", "").strip()
         location_url = request.form.get(f"location_url_{idx}", "").strip()
         start_date_str = request.form.get(f"start_date_{idx}", "").strip()
@@ -893,8 +893,7 @@ def import_schedule_discover():
             {
                 "idx": idx,
                 "name": request.form.get(f"name_{idx}", "").strip(),
-                "boat_class": request.form.get(f"boat_class_{idx}", "").strip()
-                or "TBD",
+                "boat_class": request.form.get(f"boat_class_{idx}", "").strip(),
                 "location": request.form.get(f"location_{idx}", "").strip(),
                 "location_url": request.form.get(f"location_url_{idx}", "").strip(),
                 "start_date": request.form.get(f"start_date_{idx}", "").strip(),

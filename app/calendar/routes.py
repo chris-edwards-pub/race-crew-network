@@ -48,7 +48,7 @@ def ical_feed(token: str):
     for regatta in regattas:
         event = Event()
         event.add("uid", f"regatta-{regatta.id}@racecrew.net")
-        if regatta.boat_class and regatta.boat_class != "TBD":
+        if regatta.boat_class:
             event.add("summary", f"{regatta.boat_class} — {regatta.name}")
         else:
             event.add("summary", regatta.name)

@@ -174,7 +174,7 @@ class TestImportScheduleConfirm:
         assert regatta.start_date == date(2026, 9, 1)
         assert regatta.boat_class == "Thistle"
 
-    def test_imports_regatta_boat_class_defaults_to_tbd(
+    def test_imports_regatta_boat_class_defaults_to_blank(
         self, app, logged_in_client, db
     ):
         resp = logged_in_client.post(
@@ -195,7 +195,7 @@ class TestImportScheduleConfirm:
 
         regatta = Regatta.query.filter_by(name="No Class Regatta").first()
         assert regatta is not None
-        assert regatta.boat_class == "TBD"
+        assert regatta.boat_class == ""
 
     def test_skips_duplicate(self, app, logged_in_client, db, admin_user):
         existing = Regatta(

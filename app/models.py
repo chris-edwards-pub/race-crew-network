@@ -49,7 +49,7 @@ class Regatta(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    boat_class = db.Column(db.String(100), nullable=False, default="TBD")
+    boat_class = db.Column(db.String(100), nullable=False, default="")
     location = db.Column(db.String(200), nullable=False)
     location_url = db.Column(db.String(500), nullable=True)
     start_date = db.Column(db.Date, nullable=False)
