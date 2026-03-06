@@ -1,5 +1,8 @@
 # Version History
 
+## 0.38.1
+- Moved the Google Analyics tag from the footer below the head
+
 ## 0.38.0
 - Fix Google Analytics environment gating to disable only for local hosts and tests
 - Add warning log when analytics setting cannot be loaded from database
