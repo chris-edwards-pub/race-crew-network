@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.38.1"
+__version__ = "0.39.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -76,5 +76,19 @@ def create_app(test_config=None):
         return sorted(
             rsvps, key=lambda r: (order.get(r.status, 3), r.user.display_name)
         )
+
+    @app.template_filter("regatta_days")
+    def regatta_days(start_date, end_date=None):
+        if not start_date:
+            return ""
+
+        if not end_date or end_date <= start_date:
+            return start_date.strftime("%a")
+
+        day_span = (end_date - start_date).days
+        if day_span == 1:
+            return f"{start_date.strftime('%a')} & {end_date.strftime('%a')}"
+
+        return f"{start_date.strftime('%a')} thru {end_date.strftime('%a')}"
 
     return app

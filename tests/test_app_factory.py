@@ -1,5 +1,7 @@
 """Tests for the Flask app factory and core setup."""
 
+from datetime import date
+
 from app import __version__, create_app
 from app import db as _db
 from app.models import SiteSetting, User
@@ -86,3 +88,18 @@ class TestAppFactory:
         assert b">Crew<" in resp.data
         assert b">Import<" in resp.data
         assert b"/admin/settings/analytics" in resp.data
+
+    def test_regatta_days_filter_single_day(self, app):
+        with app.app_context():
+            fn = app.jinja_env.filters["regatta_days"]
+            assert fn(date(2026, 7, 11), None) == "Sat"
+
+    def test_regatta_days_filter_two_day_range(self, app):
+        with app.app_context():
+            fn = app.jinja_env.filters["regatta_days"]
+            assert fn(date(2026, 7, 11), date(2026, 7, 12)) == "Sat & Sun"
+
+    def test_regatta_days_filter_multi_day_range(self, app):
+        with app.app_context():
+            fn = app.jinja_env.filters["regatta_days"]
+            assert fn(date(2026, 7, 11), date(2026, 7, 13)) == "Sat thru Mon"

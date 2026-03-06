@@ -38,6 +38,7 @@
             <tr>
                 <td class="text-nowrap">
                     {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
+                    <br><small class="text-muted">{{ regatta.start_date|regatta_days(regatta.end_date) }}</small>
                 </td>
                 <td>{{ regatta.boat_class }}</td>
                 <td>
@@ -113,6 +114,7 @@
             </div>
             <small class="text-muted">
                 {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
+                <br>{{ regatta.start_date|regatta_days(regatta.end_date) }}
                 {% if regatta.location %}
                 &middot;
                 {% if regatta.location_url %}

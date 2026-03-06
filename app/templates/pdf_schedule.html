@@ -66,6 +66,7 @@
     <tr>
         <td style="white-space: nowrap;">
             {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
+            <br><span class="notes">{{ regatta.start_date|regatta_days(regatta.end_date) }}</span>
         </td>
         <td>{{ regatta.boat_class }}</td>
         <td>
