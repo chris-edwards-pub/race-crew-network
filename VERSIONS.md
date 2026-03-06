@@ -1,5 +1,10 @@
 # Version History
 
+## 0.38.0
+- Fix Google Analytics environment gating to disable only for local hosts and tests
+- Add warning log when analytics setting cannot be loaded from database
+- Add Analytics Settings status banner showing whether GA is enabled or why it is disabled
+
 ## 0.37.0
 - Remove "TBD" placeholder behavior for regatta boat class and leave class blank when unknown
 - Update regatta create/edit and admin import flows to preserve blank boat class values

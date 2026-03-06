@@ -4,6 +4,19 @@
 <div class="row justify-content-center mt-3">
     <div class="col-md-6 col-lg-5">
         <h2 class="mb-3">Analytics Settings</h2>
+        {% if ga_measurement_id and not is_dev_or_test %}
+        <div class="alert alert-success" role="alert">
+            <strong>Status:</strong> Enabled on this environment.
+        </div>
+        {% elif not ga_measurement_id %}
+        <div class="alert alert-warning" role="alert">
+            <strong>Status:</strong> Disabled because no Measurement ID is configured.
+        </div>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            <strong>Status:</strong> Disabled for local/testing environment.
+        </div>
+        {% endif %}
         <p class="text-muted">
             Configure the Google Analytics Measurement ID used for tracking in production.
             Tracking is automatically disabled in development and testing.

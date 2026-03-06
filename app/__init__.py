@@ -1,11 +1,11 @@
-from flask import Flask
+from flask import Flask, has_request_context, request
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.37.0"
+__version__ = "0.38.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -53,12 +53,17 @@ def create_app(test_config=None):
             ga_setting = SiteSetting.query.filter_by(key="ga_measurement_id").first()
             if ga_setting and ga_setting.value:
                 ga_measurement_id = ga_setting.value.strip()
-        except SQLAlchemyError:
+        except SQLAlchemyError as exc:
+            app.logger.warning("Unable to load GA setting from database: %s", exc)
             ga_measurement_id = ""
 
-        is_dev_or_test = bool(app.config.get("TESTING")) or (
-            app.config.get("ENV") == "development"
-        )
+        is_local_host = False
+        if has_request_context():
+            host = (request.host or "").split(":", 1)[0].lower()
+            is_local_host = host in {"localhost", "127.0.0.1"}
+
+        # Disable GA only for tests and local hosts.
+        is_dev_or_test = bool(app.config.get("TESTING")) or is_local_host
 
         return {
             "ga_measurement_id": ga_measurement_id,
