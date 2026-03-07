@@ -1,6 +1,6 @@
-import gc
-
 import pytest
+from flask import g
+from sqlalchemy.pool import StaticPool
 
 from app import create_app
 from app import db as _db
@@ -12,6 +12,13 @@ TEST_CONFIG = {
     "WTF_CSRF_ENABLED": False,
     "SERVER_NAME": "localhost",
     "ANTHROPIC_API_KEY": "test-key",
+    # Use StaticPool to keep a single connection alive for the in-memory
+    # database.  Without this, the default QueuePool recycles connections
+    # after ~5 tests, destroying the database and its tables.
+    "SQLALCHEMY_ENGINE_OPTIONS": {
+        "poolclass": StaticPool,
+        "connect_args": {"check_same_thread": False},
+    },
 }
 
 
@@ -34,9 +41,13 @@ def _clean_db(app):
     for table in reversed(_db.metadata.sorted_tables):
         _db.session.execute(table.delete())
     _db.session.commit()
-    # Force GC to collect stale weakrefs in SQLAlchemy's identity map
-    # before the next test creates objects with recycled primary keys.
-    gc.collect()
+    # Core SQL DELETE does not update the ORM identity map.  Expire all
+    # cached attributes so the next access goes back to the database.
+    _db.session.expire_all()
+    # The app context is session-scoped, so Flask's `g` persists across
+    # tests.  Clear Flask-Login's cached user to prevent login state from
+    # leaking between tests.
+    g.pop("_login_user", None)
 
 
 @pytest.fixture()

@@ -18,6 +18,7 @@ from app import db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
+from app.admin.file_utils import extract_text_from_file
 from app.models import Document, ImportCache, Regatta, SiteSetting
 
 logger = logging.getLogger(__name__)
@@ -318,35 +319,49 @@ def _extract_jsonld_events(html: str) -> str:
     return "\n".join(lines)
 
 
-@bp.route("/admin/import-schedule")
+@bp.route("/admin/import-url")
 @login_required
-def import_schedule():
-    """Legacy URL — redirect to multiple regattas page."""
-    return redirect(url_for("admin.import_multiple"))
-
-
-@bp.route("/admin/import-single")
-@login_required
-def import_single():
-    denied = _require_admin()
-    if denied:
-        return denied
-    return render_template("admin/import_single.html")
-
-
-@bp.route("/admin/import-multiple")
-@login_required
-def import_multiple():
+def import_url():
     denied = _require_admin()
     if denied:
         return denied
     prefill_url = request.args.get("url", "")
     prefill_force = request.args.get("force", "")
     return render_template(
-        "admin/import_multiple.html",
+        "admin/import_url.html",
         prefill_url=prefill_url,
         prefill_force=prefill_force,
     )
+
+
+@bp.route("/admin/import-file")
+@login_required
+def import_file():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return render_template("admin/import_file.html", current_year=date.today().year)
+
+
+@bp.route("/admin/import-schedule")
+@login_required
+def import_schedule():
+    """Legacy URL — redirect to import-url."""
+    return redirect(url_for("admin.import_url"))
+
+
+@bp.route("/admin/import-single")
+@login_required
+def import_single():
+    """Legacy URL — redirect to import-url."""
+    return redirect(url_for("admin.import_url"))
+
+
+@bp.route("/admin/import-multiple")
+@login_required
+def import_multiple():
+    """Legacy URL — redirect to import-url."""
+    return redirect(url_for("admin.import_url"))
 
 
 @bp.route("/admin/import-paste")
@@ -567,6 +582,124 @@ def import_schedule_extract():
     )
 
 
+@bp.route("/admin/import-schedule/extract-file", methods=["POST"])
+@login_required
+def import_schedule_extract_file():
+    """SSE endpoint that streams extraction progress for an uploaded file."""
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    uploaded = request.files.get("schedule_file")
+    current_year = date.today().year
+    year = int(request.form.get("year", current_year))
+    task_id = str(uuid.uuid4())
+
+    def _sse(event: dict) -> str:
+        return f"data: {json.dumps(event)}\n\n"
+
+    def generate():
+        if not uploaded or not uploaded.filename:
+            yield _sse({"type": "error", "message": "No file uploaded."})
+            yield _sse({"type": "failed"})
+            return
+
+        filename = uploaded.filename
+        yield _sse({"type": "progress", "message": f"Reading file: {filename}..."})
+
+        try:
+            content = extract_text_from_file(uploaded, filename)
+        except ValueError as e:
+            yield _sse({"type": "error", "message": str(e)})
+            yield _sse({"type": "failed"})
+            return
+
+        content = content[:MAX_CONTENT_LENGTH]
+
+        yield _sse({"type": "progress", "message": "Sending to AI for extraction..."})
+
+        try:
+            regattas = extract_regattas(content, year)
+        except (ValueError, ConnectionError) as e:
+            yield _sse({"type": "error", "message": str(e)})
+            yield _sse({"type": "failed"})
+            return
+
+        yield _sse(
+            {
+                "type": "result",
+                "message": f"AI returned {len(regattas)} event(s)",
+            }
+        )
+
+        # Mark past events
+        today = date.today().isoformat()
+        past_count = 0
+        for r in regattas:
+            if (r.get("start_date") or "") < today:
+                r["is_past"] = True
+                past_count += 1
+
+        if past_count:
+            yield _sse(
+                {
+                    "type": "progress",
+                    "message": f"Flagged {past_count} past event(s)",
+                }
+            )
+
+        if not regattas:
+            yield _sse({"type": "error", "message": "No regattas found."})
+            yield _sse({"type": "failed"})
+            return
+
+        # Check for duplicates
+        dup_count = 0
+        for r in regattas:
+            start = r.get("start_date")
+            name = r.get("name")
+            if name and start:
+                existing = _find_duplicate(name, date.fromisoformat(start))
+                if existing:
+                    dup_count += 1
+                    r["duplicate_of"] = {
+                        "id": existing.id,
+                        "name": existing.name,
+                        "location": existing.location,
+                        "start_date": existing.start_date.isoformat(),
+                    }
+
+        if dup_count:
+            yield _sse(
+                {
+                    "type": "progress",
+                    "message": f"Found {dup_count} possible duplicate(s)",
+                }
+            )
+
+        _extraction_results[task_id] = {
+            "regattas": regattas,
+            "year": year,
+            "from_cache": False,
+            "source_url": "",
+        }
+
+        upcoming = len(regattas) - past_count
+        summary = f"Found {len(regattas)} regatta(s)"
+        if past_count:
+            summary += f" ({upcoming} upcoming, {past_count} past)"
+        yield _sse({"type": "done", "task_id": task_id, "summary": summary})
+
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @bp.route("/admin/import-schedule/extract-single", methods=["POST"])
 @login_required
 def import_schedule_extract_single():
@@ -741,13 +874,11 @@ def import_schedule_preview():
     task_id = request.args.get("task_id", "")
     if not task_id or task_id not in _extraction_results:
         flash("Extraction results not found or expired.", "error")
-        return redirect(url_for("admin.import_multiple"))
+        return redirect(url_for("admin.import_url"))
 
     data = _extraction_results.pop(task_id)
-    # Determine start_over_url from source (default to multiple)
-    start_over_url = request.args.get(
-        "start_over_url", url_for("admin.import_multiple")
-    )
+    # Determine start_over_url from source (default to import_url)
+    start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
 
     # Build cache info for the template
     from_cache = data.get("from_cache", False)
@@ -782,7 +913,7 @@ def import_schedule_confirm():
     selected = request.form.getlist("selected")
     if not selected:
         flash("No regattas selected for import.", "warning")
-        return redirect(url_for("admin.import_multiple"))
+        return redirect(url_for("admin.import_url"))
 
     created = 0
     skipped = 0
@@ -1090,12 +1221,10 @@ def import_schedule_documents():
     task_id = request.args.get("task_id", "")
     if not task_id or task_id not in _discovery_results:
         flash("Document discovery results not found or expired.", "error")
-        return redirect(url_for("admin.import_multiple"))
+        return redirect(url_for("admin.import_url"))
 
     regatta_data = _discovery_results.pop(task_id)
-    start_over_url = request.args.get(
-        "start_over_url", url_for("admin.import_multiple")
-    )
+    start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
 
     return render_template(
         "admin/import_schedule_documents.html",
