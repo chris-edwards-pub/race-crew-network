@@ -1,5 +1,9 @@
 # Version History
 
+## 0.41.0
+- Cache file import results by content hash (SHA-256) to skip AI re-extraction for identical files
+- Add "Force re-extract (bypass cache)" checkbox to file import page
+
 ## 0.40.0
 - Add file upload import: admins can upload PDF, DOCX, or TXT schedule files for AI extraction
 - New "Import from File" page with file picker and year input
