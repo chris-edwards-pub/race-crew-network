@@ -38,8 +38,14 @@ def _require_admin():
 
 
 def _normalize_regatta_name(name: str) -> str:
-    """Strip a leading 4-digit year and surrounding whitespace/punctuation."""
-    return re.sub(r"^\d{4}\s*[-–—]?\s*", "", name).strip()
+    """Strip 4-digit year prefixes from each segment of a regatta name.
+
+    Handles compound names like "Bottoms Up Regatta/2025 Carolina Districts"
+    by splitting on ``/``, stripping the year from each part, and rejoining.
+    """
+    parts = name.split("/")
+    cleaned = [re.sub(r"^\d{4}\s*[-–—]?\s*", "", p).strip() for p in parts]
+    return "/".join(cleaned)
 
 
 def _find_duplicate(name: str, start_date) -> Regatta | None:
