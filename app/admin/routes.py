@@ -1,3 +1,4 @@
+import hashlib
 import ipaddress
 import json
 import logging
@@ -607,6 +608,7 @@ def import_schedule_extract_file():
         return denied
 
     uploaded = request.files.get("schedule_file")
+    force_extract = request.form.get("force_extract") == "1"
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
@@ -623,6 +625,12 @@ def import_schedule_extract_file():
         filename = uploaded.filename
         yield _sse({"type": "progress", "message": f"Reading file: {filename}..."})
 
+        # Read raw bytes for hashing, then reset stream for text extraction
+        raw_bytes = uploaded.stream.read()
+        content_hash = hashlib.sha256(raw_bytes).hexdigest()
+        cache_key = f"file-sha256:{content_hash}"
+        uploaded.stream.seek(0)
+
         try:
             content = extract_text_from_file(uploaded, filename)
         except ValueError as e:
@@ -632,21 +640,67 @@ def import_schedule_extract_file():
 
         content = content[:MAX_CONTENT_LENGTH]
 
-        yield _sse({"type": "progress", "message": "Sending to AI for extraction..."})
+        from_cache = False
 
-        try:
-            regattas = extract_regattas(content, year)
-        except (ValueError, ConnectionError) as e:
-            yield _sse({"type": "error", "message": str(e)})
-            yield _sse({"type": "failed"})
-            return
+        # Check cache by content hash
+        if not force_extract:
+            cached = ImportCache.query.filter_by(url=cache_key).first()
+            if cached:
+                try:
+                    regattas = json.loads(cached.results_json)
+                except (json.JSONDecodeError, ValueError):
+                    regattas = None
 
-        yield _sse(
-            {
-                "type": "result",
-                "message": f"AI returned {len(regattas)} event(s)",
-            }
-        )
+                if regattas is not None:
+                    from_cache = True
+                    days = _cache_age_days(cached.extracted_at)
+                    if days == 0:
+                        age_str = "today"
+                    elif days == 1:
+                        age_str = "1 day ago"
+                    else:
+                        age_str = f"{days} days ago"
+
+                    yield _sse(
+                        {
+                            "type": "progress",
+                            "message": (
+                                f"Using cached results from {age_str}"
+                                f" ({cached.regatta_count} regattas)"
+                            ),
+                        }
+                    )
+
+        if not from_cache:
+            if force_extract:
+                yield _sse(
+                    {
+                        "type": "progress",
+                        "message": "Force re-extract requested...",
+                    }
+                )
+
+            yield _sse(
+                {"type": "progress", "message": "Sending to AI for extraction..."}
+            )
+
+            try:
+                regattas = extract_regattas(content, year)
+            except (ValueError, ConnectionError) as e:
+                yield _sse({"type": "error", "message": str(e)})
+                yield _sse({"type": "failed"})
+                return
+
+            yield _sse(
+                {
+                    "type": "result",
+                    "message": f"AI returned {len(regattas)} event(s)",
+                }
+            )
+
+            # Cache results by content hash
+            if regattas:
+                _upsert_import_cache(cache_key, year, regattas)
 
         # Mark past events
         today = date.today().isoformat()
@@ -696,7 +750,7 @@ def import_schedule_extract_file():
         _extraction_results[task_id] = {
             "regattas": regattas,
             "year": year,
-            "from_cache": False,
+            "from_cache": from_cache,
             "source_url": "",
         }
 
