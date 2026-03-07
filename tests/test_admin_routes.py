@@ -10,13 +10,13 @@ from app.models import Document, ImportCache, Regatta, SiteSetting, User
 class TestAdminAccessUnauthenticated:
     """Tests that run without login — must come before authenticated tests."""
 
-    def test_import_single_requires_login(self, client):
-        resp = client.get("/admin/import-single")
+    def test_import_url_requires_login(self, client):
+        resp = client.get("/admin/import-url")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
-    def test_import_multiple_requires_login(self, client):
-        resp = client.get("/admin/import-multiple")
+    def test_import_file_requires_login(self, client):
+        resp = client.get("/admin/import-file")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
@@ -30,7 +30,7 @@ class TestAdminAccessUnauthenticated:
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
-    def test_import_multiple_requires_admin(self, app, client, db):
+    def test_import_url_requires_admin(self, app, client, db):
         """Non-admin user should be denied."""
         user = User(
             email="crew@test.com",
@@ -47,7 +47,7 @@ class TestAdminAccessUnauthenticated:
             data={"email": "crew@test.com", "password": "password"},
             follow_redirects=True,
         )
-        resp = client.get("/admin/import-multiple", follow_redirects=True)
+        resp = client.get("/admin/import-url", follow_redirects=True)
         assert b"Access denied" in resp.data
 
     def test_analytics_settings_requires_admin(self, app, client, db):
@@ -73,26 +73,35 @@ class TestAdminAccessUnauthenticated:
 class TestAdminAccessAuthenticated:
     """Tests that require an admin login."""
 
-    def test_import_schedule_redirects_to_multiple(self, logged_in_client):
-        """Legacy URL should redirect to import-multiple."""
-        resp = logged_in_client.get("/admin/import-schedule")
-        assert resp.status_code == 302
-        assert "/admin/import-multiple" in resp.headers["Location"]
-
-    def test_import_single_accessible_for_admin(self, logged_in_client):
-        resp = logged_in_client.get("/admin/import-single")
+    def test_import_url_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-url")
         assert resp.status_code == 200
-        assert b"Import Single Regatta" in resp.data
+        assert b"Import from URL" in resp.data
 
-    def test_import_multiple_accessible_for_admin(self, logged_in_client):
-        resp = logged_in_client.get("/admin/import-multiple")
+    def test_import_file_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-file")
         assert resp.status_code == 200
-        assert b"Import Multiple Regattas" in resp.data
+        assert b"Import from File" in resp.data
 
     def test_import_paste_accessible_for_admin(self, logged_in_client):
         resp = logged_in_client.get("/admin/import-paste")
         assert resp.status_code == 200
         assert b"Paste Schedule Text" in resp.data
+
+    def test_legacy_import_schedule_redirects_to_url(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-schedule")
+        assert resp.status_code == 302
+        assert "/admin/import-url" in resp.headers["Location"]
+
+    def test_legacy_import_single_redirects_to_url(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-single")
+        assert resp.status_code == 302
+        assert "/admin/import-url" in resp.headers["Location"]
+
+    def test_legacy_import_multiple_redirects_to_url(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-multiple")
+        assert resp.status_code == 302
+        assert "/admin/import-url" in resp.headers["Location"]
 
     def test_analytics_settings_accessible_for_admin(self, logged_in_client):
         resp = logged_in_client.get("/admin/settings/analytics")
@@ -496,6 +505,81 @@ class TestImportCacheSingle:
         self._consume_sse(resp)
 
         mock_extract.assert_called_once()
+
+
+class TestExtractFile:
+    """Tests for the file-upload extract endpoint."""
+
+    def _consume_sse(self, resp) -> list[dict]:
+        events = []
+        for line in resp.data.decode().splitlines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        return events
+
+    @patch("app.admin.routes.extract_regattas")
+    @patch("app.admin.routes.extract_text_from_file")
+    def test_extract_file_success(
+        self, mock_file_extract, mock_ai, app, logged_in_client, db
+    ):
+        mock_file_extract.return_value = "schedule text content"
+        mock_ai.return_value = [
+            {
+                "name": "File Regatta",
+                "start_date": "2026-12-01",
+                "location": "Test YC",
+            }
+        ]
+
+        from io import BytesIO
+
+        data = {
+            "schedule_file": (BytesIO(b"fake pdf"), "schedule.pdf"),
+            "year": "2026",
+        }
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-file",
+            data=data,
+            content_type="multipart/form-data",
+        )
+        events = self._consume_sse(resp)
+
+        mock_file_extract.assert_called_once()
+        mock_ai.assert_called_once()
+
+        done_events = [e for e in events if e.get("type") == "done"]
+        assert len(done_events) == 1
+
+    def test_extract_file_no_file(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-file",
+            data={"year": "2026"},
+            content_type="multipart/form-data",
+        )
+        events = self._consume_sse(resp)
+        assert any(e.get("type") == "error" for e in events)
+        assert any("No file" in e.get("message", "") for e in events)
+
+    @patch("app.admin.routes.extract_text_from_file")
+    def test_extract_file_unsupported_type(
+        self, mock_file_extract, app, logged_in_client, db
+    ):
+        mock_file_extract.side_effect = ValueError("Unsupported file type: .jpg")
+
+        from io import BytesIO
+
+        data = {
+            "schedule_file": (BytesIO(b"fake"), "photo.jpg"),
+            "year": "2026",
+        }
+        resp = logged_in_client.post(
+            "/admin/import-schedule/extract-file",
+            data=data,
+            content_type="multipart/form-data",
+        )
+        events = self._consume_sse(resp)
+        assert any(e.get("type") == "error" for e in events)
+        assert any("Unsupported" in e.get("message", "") for e in events)
 
 
 class TestImportConfirmSourceUrl:

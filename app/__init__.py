@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.39.0"
+__version__ = "0.40.0"
 
 db = SQLAlchemy()
 migrate = Migrate()

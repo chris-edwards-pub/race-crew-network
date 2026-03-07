@@ -1,16 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Paste Schedule Text — Race Crew Network{% endblock %}
+{% block title %}Import from File — Race Crew Network{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <h2 class="mb-4">Paste Schedule Text</h2>
-        <p class="text-muted">Paste a regatta event page, regatta schedule, club calendar, or race series. The AI will extract all events for review.</p>
+        <h2 class="mb-4">Import from File</h2>
+        <p class="text-muted">Upload a PDF, DOCX, or plain text file containing a regatta event page, regatta schedule, club calendar, or race series. The AI will extract all events for review.</p>
 
-        <form id="import-form">
+        <form id="import-form" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
-                <label for="schedule_text" class="form-label">Schedule Text</label>
-                <textarea class="form-control" id="schedule_text" name="schedule_text" rows="10" placeholder="Paste regatta schedule here..." required></textarea>
+                <label for="schedule_file" class="form-label">Schedule File</label>
+                <input type="file" class="form-control" id="schedule_file" name="schedule_file" accept=".pdf,.docx,.txt" required>
+                <div class="form-text">Supported formats: PDF, DOCX, TXT</div>
+            </div>
+            <div class="mb-3">
+                <label for="year" class="form-label">Year</label>
+                <input type="number" class="form-control" id="year" name="year" value="{{ current_year }}" style="max-width: 120px;">
+                <div class="form-text">Used to infer dates when the schedule doesn't include the year.</div>
             </div>
             <button type="submit" id="btn-submit" class="btn btn-primary">Extract Schedule</button>
             <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
@@ -27,8 +33,8 @@
 document.getElementById('import-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var btn = document.getElementById('btn-submit');
-    var text = document.getElementById('schedule_text').value.trim();
-    if (!text) return;
+    var fileInput = document.getElementById('schedule_file');
+    if (!fileInput.files.length) return;
 
     btn.disabled = true;
 
@@ -38,14 +44,14 @@ document.getElementById('import-form').addEventListener('submit', function(e) {
     var titleEl = document.getElementById('terminalModalTitle');
 
     titleEl.textContent = 'Extracting Regattas...';
-    startOverBtn.href = "{{ url_for('admin.import_paste') }}";
+    startOverBtn.href = "{{ url_for('admin.import_file') }}";
     output.textContent = '';
     modal.show();
 
     var formData = new FormData(this);
     var csrfToken = formData.get('csrf_token');
 
-    fetch("{{ url_for('admin.import_schedule_extract') }}", {
+    fetch("{{ url_for('admin.import_schedule_extract_file') }}", {
         method: 'POST',
         headers: {'X-CSRFToken': csrfToken},
         body: formData

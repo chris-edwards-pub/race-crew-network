@@ -1,16 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Paste Schedule Text — Race Crew Network{% endblock %}
+{% block title %}Import from URL — Race Crew Network{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <h2 class="mb-4">Paste Schedule Text</h2>
-        <p class="text-muted">Paste a regatta event page, regatta schedule, club calendar, or race series. The AI will extract all events for review.</p>
+        <h2 class="mb-4">Import from URL</h2>
+        <p class="text-muted">Enter a URL containing a regatta event page, regatta schedule, club calendar, or race series. The AI will extract all events for review.</p>
 
         <form id="import-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
-                <label for="schedule_text" class="form-label">Schedule Text</label>
-                <textarea class="form-control" id="schedule_text" name="schedule_text" rows="10" placeholder="Paste regatta schedule here..." required></textarea>
+                <label for="schedule_url" class="form-label">Schedule URL</label>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" value="{{ prefill_url or '' }}" required>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="force_extract" name="force_extract" value="1" {% if prefill_force %}checked{% endif %}>
+                <label class="form-check-label" for="force_extract">Force re-extract (bypass cache)</label>
             </div>
             <button type="submit" id="btn-submit" class="btn btn-primary">Extract Schedule</button>
             <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
@@ -27,8 +31,8 @@
 document.getElementById('import-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var btn = document.getElementById('btn-submit');
-    var text = document.getElementById('schedule_text').value.trim();
-    if (!text) return;
+    var url = document.getElementById('schedule_url').value.trim();
+    if (!url) return;
 
     btn.disabled = true;
 
@@ -38,7 +42,7 @@ document.getElementById('import-form').addEventListener('submit', function(e) {
     var titleEl = document.getElementById('terminalModalTitle');
 
     titleEl.textContent = 'Extracting Regattas...';
-    startOverBtn.href = "{{ url_for('admin.import_paste') }}";
+    startOverBtn.href = "{{ url_for('admin.import_url') }}";
     output.textContent = '';
     modal.show();
 

@@ -1,5 +1,13 @@
 # Version History
 
+## 0.40.0
+- Add file upload import: admins can upload PDF, DOCX, or TXT schedule files for AI extraction
+- New "Import from File" page with file picker and year input
+- Text extraction utilities for PDF (pypdf), DOCX (python-docx), and plain text files
+- SSE streaming endpoint for file-based extraction with same preview/confirm flow
+- Rename navigation links: "Import from URL" and "Import from File" replace old entries
+- Legacy import URLs (import-single, import-multiple, import-schedule) redirect to import-url
+
 ## 0.39.0
 - Show day(s) of week below regatta dates in schedule views
 - Format day ranges as: single day `Sat`, two-day `Sat & Sun`, multi-day `Sat thru Mon`
