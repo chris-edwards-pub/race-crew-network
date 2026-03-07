@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from flask import (Response, flash, redirect, render_template, request,
                    stream_with_context, url_for)
 from flask_login import current_user, login_required
-from sqlalchemy import func
 
 from app import db
 from app.admin import bp
@@ -38,12 +37,23 @@ def _require_admin():
     return None
 
 
+def _normalize_regatta_name(name: str) -> str:
+    """Strip a leading 4-digit year and surrounding whitespace/punctuation."""
+    return re.sub(r"^\d{4}\s*[-–—]?\s*", "", name).strip()
+
+
 def _find_duplicate(name: str, start_date) -> Regatta | None:
-    """Find an existing regatta with the same name (case-insensitive) and start date."""
-    return Regatta.query.filter(
-        func.lower(Regatta.name) == name.lower(),
-        Regatta.start_date == start_date,
-    ).first()
+    """Find an existing regatta with the same name and start date.
+
+    Compares with leading year prefixes stripped so that
+    "2026 Orange Peel Regatta" matches "Orange Peel Regatta".
+    """
+    normalized = _normalize_regatta_name(name).lower()
+    candidates = Regatta.query.filter(Regatta.start_date == start_date).all()
+    for r in candidates:
+        if _normalize_regatta_name(r.name).lower() == normalized:
+            return r
+    return None
 
 
 def _cache_age_days(extracted_at: datetime) -> int:

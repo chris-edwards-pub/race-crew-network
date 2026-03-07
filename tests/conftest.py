@@ -41,9 +41,11 @@ def _clean_db(app):
     for table in reversed(_db.metadata.sorted_tables):
         _db.session.execute(table.delete())
     _db.session.commit()
-    # Core SQL DELETE does not update the ORM identity map.  Expire all
-    # cached attributes so the next access goes back to the database.
-    _db.session.expire_all()
+    # Core SQL DELETE bypasses the ORM, so the identity map still holds
+    # stale entries.  close() clears the identity map completely.  With
+    # StaticPool the underlying connection stays alive, preserving the
+    # in-memory database.
+    _db.session.close()
     # The app context is session-scoped, so Flask's `g` persists across
     # tests.  Clear Flask-Login's cached user to prevent login state from
     # leaking between tests.
