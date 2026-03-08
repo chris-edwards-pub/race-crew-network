@@ -21,6 +21,7 @@ output "bucket_name" {
 output "bucket_access_key_id" {
   description = "Access key ID for the uploads bucket"
   value       = aws_lightsail_bucket_access_key.app.access_key_id
+  sensitive   = true
 }
 
 output "bucket_secret_access_key" {
@@ -37,6 +38,7 @@ output "cloudfront_distribution_domain" {
 output "ses_access_key_id" {
   description = "Access key ID for the SES sender IAM user"
   value       = aws_iam_access_key.ses_sender.id
+  sensitive   = true
 }
 
 output "ses_secret_access_key" {

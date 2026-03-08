@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from socket import getaddrinfo
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -22,15 +22,36 @@ from app.admin.ai_service import (discover_documents, discover_documents_deep,
 from app.admin.email_service import (is_email_configured, load_email_settings,
                                      send_email)
 from app.admin.file_utils import extract_text_from_file
-from app.models import Document, ImportCache, Regatta, SiteSetting
+from app.models import Document, ImportCache, Regatta, SiteSetting, TaskResult
 
 logger = logging.getLogger(__name__)
 
 MAX_CONTENT_LENGTH = 20_000
 
-# Temporary storage keyed by UUID task ID, cleaned up when consumed.
-_extraction_results: dict[str, dict] = {}
-_discovery_results: dict[str, dict] = {}
+
+def _store_task_result(task_id: str, result_type: str, data: dict) -> None:
+    """Store task result in DB (replaces in-memory dict write)."""
+    row = TaskResult(id=task_id, result_type=result_type, data_json=json.dumps(data))
+    db.session.add(row)
+    db.session.commit()
+
+
+def _pop_task_result(task_id: str, result_type: str) -> dict | None:
+    """Fetch and delete task result from DB (replaces dict.pop)."""
+    row = TaskResult.query.filter_by(id=task_id, result_type=result_type).first()
+    if not row:
+        return None
+    data = json.loads(row.data_json)
+    db.session.delete(row)
+    db.session.commit()
+    return data
+
+
+def _cleanup_stale_task_results() -> None:
+    """Delete task results older than 1 hour."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    TaskResult.query.filter(TaskResult.created_at < cutoff).delete()
+    db.session.commit()
 
 
 def _require_admin():
@@ -498,6 +519,7 @@ def import_schedule_extract():
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
+        _cleanup_stale_task_results()
         content = schedule_text
         from_cache = False
 
@@ -632,12 +654,16 @@ def import_schedule_extract():
                 }
             )
 
-        _extraction_results[task_id] = {
-            "regattas": regattas,
-            "year": year,
-            "from_cache": from_cache,
-            "source_url": schedule_url,
-        }
+        _store_task_result(
+            task_id,
+            "extraction",
+            {
+                "regattas": regattas,
+                "year": year,
+                "from_cache": from_cache,
+                "source_url": schedule_url,
+            },
+        )
 
         upcoming = len(regattas) - past_count
         summary = f"Found {len(regattas)} regatta(s)"
@@ -675,6 +701,7 @@ def import_schedule_extract_file():
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
+        _cleanup_stale_task_results()
         if not uploaded or not uploaded.filename:
             yield _sse({"type": "error", "message": "No file uploaded."})
             yield _sse({"type": "failed"})
@@ -805,12 +832,16 @@ def import_schedule_extract_file():
                 }
             )
 
-        _extraction_results[task_id] = {
-            "regattas": regattas,
-            "year": year,
-            "from_cache": from_cache,
-            "source_url": "",
-        }
+        _store_task_result(
+            task_id,
+            "extraction",
+            {
+                "regattas": regattas,
+                "year": year,
+                "from_cache": from_cache,
+                "source_url": "",
+            },
+        )
 
         upcoming = len(regattas) - past_count
         summary = f"Found {len(regattas)} regatta(s)"
@@ -846,6 +877,7 @@ def import_schedule_extract_single():
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
+        _cleanup_stale_task_results()
         if not schedule_url:
             yield _sse({"type": "error", "message": "Provide a regatta URL."})
             yield _sse({"type": "failed"})
@@ -949,12 +981,16 @@ def import_schedule_extract_single():
                     }
                 )
 
-        _extraction_results[task_id] = {
-            "regatta": r,
-            "year": year,
-            "from_cache": from_cache,
-            "source_url": schedule_url,
-        }
+        _store_task_result(
+            task_id,
+            "extraction",
+            {
+                "regatta": r,
+                "year": year,
+                "from_cache": from_cache,
+                "source_url": schedule_url,
+            },
+        )
 
         summary = r.get("name", "Regatta")
         if from_cache:
@@ -980,11 +1016,11 @@ def import_single_preview():
         return denied
 
     task_id = request.args.get("task_id", "")
-    if not task_id or task_id not in _extraction_results:
+    data = _pop_task_result(task_id, "extraction") if task_id else None
+    if not data:
         flash("Extraction results not found or expired.", "error")
         return redirect(url_for("admin.import_single"))
 
-    data = _extraction_results.pop(task_id)
     return render_template(
         "admin/import_single_preview.html",
         regatta=data["regatta"],
@@ -1000,11 +1036,11 @@ def import_schedule_preview():
         return denied
 
     task_id = request.args.get("task_id", "")
-    if not task_id or task_id not in _extraction_results:
+    data = _pop_task_result(task_id, "extraction") if task_id else None
+    if not data:
         flash("Extraction results not found or expired.", "error")
         return redirect(url_for("admin.import_url"))
 
-    data = _extraction_results.pop(task_id)
     # Determine start_over_url from source (default to import_url)
     start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
 
@@ -1178,6 +1214,7 @@ def import_schedule_discover():
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
+        _cleanup_stale_task_results()
         total_docs = 0
 
         if not has_detail_urls:
@@ -1321,7 +1358,7 @@ def import_schedule_discover():
         for r in regatta_data:
             r["documents"].sort(key=lambda d: d["doc_type"])
 
-        _discovery_results[task_id] = regatta_data
+        _store_task_result(task_id, "discovery", regatta_data)
 
         regattas_with_docs = sum(1 for r in regatta_data if r["documents"])
         summary = (
@@ -1347,11 +1384,11 @@ def import_schedule_documents():
         return denied
 
     task_id = request.args.get("task_id", "")
-    if not task_id or task_id not in _discovery_results:
+    regatta_data = _pop_task_result(task_id, "discovery") if task_id else None
+    if not regatta_data:
         flash("Document discovery results not found or expired.", "error")
         return redirect(url_for("admin.import_url"))
 
-    regatta_data = _discovery_results.pop(task_id)
     start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
 
     return render_template(
@@ -1385,6 +1422,7 @@ def discover_documents_for_regatta(regatta_id: int):
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
+        _cleanup_stale_task_results()
         total_docs = 0
         documents = []
 
@@ -1483,10 +1521,14 @@ def discover_documents_for_regatta(regatta_id: int):
 
         documents.sort(key=lambda d: d["doc_type"])
 
-        _discovery_results[task_id] = {
-            "regatta_id": regatta_id,
-            "documents": documents,
-        }
+        _store_task_result(
+            task_id,
+            "discovery",
+            {
+                "regatta_id": regatta_id,
+                "documents": documents,
+            },
+        )
 
         summary = f"Found {total_docs} document(s)"
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
@@ -1515,11 +1557,10 @@ def review_documents_for_regatta(regatta_id: int):
         return redirect(url_for("regattas.index"))
 
     task_id = request.args.get("task_id", "")
-    if not task_id or task_id not in _discovery_results:
+    data = _pop_task_result(task_id, "discovery") if task_id else None
+    if not data:
         flash("Document discovery results not found or expired.", "error")
         return redirect(url_for("regattas.edit", regatta_id=regatta_id))
-
-    data = _discovery_results.pop(task_id)
 
     # Build a map of existing doc URLs to doc_type for duplicate detection
     existing_docs = {doc.url: doc.doc_type for doc in regatta.documents if doc.url}
