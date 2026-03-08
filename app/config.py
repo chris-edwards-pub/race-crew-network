@@ -12,4 +12,6 @@ class Config:
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
     BUCKET_NAME = os.environ.get("BUCKET_NAME", "")
     AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+    SES_ACCESS_KEY_ID = os.environ.get("SES_ACCESS_KEY_ID", "")
+    SES_SECRET_ACCESS_KEY = os.environ.get("SES_SECRET_ACCESS_KEY", "")
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")

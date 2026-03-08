@@ -279,6 +279,39 @@ resource "aws_route53_record" "ses_mail_from_spf" {
   records = ["v=spf1 include:amazonses.com -all"]
 }
 
+# --- SES IAM User ---
+# Dedicated IAM user for SES sending (Lightsail bucket keys lack SES permissions).
+
+resource "aws_iam_user" "ses_sender" {
+  name = "${var.instance_name}-ses-sender"
+
+  tags = {
+    Project = "race-crew-network"
+  }
+}
+
+resource "aws_iam_user_policy" "ses_send" {
+  name = "ses-send-raw-email"
+  user = aws_iam_user.ses_sender.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ses:SendRawEmail", "ses:SendEmail"]
+        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${var.domain_name}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_access_key" "ses_sender" {
+  user = aws_iam_user.ses_sender.name
+}
+
+data "aws_caller_identity" "current" {}
+
 # --- SES Bounce & Complaint Notifications ---
 
 # SNS topic for SES bounce/complaint notifications

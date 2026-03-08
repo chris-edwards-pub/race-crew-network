@@ -13,9 +13,23 @@ logger = logging.getLogger(__name__)
 
 
 def _get_ses_client(region: str | None = None):
-    """Return a boto3 SES client for the given (or default) region."""
+    """Return a boto3 SES client for the given (or default) region.
+
+    Uses SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY if set, otherwise
+    falls back to the default boto3 credential chain (env vars, instance
+    profile, etc.).
+    """
     if not region:
         region = current_app.config["AWS_REGION"]
+    ses_key = current_app.config.get("SES_ACCESS_KEY_ID")
+    ses_secret = current_app.config.get("SES_SECRET_ACCESS_KEY")
+    if ses_key and ses_secret:
+        return boto3.client(
+            "ses",
+            region_name=region,
+            aws_access_key_id=ses_key,
+            aws_secret_access_key=ses_secret,
+        )
     return boto3.client("ses", region_name=region)
 
 

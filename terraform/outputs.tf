@@ -33,3 +33,14 @@ output "cloudfront_distribution_domain" {
   description = "CloudFront domain name for apex redirect"
   value       = aws_cloudfront_distribution.apex_redirect.domain_name
 }
+
+output "ses_access_key_id" {
+  description = "Access key ID for the SES sender IAM user"
+  value       = aws_iam_access_key.ses_sender.id
+}
+
+output "ses_secret_access_key" {
+  description = "Secret access key for the SES sender IAM user"
+  value       = aws_iam_access_key.ses_sender.secret
+  sensitive   = true
+}
