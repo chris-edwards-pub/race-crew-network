@@ -300,7 +300,7 @@ resource "aws_iam_user_policy" "ses_send" {
       {
         Effect   = "Allow"
         Action   = ["ses:SendRawEmail", "ses:SendEmail"]
-        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${var.domain_name}"
+        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*"
       }
     ]
   })
