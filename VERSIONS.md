@@ -1,5 +1,9 @@
 # Version History
 
+## 0.43.3
+- Remove TODO.md
+- Widen SES IAM policy to allow sending from all verified identities
+
 ## 0.43.2
 - Fix "Extraction results not found or expired" error in multi-worker deployments (#55)
 - Replace in-memory task result dicts with database-backed TaskResult model
