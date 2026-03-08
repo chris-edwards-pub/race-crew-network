@@ -1,5 +1,10 @@
 # Version History
 
+## 0.43.2
+- Fix "Extraction results not found or expired" error in multi-worker deployments (#55)
+- Replace in-memory task result dicts with database-backed TaskResult model
+- Add automatic cleanup of orphaned task results older than 1 hour
+
 ## 0.43.1
 - Add dedicated IAM user for SES with Terraform-managed credentials
 - Support separate SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY env vars

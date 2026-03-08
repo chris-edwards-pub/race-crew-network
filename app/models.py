@@ -128,6 +128,19 @@ class ImportCache(db.Model):
     )
 
 
+class TaskResult(db.Model):
+    __tablename__ = "task_results"
+
+    id = db.Column(db.String(36), primary_key=True)  # UUID
+    result_type = db.Column(
+        db.String(20), nullable=False
+    )  # "extraction" or "discovery"
+    data_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
 class SiteSetting(db.Model):
     __tablename__ = "site_settings"
 
