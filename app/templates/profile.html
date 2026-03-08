@@ -23,6 +23,12 @@
                 <input type="tel" class="form-control" id="phone" name="phone" value="{{ current_user.phone or '' }}" placeholder="e.g. 555-123-4567">
             </div>
             <hr>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="email_opt_in" name="email_opt_in" {% if current_user.email_opt_in %}checked{% endif %}>
+                <label class="form-check-label" for="email_opt_in">Receive email communications</label>
+                <div class="form-text">Uncheck to stop receiving emails from Race Crew Network.</div>
+            </div>
+            <hr>
             <p class="text-muted">Leave password blank to keep your current password.</p>
             <div class="mb-3">
                 <label for="password" class="form-label">New Password</label>

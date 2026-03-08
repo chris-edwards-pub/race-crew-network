@@ -1,5 +1,19 @@
 # Version History
 
+## 0.43.0
+- Add one-click email unsubscribe (RFC 8058) with HMAC-signed links
+- Add SES bounce and complaint handling via SNS webhook
+- Add email_opt_in field to User model with profile page toggle
+- Switch email service to send_raw_email for custom List-Unsubscribe headers
+- Add Terraform resources for SNS topic and SES notification config
+- Skip sending email to users who have opted out
+
+## 0.42.0
+- Add admin email settings page for configuring AWS SES sender address and region
+- Add email service module with SES integration (send_email, load/save settings)
+- Add test email endpoint to verify SES configuration from admin UI
+- Add "Email Settings" link in Admin navigation dropdown
+
 ## 0.41.0
 - Cache file import results by content hash (SHA-256) to skip AI re-extraction for identical files
 - Add "Force re-extract (bypass cache)" checkbox to file import page

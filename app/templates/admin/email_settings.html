@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Email Settings — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-3">
+    <div class="col-md-6 col-lg-5">
+        <h2 class="mb-3">Email Settings</h2>
+        {% if email_configured %}
+        <div class="alert alert-success" role="alert">
+            <strong>Status:</strong> Email configured.
+        </div>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            <strong>Status:</strong> Not configured. Set a verified SES sender address below.
+        </div>
+        {% endif %}
+        <p class="text-muted">
+            Configure AWS SES for sending emails. The sender address must be
+            <a href="https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html" target="_blank" rel="noopener">verified in AWS SES</a>
+            before emails can be sent.
+        </p>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="ses_sender" class="form-label">Send From</label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="ses_sender"
+                    name="ses_sender"
+                    value="{{ ses_sender }}"
+                    placeholder="noreply@racecrew.net"
+                >
+                <div class="form-text">Must be a verified email address or domain in AWS SES.</div>
+            </div>
+            <div class="mb-3">
+                <label for="ses_sender_to" class="form-label">Send Email To</label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="ses_sender_to"
+                    name="ses_sender_to"
+                    value="{{ ses_sender_to }}"
+                    placeholder="admin@racecrew.net"
+                >
+                <div class="form-text">Email address where test emails will be sent.</div>
+            </div>
+            <div class="mb-3">
+                <label for="ses_region" class="form-label">SES Region</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="ses_region"
+                    name="ses_region"
+                    value="{{ ses_region }}"
+                    placeholder="us-east-1"
+                >
+                <div class="form-text">AWS region for SES. Defaults to the app's AWS_REGION if left blank.</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <button type="button" class="btn btn-outline-success" id="btn-test-email" {% if not email_configured %}disabled{% endif %}>Send Test Email</button>
+                <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+        <div id="test-email-result" class="mt-3" style="display:none;"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('btn-test-email').addEventListener('click', function() {
+    const btn = this;
+    const resultDiv = document.getElementById('test-email-result');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    resultDiv.style.display = 'none';
+
+    fetch('{{ url_for("admin.email_test") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(resp => resp.json().then(data => ({status: resp.status, data})))
+    .then(({status, data}) => {
+        if (data.success) {
+            resultDiv.className = 'mt-3 alert alert-success';
+            resultDiv.textContent = data.message;
+        } else {
+            resultDiv.className = 'mt-3 alert alert-danger';
+            resultDiv.textContent = data.error || 'Failed to send test email.';
+        }
+        resultDiv.style.display = 'block';
+    })
+    .catch(() => {
+        resultDiv.className = 'mt-3 alert alert-danger';
+        resultDiv.textContent = 'Network error — could not reach server.';
+        resultDiv.style.display = 'block';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Test Email';
+    });
+});
+</script>
+{% endblock %}

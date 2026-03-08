@@ -217,3 +217,98 @@ resource "aws_route53_record" "apex" {
     evaluate_target_health = false
   }
 }
+
+# --- SES Email ---
+
+resource "aws_ses_domain_identity" "app" {
+  domain = var.domain_name
+}
+
+resource "aws_ses_domain_dkim" "app" {
+  domain = aws_ses_domain_identity.app.domain
+}
+
+resource "aws_ses_domain_mail_from" "app" {
+  domain           = aws_ses_domain_identity.app.domain
+  mail_from_domain = "mail.${var.domain_name}"
+}
+
+# DKIM CNAME records (3 tokens)
+resource "aws_route53_record" "ses_dkim" {
+  count   = 3
+  zone_id = var.route53_zone_id
+  name    = "${aws_ses_domain_dkim.app.dkim_tokens[count.index]}._domainkey.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["${aws_ses_domain_dkim.app.dkim_tokens[count.index]}.dkim.amazonses.com"]
+}
+
+# SPF TXT record on root domain (includes both Outlook and SES)
+resource "aws_route53_record" "spf" {
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "TXT"
+  ttl     = 300
+  records = ["v=spf1 include:spf.protection.outlook.com include:amazonses.com -all"]
+}
+
+# DMARC TXT record
+resource "aws_route53_record" "dmarc" {
+  zone_id = var.route53_zone_id
+  name    = "_dmarc.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["v=DMARC1; p=none;"]
+}
+
+# MAIL FROM MX record
+resource "aws_route53_record" "ses_mail_from_mx" {
+  zone_id = var.route53_zone_id
+  name    = "mail.${var.domain_name}"
+  type    = "MX"
+  ttl     = 300
+  records = ["10 feedback-smtp.${var.aws_region}.amazonses.com"]
+}
+
+# MAIL FROM SPF record
+resource "aws_route53_record" "ses_mail_from_spf" {
+  zone_id = var.route53_zone_id
+  name    = "mail.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["v=spf1 include:amazonses.com -all"]
+}
+
+# --- SES Bounce & Complaint Notifications ---
+
+# SNS topic for SES bounce/complaint notifications
+resource "aws_sns_topic" "ses_notifications" {
+  name = "ses-bounce-complaint"
+
+  tags = {
+    Project = "race-crew-network"
+  }
+}
+
+# Subscribe the app webhook to the SNS topic
+resource "aws_sns_topic_subscription" "ses_webhook" {
+  topic_arn = aws_sns_topic.ses_notifications.arn
+  protocol  = "https"
+  endpoint  = "https://www.${var.domain_name}/webhooks/ses"
+}
+
+# SES notification configuration — bounces
+resource "aws_ses_identity_notification_topic" "bounce" {
+  topic_arn                = aws_sns_topic.ses_notifications.arn
+  notification_type        = "Bounce"
+  identity                 = aws_ses_domain_identity.app.domain
+  include_original_headers = false
+}
+
+# SES notification configuration — complaints
+resource "aws_ses_identity_notification_topic" "complaint" {
+  topic_arn                = aws_sns_topic.ses_notifications.arn
+  notification_type        = "Complaint"
+  identity                 = aws_ses_domain_identity.app.domain
+  include_original_headers = false
+}
