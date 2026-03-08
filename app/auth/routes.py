@@ -89,6 +89,7 @@ def profile():
             current_user.initials = initials
             current_user.email = email
             current_user.phone = request.form.get("phone", "").strip() or None
+            current_user.email_opt_in = request.form.get("email_opt_in") == "on"
             if password:
                 current_user.set_password(password)
             db.session.commit()

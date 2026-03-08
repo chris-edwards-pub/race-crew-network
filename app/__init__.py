@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.41.0"
+__version__ = "0.43.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -29,11 +29,13 @@ def create_app(test_config=None):
     from app.admin import bp as admin_bp
     from app.auth import bp as auth_bp
     from app.calendar import bp as calendar_bp
+    from app.email import bp as email_bp
     from app.regattas import bp as regattas_bp
 
     app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(email_bp)
     app.register_blueprint(regattas_bp)
 
     from app.commands import register_commands

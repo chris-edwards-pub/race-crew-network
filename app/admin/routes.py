@@ -9,15 +9,18 @@ from socket import getaddrinfo
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
+from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
-from flask import (Response, flash, redirect, render_template, request,
-                   stream_with_context, url_for)
+from flask import (Response, flash, jsonify, redirect, render_template,
+                   request, stream_with_context, url_for)
 from flask_login import current_user, login_required
 
 from app import db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
+from app.admin.email_service import (is_email_configured, load_email_settings,
+                                     send_email)
 from app.admin.file_utils import extract_text_from_file
 from app.models import Document, ImportCache, Regatta, SiteSetting
 
@@ -419,6 +422,61 @@ def analytics_settings():
         "admin/analytics_settings.html",
         ga_measurement_id=ga_measurement_id,
     )
+
+
+@bp.route("/admin/settings/email", methods=["GET", "POST"])
+@login_required
+def email_settings():
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    if request.method == "POST":
+        ses_sender = request.form.get("ses_sender", "").strip()
+        ses_sender_to = request.form.get("ses_sender_to", "").strip()
+        ses_region = request.form.get("ses_region", "").strip()
+
+        _upsert_site_setting("ses_sender", ses_sender)
+        _upsert_site_setting("ses_sender_to", ses_sender_to)
+        if ses_region:
+            _upsert_site_setting("ses_region", ses_region)
+
+        flash("Email settings updated.", "success")
+        return redirect(url_for("admin.email_settings"))
+
+    settings = load_email_settings()
+    return render_template(
+        "admin/email_settings.html",
+        ses_sender=settings["ses_sender"],
+        ses_sender_to=settings["ses_sender_to"],
+        ses_region=settings["ses_region"],
+        email_configured=is_email_configured(),
+    )
+
+
+@bp.route("/admin/settings/email/test", methods=["POST"])
+@login_required
+def email_test():
+    if not current_user.is_admin:
+        return jsonify({"success": False, "error": "Access denied."}), 403
+
+    try:
+        settings = load_email_settings()
+        recipient = settings["ses_sender_to"] or current_user.email
+        send_email(
+            to=recipient,
+            subject="Race Crew Network — Test Email",
+            body_text="This is a test email from Race Crew Network. "
+            "If you received this, your email settings are working correctly.",
+            body_html="<p>This is a test email from <strong>Race Crew Network</strong>.</p>"
+            "<p>If you received this, your email settings are working correctly.</p>",
+        )
+        return jsonify({"success": True, "message": f"Test email sent to {recipient}."})
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except ClientError as exc:
+        error_msg = exc.response["Error"].get("Message", str(exc))
+        return jsonify({"success": False, "error": error_msg}), 500
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])

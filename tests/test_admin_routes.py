@@ -30,6 +30,16 @@ class TestAdminAccessUnauthenticated:
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
+    def test_email_settings_requires_login(self, client):
+        resp = client.get("/admin/settings/email")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_email_test_requires_login(self, client):
+        resp = client.post("/admin/settings/email/test")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
     def test_import_url_requires_admin(self, app, client, db):
         """Non-admin user should be denied."""
         user = User(
@@ -68,6 +78,46 @@ class TestAdminAccessUnauthenticated:
         )
         resp = client.get("/admin/settings/analytics", follow_redirects=True)
         assert b"Access denied" in resp.data
+
+    def test_email_settings_requires_admin(self, app, client, db):
+        user = User(
+            email="crew3@test.com",
+            display_name="Crew 3",
+            initials="C3",
+            is_admin=False,
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "crew3@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get("/admin/settings/email", follow_redirects=True)
+        assert b"Access denied" in resp.data
+
+    def test_email_test_requires_admin_json(self, app, client, db):
+        user = User(
+            email="crew4@test.com",
+            display_name="Crew 4",
+            initials="C4",
+            is_admin=False,
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "crew4@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.post("/admin/settings/email/test")
+        assert resp.status_code == 403
+        data = resp.get_json()
+        assert data["success"] is False
 
 
 class TestAdminAccessAuthenticated:
@@ -119,6 +169,66 @@ class TestAdminAccessAuthenticated:
         setting = SiteSetting.query.filter_by(key="ga_measurement_id").first()
         assert setting is not None
         assert setting.value == "G-TESTABC123"
+
+    def test_email_settings_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/settings/email")
+        assert resp.status_code == 200
+        assert b"Email Settings" in resp.data
+
+    def test_email_settings_persists_sender_and_region(self, logged_in_client):
+        resp = logged_in_client.post(
+            "/admin/settings/email",
+            data={"ses_sender": "noreply@example.com", "ses_region": "us-west-2"},
+            follow_redirects=True,
+        )
+        assert b"Email settings updated" in resp.data
+
+        sender = SiteSetting.query.filter_by(key="ses_sender").first()
+        assert sender is not None
+        assert sender.value == "noreply@example.com"
+
+        region = SiteSetting.query.filter_by(key="ses_region").first()
+        assert region is not None
+        assert region.value == "us-west-2"
+
+    @patch("app.admin.routes.send_email")
+    def test_email_test_success(self, mock_send, logged_in_client):
+        resp = logged_in_client.post("/admin/settings/email/test")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert "Test email sent" in data["message"]
+        mock_send.assert_called_once()
+
+    @patch("app.admin.routes.send_email")
+    def test_email_test_not_configured(self, mock_send, logged_in_client):
+        mock_send.side_effect = ValueError(
+            "Email not configured: no SES sender address set."
+        )
+        resp = logged_in_client.post("/admin/settings/email/test")
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert data["success"] is False
+        assert "not configured" in data["error"]
+
+    @patch("app.admin.routes.send_email")
+    def test_email_test_ses_error(self, mock_send, logged_in_client):
+        from botocore.exceptions import ClientError
+
+        mock_send.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "MessageRejected",
+                    "Message": "Email address not verified.",
+                }
+            },
+            "SendEmail",
+        )
+        resp = logged_in_client.post("/admin/settings/email/test")
+        assert resp.status_code == 500
+        data = resp.get_json()
+        assert data["success"] is False
+        assert "not verified" in data["error"]
 
 
 class TestImportSchedulePreview:
