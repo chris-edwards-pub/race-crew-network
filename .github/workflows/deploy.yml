@@ -161,7 +161,9 @@ jobs:
                   "AWS_REGION": "us-east-1",
                   "INIT_ADMIN_EMAIL": "${{ secrets.INIT_ADMIN_EMAIL }}",
                   "INIT_ADMIN_PASSWORD": "${{ secrets.INIT_ADMIN_PASSWORD }}",
-                  "ANTHROPIC_API_KEY": "${{ secrets.ANTHROPIC_API_KEY }}"
+                  "ANTHROPIC_API_KEY": "${{ secrets.ANTHROPIC_API_KEY }}",
+                  "SES_ACCESS_KEY_ID": "${{ secrets.SES_ACCESS_KEY_ID }}",
+                  "SES_SECRET_ACCESS_KEY": "${{ secrets.SES_SECRET_ACCESS_KEY }}"
                 }
               }
             }' \
