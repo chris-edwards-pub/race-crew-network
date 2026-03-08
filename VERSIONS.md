@@ -1,5 +1,9 @@
 # Version History
 
+## 0.43.1
+- Add dedicated IAM user for SES with Terraform-managed credentials
+- Support separate SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY env vars
+
 ## 0.43.0
 - Add one-click email unsubscribe (RFC 8058) with HMAC-signed links
 - Add SES bounce and complaint handling via SNS webhook
