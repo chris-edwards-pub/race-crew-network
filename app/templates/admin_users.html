@@ -12,6 +12,14 @@
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required placeholder="crew@example.com">
             </div>
+            {% if email_configured %}
+            <div class="col-12 col-sm-auto d-flex align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="send_email_invite" name="send_email_invite" checked>
+                    <label class="form-check-label" for="send_email_invite">Send invite via email</label>
+                </div>
+            </div>
+            {% endif %}
             <div class="col-12 col-sm-auto">
                 <button type="submit" class="btn btn-primary">Send Invite</button>
             </div>
@@ -19,46 +27,76 @@
     </div>
 </div>
 
+{% set pending_users = users | selectattr('invite_token') | list %}
+
 <div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th class="d-none d-sm-table-cell">Initials</th>
-                <th class="d-none d-md-table-cell">Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.display_name }}</td>
-                <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ user.initials }}</span></td>
-                <td class="d-none d-md-table-cell">{{ user.email }}</td>
-                <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
-                <td>
-                    {% if user.invite_token %}
-                    <span class="badge bg-warning">Pending</span>
-                    {% else %}
-                    <span class="badge bg-success">Active</span>
+    <form id="resendForm" method="POST" action="{{ url_for('auth.resend_invites') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <table class="table">
+            <thead>
+                <tr>
+                    {% if email_configured and pending_users %}
+                    <th class="text-center" style="width: 40px;">
+                        <input type="checkbox" id="selectAllPending" class="form-check-input">
+                    </th>
                     {% endif %}
-                </td>
-                <td>
-                    <div class="d-flex flex-wrap gap-1">
-                        <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                        {% if user.id != current_user.id %}
-                        <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                        </form>
+                    <th>Name</th>
+                    <th class="d-none d-sm-table-cell">Initials</th>
+                    <th class="d-none d-md-table-cell">Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    {% if email_configured and pending_users %}
+                    <td class="text-center">
+                        {% if user.invite_token %}
+                        <input type="checkbox" name="user_ids" value="{{ user.id }}" class="form-check-input pending-checkbox">
                         {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                    {% endif %}
+                    <td>{{ user.display_name }}</td>
+                    <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ user.initials }}</span></td>
+                    <td class="d-none d-md-table-cell">{{ user.email }}</td>
+                    <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
+                    <td>
+                        {% if user.invite_token %}
+                        <span class="badge bg-warning">Pending</span>
+                        {% else %}
+                        <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            {% if user.id != current_user.id %}
+                            <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if email_configured and pending_users %}
+        <button type="submit" class="btn btn-outline-primary" id="resendBtn">Resend Invites</button>
+        {% endif %}
+    </form>
 </div>
+
+{% if email_configured and pending_users %}
+<script>
+document.getElementById('selectAllPending').addEventListener('change', function() {
+    document.querySelectorAll('.pending-checkbox').forEach(function(cb) {
+        cb.checked = this.checked;
+    }.bind(this));
+});
+</script>
+{% endif %}
 {% endblock %}
