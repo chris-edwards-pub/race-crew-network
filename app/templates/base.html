@@ -34,15 +34,8 @@
                 <div class="navbar-nav ms-auto align-items-center gap-2">
                     <a class="nav-link nav-pill-link" href="{{ url_for('regattas.index') }}">Home</a>
                     <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
-                    {% if current_user.is_admin %}
-                    <a class="nav-link nav-pill-link" href="{{ url_for('auth.admin_users') }}">Crew</a>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('admin.analytics_settings') }}">Analytics Settings</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin.email_settings') }}">Email Settings</a></li>
-                        </ul>
-                    </li>
+                    {% if current_user.is_admin or current_user.is_skipper %}
+                    <a class="nav-link nav-pill-link" href="{{ url_for('auth.my_crew') }}">My Crew</a>
                     <li class="nav-item dropdown">
                         <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
                         <ul class="dropdown-menu">
@@ -52,10 +45,28 @@
                         </ul>
                     </li>
                     {% endif %}
+                    {% if current_user.is_admin %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.admin_users') }}">Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.analytics_settings') }}">Analytics Settings</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.email_settings') }}">Email Settings</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle nav-avatar" href="#" role="button" data-bs-toggle="dropdown">{{ current_user.initials }}</a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile Settings</a></li>
+                            {% if not current_user.is_skipper and not current_user.is_admin %}
+                            <li>
+                                <form method="POST" action="{{ url_for('auth.create_schedule') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="dropdown-item">Create My Schedule</button>
+                                </form>
+                            </li>
+                            {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
                         </ul>

@@ -12,7 +12,7 @@
             </div>
             <div class="mb-3">
                 <label for="initials" class="form-label">Initials (2-3 characters)</label>
-                <input type="text" class="form-control" id="initials" name="initials" required maxlength="3" value="{{ user.initials }}" style="text-transform: uppercase;">
+                <input type="text" class="form-control" id="initials" name="initials" required maxlength="3" pattern="[A-Za-z0-9]{2,3}" title="2-3 letters or numbers" value="{{ user.initials }}" style="text-transform: uppercase;">
             </div>
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
@@ -26,6 +26,17 @@
                 <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin" {% if user.is_admin %}checked{% endif %}>
                 <label class="form-check-label" for="is_admin">Admin</label>
             </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="is_skipper" name="is_skipper" {% if user.is_skipper %}checked{% endif %}>
+                <label class="form-check-label" for="is_skipper">Skipper</label>
+            </div>
+            {% if user.invite_token %}
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="registration_complete" name="registration_complete">
+                <label class="form-check-label" for="registration_complete">Registration complete</label>
+                <div class="form-text">Check this to activate the user without them completing the invite link. You must also set a password below.</div>
+            </div>
+            {% endif %}
             <hr>
             <p class="text-muted">Leave blank to keep current password.</p>
             <div class="mb-3">

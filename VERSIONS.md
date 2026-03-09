@@ -1,5 +1,19 @@
 # Version History
 
+## 0.45.0
+- Multi-user skipper/crew model with three roles: Admin, Skipper, Crew
+- Skippers own their regatta schedule and can import regattas
+- Skippers invite and manage their own crew via "My Crew" page
+- Crew members see only their skippers' regattas and can RSVP
+- Admins see all regattas across all skippers
+- Role-aware navbar: Skippers see "My Crew" + "Import"; Admins see "Users" + "Admin"
+- Skipper filter dropdown on home page for users with multiple skippers
+- Scoped regatta visibility in iCal feeds and PDF export
+- Permission-based access control for regatta CRUD, imports, and RSVP
+- New `skipper_crew` association table and `is_skipper`/`invited_by` fields on User
+- Registration auto-links new users to their inviting skipper's crew
+- Admin can mark invitees as Skippers and toggle `is_skipper` on user edit
+
 ## 0.44.1
 - Personalize invite email body with inviter's name ("{name}'s crew")
 - Set From display name to "Race Crew Network" on all outgoing emails

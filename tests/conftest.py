@@ -66,15 +66,51 @@ def client(app):
 
 @pytest.fixture()
 def admin_user(db):
-    """Create and return an admin user."""
+    """Create and return an admin user (also a skipper)."""
     user = User(
         email="admin@test.com",
         display_name="Admin",
         initials="AD",
         is_admin=True,
+        is_skipper=True,
     )
     user.set_password("password")
     db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture()
+def skipper_user(db):
+    """Create and return a skipper (non-admin) user."""
+    user = User(
+        email="skipper@test.com",
+        display_name="Skipper",
+        initials="SK",
+        is_admin=False,
+        is_skipper=True,
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture()
+def crew_user(db, skipper_user):
+    """Create a crew member linked to skipper_user."""
+    user = User(
+        email="crew@test.com",
+        display_name="Crew",
+        initials="CR",
+        is_admin=False,
+        is_skipper=False,
+        invited_by=skipper_user.id,
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.flush()
+    skipper_user.crew_members.append(user)
     db.session.commit()
     return user
 
@@ -85,6 +121,28 @@ def logged_in_client(client, admin_user):
     client.post(
         "/login",
         data={"email": "admin@test.com", "password": "password"},
+        follow_redirects=True,
+    )
+    return client
+
+
+@pytest.fixture()
+def logged_in_skipper(client, skipper_user):
+    """A test client logged in as skipper."""
+    client.post(
+        "/login",
+        data={"email": "skipper@test.com", "password": "password"},
+        follow_redirects=True,
+    )
+    return client
+
+
+@pytest.fixture()
+def logged_in_crew(client, crew_user):
+    """A test client logged in as crew."""
+    client.post(
+        "/login",
+        data={"email": "crew@test.com", "password": "password"},
         follow_redirects=True,
     )
     return client

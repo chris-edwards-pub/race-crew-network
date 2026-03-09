@@ -17,7 +17,7 @@
             </div>
             <div class="mb-3">
                 <label for="initials" class="form-label">Initials (2-3 characters)</label>
-                <input type="text" class="form-control" id="initials" name="initials" required maxlength="3" placeholder="e.g. CE" style="text-transform: uppercase;">
+                <input type="text" class="form-control" id="initials" name="initials" required maxlength="3" pattern="[A-Za-z0-9]{2,3}" title="2-3 letters or numbers" placeholder="e.g. CE" style="text-transform: uppercase;">
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>

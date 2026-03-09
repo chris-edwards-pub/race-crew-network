@@ -10,6 +10,7 @@ from weasyprint import HTML
 
 from app import db, storage
 from app.models import RSVP, Document, Regatta, User
+from app.permissions import can_manage_regatta, can_rsvp_to_regatta
 from app.regattas import bp
 
 
@@ -18,42 +19,48 @@ def index():
     if not current_user.is_authenticated:
         return render_template("login.html")
 
-    today = date.today()
-    upcoming = (
-        Regatta.query.filter(Regatta.start_date >= today)
-        .order_by(Regatta.start_date)
-        .all()
-    )
-    past = (
-        Regatta.query.filter(Regatta.start_date < today)
-        .order_by(Regatta.start_date.desc())
-        .all()
-    )
+    upcoming, past = current_user.visible_regattas_split()
+
+    # Optional skipper filter
+    skipper_id = request.args.get("skipper", type=int)
+    if skipper_id:
+        upcoming = [r for r in upcoming if r.created_by == skipper_id]
+        past = [r for r in past if r.created_by == skipper_id]
+
     users = (
         User.query.filter(User.invite_token.is_(None)).order_by(User.display_name).all()
     )
-    return render_template("index.html", upcoming=upcoming, past=past, users=users)
+
+    # Build skipper list for filter dropdown (skippers whose regattas are visible)
+    skippers = []
+    if current_user.is_admin:
+        skippers = (
+            User.query.filter(User.is_skipper.is_(True))
+            .order_by(User.display_name)
+            .all()
+        )
+    elif current_user.is_crew:
+        skippers = list(current_user.skippers)
+
+    return render_template(
+        "index.html",
+        upcoming=upcoming,
+        past=past,
+        users=users,
+        skippers=skippers,
+        selected_skipper=skipper_id,
+    )
 
 
 @bp.route("/schedule.pdf")
 @login_required
 def pdf():
-    today = date.today()
-    upcoming = (
-        Regatta.query.filter(Regatta.start_date >= today)
-        .order_by(Regatta.start_date)
-        .all()
-    )
-    past = (
-        Regatta.query.filter(Regatta.start_date < today)
-        .order_by(Regatta.start_date.desc())
-        .all()
-    )
+    upcoming, past = current_user.visible_regattas_split()
     html_str = render_template(
         "pdf_schedule.html",
         upcoming=upcoming,
         past=past,
-        generated_date=today.strftime("%B %d, %Y"),
+        generated_date=date.today().strftime("%B %d, %Y"),
     )
     pdf_bytes = HTML(string=html_str).write_pdf()
     response = make_response(pdf_bytes)
@@ -65,7 +72,7 @@ def pdf():
 @bp.route("/regattas/new", methods=["GET", "POST"])
 @login_required
 def create():
-    if not current_user.is_admin:
+    if not (current_user.is_admin or current_user.is_skipper):
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
@@ -78,13 +85,13 @@ def create():
 @bp.route("/regattas/<int:regatta_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit(regatta_id: int):
-    if not current_user.is_admin:
-        flash("Access denied.", "error")
-        return redirect(url_for("regattas.index"))
-
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
         flash("Regatta not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if not can_manage_regatta(current_user, regatta):
+        flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
     if request.method == "POST":
@@ -96,11 +103,14 @@ def edit(regatta_id: int):
 @bp.route("/regattas/<int:regatta_id>/delete", methods=["POST"])
 @login_required
 def delete(regatta_id: int):
-    if not current_user.is_admin:
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta:
+        return redirect(url_for("regattas.index"))
+
+    if not can_manage_regatta(current_user, regatta):
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
-    regatta = db.session.get(Regatta, regatta_id)
     if regatta:
         db.session.delete(regatta)
         db.session.commit()
@@ -111,7 +121,7 @@ def delete(regatta_id: int):
 @bp.route("/regattas/bulk-delete", methods=["POST"])
 @login_required
 def bulk_delete():
-    if not current_user.is_admin:
+    if not (current_user.is_admin or current_user.is_skipper):
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
@@ -127,7 +137,7 @@ def bulk_delete():
         except (ValueError, TypeError):
             continue
         regatta = db.session.get(Regatta, rid)
-        if regatta:
+        if regatta and can_manage_regatta(current_user, regatta):
             db.session.delete(regatta)
             count += 1
 
@@ -142,6 +152,11 @@ def rsvp(regatta_id: int):
     status = request.form.get("status", "").lower()
     if status not in ("yes", "no", "maybe"):
         flash("Invalid RSVP status.", "error")
+        return redirect(url_for("regattas.index"))
+
+    regatta = db.session.get(Regatta, regatta_id)
+    if not regatta or not can_rsvp_to_regatta(current_user, regatta):
+        flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
     existing = RSVP.query.filter_by(
@@ -176,12 +191,12 @@ def download_doc(doc_id: int):
 @bp.route("/regattas/<int:regatta_id>/upload", methods=["POST"])
 @login_required
 def upload_doc(regatta_id: int):
-    if not current_user.is_admin:
-        flash("Access denied.", "error")
-        return redirect(url_for("regattas.index"))
-
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
+        flash("Regatta not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if not can_manage_regatta(current_user, regatta):
         flash("Regatta not found.", "error")
         return redirect(url_for("regattas.index"))
 
@@ -226,13 +241,14 @@ def upload_doc(regatta_id: int):
 @bp.route("/docs/<int:doc_id>/delete", methods=["POST"])
 @login_required
 def delete_doc(doc_id: int):
-    if not current_user.is_admin:
-        flash("Access denied.", "error")
-        return redirect(url_for("regattas.index"))
-
     doc = db.session.get(Document, doc_id)
     if not doc:
         flash("Document not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    regatta = db.session.get(Regatta, doc.regatta_id)
+    if regatta and not can_manage_regatta(current_user, regatta):
+        flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
     regatta_id = doc.regatta_id

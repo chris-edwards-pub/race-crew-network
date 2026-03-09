@@ -1,16 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Manage Crew — Race Crew Network{% endblock %}
+{% block title %}Manage Users — Race Crew Network{% endblock %}
 {% block content %}
-<h2 class="mb-4">Manage Crew</h2>
+<h2 class="mb-4">Manage Users</h2>
 
 <div class="card mb-4">
     <div class="card-body">
-        <h5 class="card-title">Invite New Crew Member</h5>
+        <h5 class="card-title">Invite New User</h5>
         <form method="POST" action="{{ url_for('auth.invite_user') }}" class="row g-2 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-12 col-sm">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required placeholder="crew@example.com">
+            </div>
+            <div class="col-12 col-sm-auto d-flex align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="is_skipper" name="is_skipper">
+                    <label class="form-check-label" for="is_skipper">Skipper</label>
+                </div>
             </div>
             {% if email_configured %}
             <div class="col-12 col-sm-auto d-flex align-items-center">
@@ -61,7 +67,11 @@
                     <td>{{ user.display_name }}</td>
                     <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ user.initials }}</span></td>
                     <td class="d-none d-md-table-cell">{{ user.email }}</td>
-                    <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
+                    <td>
+                        {% if user.is_admin %}Admin{% endif %}
+                        {% if user.is_skipper and not user.is_admin %}Skipper{% endif %}
+                        {% if not user.is_admin and not user.is_skipper %}Crew{% endif %}
+                    </td>
                     <td>
                         {% if user.invite_token %}
                         <span class="badge bg-warning">Pending</span>
