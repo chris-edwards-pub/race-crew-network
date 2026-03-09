@@ -112,7 +112,7 @@ def send_email(
     # Build MIME message for custom headers
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = sender
+    msg["From"] = f"Race Crew Network <{sender}>"
     msg["To"] = to
 
     # Add unsubscribe headers (RFC 8058)
@@ -135,7 +135,7 @@ def send_email(
         msg.attach(MIMEText(body_html_with_footer, "html", "utf-8"))
 
     client.send_raw_email(
-        Source=sender,
+        Source=f"Race Crew Network <{sender}>",
         Destinations=[to],
         RawMessage={"Data": msg.as_string()},
     )

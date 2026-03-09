@@ -97,7 +97,7 @@ class TestSendEmail:
 
         mock_client.send_raw_email.assert_called_once()
         call_kwargs = mock_client.send_raw_email.call_args[1]
-        assert call_kwargs["Source"] == "from@example.com"
+        assert call_kwargs["Source"] == "Race Crew Network <from@example.com>"
         assert call_kwargs["Destinations"] == ["to@example.com"]
         raw_data = call_kwargs["RawMessage"]["Data"]
         assert "List-Unsubscribe:" in raw_data
@@ -116,7 +116,9 @@ class TestSendEmail:
 
         send_email("to@example.com", "Subject", "Text body", body_html="<p>HTML</p>")
 
-        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        call_kwargs = mock_client.send_raw_email.call_args[1]
+        assert call_kwargs["Source"] == "Race Crew Network <from@example.com>"
+        raw_data = call_kwargs["RawMessage"]["Data"]
         # HTML body is base64-encoded in the MIME message; decode to verify
         assert "text/html" in raw_data
         # Extract and decode the base64 HTML part

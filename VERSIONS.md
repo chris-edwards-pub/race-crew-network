@@ -1,5 +1,15 @@
 # Version History
 
+## 0.44.1
+- Personalize invite email body with inviter's name ("{name}'s crew")
+- Set From display name to "Race Crew Network" on all outgoing emails
+
+## 0.44.0
+- Add email invite option for crew members on Manage Crew page
+- "Send invite via email" checkbox on invite form (when SES is configured)
+- Bulk "Resend Invites" for pending users with select-all support
+- Graceful fallback to invite link flash if email send fails
+
 ## 0.43.3
 - Remove TODO.md
 - Widen SES IAM policy to allow sending from all verified identities
