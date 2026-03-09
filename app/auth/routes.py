@@ -1,4 +1,5 @@
 import logging
+import secrets
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -6,7 +7,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app import db
 from app.admin.email_service import is_email_configured, send_email
 from app.auth import bp
-from app.models import User
+from app.models import Document, Regatta, RSVP, User, skipper_crew
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +69,8 @@ def register(token: str):
 
         if not display_name or not initials:
             flash("Name and initials are required.", "error")
-        elif len(initials) < 2 or len(initials) > 3:
-            flash("Initials must be 2-3 characters.", "error")
+        elif len(initials) < 2 or len(initials) > 3 or not initials.isalnum():
+            flash("Initials must be 2-3 letters or numbers.", "error")
         elif len(password) < 6:
             flash("Password must be at least 6 characters.", "error")
         elif password != password2:
@@ -79,6 +80,14 @@ def register(token: str):
             user.initials = initials
             user.set_password(password)
             user.invite_token = None  # Mark registration complete
+
+            # Auto-link to inviting skipper's crew
+            if user.invited_by:
+                inviter = db.session.get(User, user.invited_by)
+                if inviter and inviter.is_skipper:
+                    if user not in inviter.crew_members.all():
+                        inviter.crew_members.append(user)
+
             db.session.commit()
             login_user(user)
             flash("Welcome aboard!", "success")
@@ -99,8 +108,8 @@ def profile():
 
         if not display_name or not initials or not email:
             flash("Name, initials, and email are required.", "error")
-        elif len(initials) < 2 or len(initials) > 3:
-            flash("Initials must be 2-3 characters.", "error")
+        elif len(initials) < 2 or len(initials) > 3 or not initials.isalnum():
+            flash("Initials must be 2-3 letters or numbers.", "error")
         elif email != current_user.email and User.query.filter_by(email=email).first():
             flash("That email is already in use.", "error")
         elif password and len(password) < 6:
@@ -132,6 +141,11 @@ def view_profile(user_id: int):
     return render_template("view_profile.html", user=user)
 
 
+# ---------------------------------------------------------------------------
+# Admin: user management
+# ---------------------------------------------------------------------------
+
+
 @bp.route("/admin/users")
 @login_required
 def admin_users():
@@ -154,8 +168,6 @@ def invite_user():
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
-    import secrets
-
     email = request.form.get("email", "").strip().lower()
     if not email:
         flash("Email is required.", "error")
@@ -165,6 +177,7 @@ def invite_user():
         flash("A user with that email already exists.", "error")
         return redirect(url_for("auth.admin_users"))
 
+    is_skipper = request.form.get("is_skipper") == "on"
     token = secrets.token_urlsafe(32)
     user = User(
         email=email,
@@ -172,6 +185,8 @@ def invite_user():
         display_name=email,
         initials="??",
         invite_token=token,
+        is_skipper=is_skipper,
+        invited_by=current_user.id,
     )
     db.session.add(user)
     db.session.commit()
@@ -250,24 +265,34 @@ def edit_user(user_id: int):
         initials = request.form.get("initials", "").strip().upper()
         email = request.form.get("email", "").strip().lower()
         is_admin = request.form.get("is_admin") == "on"
+        is_skipper = request.form.get("is_skipper") == "on"
         password = request.form.get("password", "")
+        registration_complete = request.form.get("registration_complete") == "on"
 
         if not display_name or not initials or not email:
             flash("Name, initials, and email are required.", "error")
-        elif len(initials) < 2 or len(initials) > 3:
-            flash("Initials must be 2-3 characters.", "error")
+        elif len(initials) < 2 or len(initials) > 3 or not initials.isalnum():
+            flash("Initials must be 2-3 letters or numbers.", "error")
         elif email != user.email and User.query.filter_by(email=email).first():
             flash("That email is already in use.", "error")
         elif password and len(password) < 6:
             flash("Password must be at least 6 characters.", "error")
+        elif registration_complete and not password:
+            flash(
+                "A password is required when marking registration complete.",
+                "error",
+            )
         else:
             user.display_name = display_name
             user.initials = initials
             user.email = email
             user.is_admin = is_admin
+            user.is_skipper = is_skipper
             user.phone = request.form.get("phone", "").strip() or None
             if password:
                 user.set_password(password)
+            if registration_complete and user.invite_token:
+                user.invite_token = None
             db.session.commit()
             flash(f"User '{display_name}' updated.", "success")
             return redirect(url_for("auth.admin_users"))
@@ -288,8 +313,156 @@ def delete_user(user_id: int):
     elif user.id == current_user.id:
         flash("You cannot delete yourself.", "error")
     else:
+        # Delete regattas created by this user (cascades their docs & RSVPs)
+        for regatta in Regatta.query.filter_by(created_by=user.id).all():
+            db.session.delete(regatta)
+        # Delete user's own RSVPs and uploaded documents
+        RSVP.query.filter_by(user_id=user.id).delete()
+        Document.query.filter_by(uploaded_by=user.id).delete()
+        # Clean up skipper_crew associations
+        db.session.execute(
+            skipper_crew.delete().where(
+                (skipper_crew.c.skipper_id == user.id)
+                | (skipper_crew.c.crew_id == user.id)
+            )
+        )
         db.session.delete(user)
         db.session.commit()
         flash(f"User {user.display_name} deleted.", "success")
 
     return redirect(url_for("auth.admin_users"))
+
+
+# ---------------------------------------------------------------------------
+# Skipper: crew management
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/create-schedule", methods=["POST"])
+@login_required
+def create_schedule():
+    if not current_user.is_skipper:
+        current_user.is_skipper = True
+        db.session.commit()
+        flash("Your schedule has been created!", "success")
+    return redirect(url_for("regattas.index"))
+
+
+@bp.route("/delete-schedule", methods=["POST"])
+@login_required
+def delete_schedule():
+    if current_user.is_admin:
+        flash("Admins cannot delete their schedule.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if not current_user.is_skipper:
+        flash("You don't have a schedule to delete.", "error")
+        return redirect(url_for("regattas.index"))
+
+    # Delete all regattas created by this user (cascades their docs & RSVPs)
+    for regatta in Regatta.query.filter_by(created_by=current_user.id).all():
+        db.session.delete(regatta)
+
+    # Delete any remaining RSVPs/documents owned by this user on other regattas
+    RSVP.query.filter_by(user_id=current_user.id).delete()
+    Document.query.filter_by(uploaded_by=current_user.id).delete()
+
+    # Unlink crew members
+    db.session.execute(
+        skipper_crew.delete().where(skipper_crew.c.skipper_id == current_user.id)
+    )
+
+    current_user.is_skipper = False
+    db.session.commit()
+    flash("Your schedule has been deleted.", "success")
+    return redirect(url_for("regattas.index"))
+
+
+@bp.route("/my-crew")
+@login_required
+def my_crew():
+    if not (current_user.is_admin or current_user.is_skipper):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    crew = current_user.crew_members.order_by(User.display_name).all()
+    return render_template(
+        "my_crew.html",
+        crew=crew,
+        email_configured=is_email_configured(),
+    )
+
+
+@bp.route("/my-crew/invite", methods=["POST"])
+@login_required
+def invite_crew():
+    if not (current_user.is_admin or current_user.is_skipper):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    email = request.form.get("email", "").strip().lower()
+    if not email:
+        flash("Email is required.", "error")
+        return redirect(url_for("auth.my_crew"))
+
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        # User already exists — just add to crew if not already
+        if existing_user in current_user.crew_members.all():
+            flash(f"{existing_user.display_name} is already on your crew.", "warning")
+        else:
+            current_user.crew_members.append(existing_user)
+            db.session.commit()
+            flash(f"{existing_user.display_name} added to your crew.", "success")
+        return redirect(url_for("auth.my_crew"))
+
+    # Create new invited user
+    token = secrets.token_urlsafe(32)
+    user = User(
+        email=email,
+        password_hash="pending",
+        display_name=email,
+        initials="??",
+        invite_token=token,
+        invited_by=current_user.id,
+    )
+    db.session.add(user)
+    db.session.flush()
+    current_user.crew_members.append(user)
+    db.session.commit()
+
+    invite_url = url_for("auth.register", token=token, _external=True)
+
+    send_email_invite = request.form.get("send_email_invite") == "on"
+    if send_email_invite and is_email_configured():
+        try:
+            _send_invite_email(email, invite_url, current_user.display_name)
+            flash(f"Invite email sent to {email}.", "success")
+        except Exception:
+            logger.exception("Failed to send invite email to %s", email)
+            flash("Failed to send invite email. Copy the link below.", "error")
+            flash(f"Invite link: {invite_url}", "success")
+    else:
+        flash(f"Invite link: {invite_url}", "success")
+
+    return redirect(url_for("auth.my_crew"))
+
+
+@bp.route("/my-crew/<int:user_id>/remove", methods=["POST"])
+@login_required
+def remove_crew(user_id: int):
+    if not (current_user.is_admin or current_user.is_skipper):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash("User not found.", "error")
+    elif user not in current_user.crew_members.all():
+        flash("That user is not on your crew.", "warning")
+    else:
+        current_user.crew_members.remove(user)
+        db.session.commit()
+        flash(f"{user.display_name} removed from your crew.", "success")
+
+    return redirect(url_for("auth.my_crew"))

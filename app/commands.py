@@ -29,6 +29,7 @@ def register_commands(app: Flask) -> None:
             display_name="Administrator",
             initials="AD",
             is_admin=True,
+            is_skipper=True,
         )
         user.set_password(password)
         db.session.add(user)
@@ -51,6 +52,7 @@ def register_commands(app: Flask) -> None:
             display_name=name,
             initials=initials.upper(),
             is_admin=True,
+            is_skipper=True,
         )
         user.set_password(password)
         db.session.add(user)

@@ -32,6 +32,100 @@ class TestUserModel:
         assert len(user.password_hash) > 20
 
 
+class TestSkipperCrewRelationship:
+    def test_skipper_crew_link(self, app, db, skipper_user, crew_user):
+        assert crew_user in skipper_user.crew_members.all()
+        assert skipper_user in crew_user.skippers
+
+    def test_is_crew_property(self, app, db, crew_user):
+        assert crew_user.is_crew is True
+
+    def test_is_crew_false_for_skipper(self, app, db, skipper_user):
+        assert skipper_user.is_crew is False
+
+    def test_visible_regattas_admin_sees_all(self, app, db, admin_user, skipper_user):
+        r1 = Regatta(
+            name="Admin Regatta",
+            location="YC",
+            start_date=date(2026, 7, 1),
+            created_by=admin_user.id,
+        )
+        r2 = Regatta(
+            name="Skipper Regatta",
+            location="YC",
+            start_date=date(2026, 7, 2),
+            created_by=skipper_user.id,
+        )
+        db.session.add_all([r1, r2])
+        db.session.commit()
+
+        visible = admin_user.visible_regattas().all()
+        assert len(visible) == 2
+
+    def test_visible_regattas_skipper_sees_own(self, app, db, admin_user, skipper_user):
+        r1 = Regatta(
+            name="Admin Regatta",
+            location="YC",
+            start_date=date(2026, 7, 1),
+            created_by=admin_user.id,
+        )
+        r2 = Regatta(
+            name="Skipper Regatta",
+            location="YC",
+            start_date=date(2026, 7, 2),
+            created_by=skipper_user.id,
+        )
+        db.session.add_all([r1, r2])
+        db.session.commit()
+
+        visible = skipper_user.visible_regattas().all()
+        assert len(visible) == 1
+        assert visible[0].name == "Skipper Regatta"
+
+    def test_visible_regattas_crew_sees_skippers(
+        self, app, db, admin_user, skipper_user, crew_user
+    ):
+        r1 = Regatta(
+            name="Admin Regatta",
+            location="YC",
+            start_date=date(2026, 7, 1),
+            created_by=admin_user.id,
+        )
+        r2 = Regatta(
+            name="Skipper Regatta",
+            location="YC",
+            start_date=date(2026, 7, 2),
+            created_by=skipper_user.id,
+        )
+        db.session.add_all([r1, r2])
+        db.session.commit()
+
+        visible = crew_user.visible_regattas().all()
+        assert len(visible) == 1
+        assert visible[0].name == "Skipper Regatta"
+
+    def test_visible_regattas_no_role_empty(self, app, db, admin_user):
+        norole = User(
+            email="norole@test.com",
+            display_name="No Role",
+            initials="NR",
+        )
+        norole.set_password("password")
+        db.session.add(norole)
+        db.session.flush()
+
+        r = Regatta(
+            name="Test",
+            location="YC",
+            start_date=date(2026, 7, 1),
+            created_by=admin_user.id,
+        )
+        db.session.add(r)
+        db.session.commit()
+
+        assert norole.visible_regattas().all() == []
+
+
 class TestRegattaModel:
     def test_create_regatta(self, app, db, admin_user):
         regatta = Regatta(

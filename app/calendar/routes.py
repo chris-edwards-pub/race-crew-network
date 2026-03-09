@@ -43,7 +43,7 @@ def ical_feed(token: str):
     cal.add("x-wr-calname", "Race Crew Network")
     cal.add("method", "PUBLISH")
 
-    regattas = Regatta.query.order_by(Regatta.start_date).all()
+    regattas = user.visible_regattas().order_by(Regatta.start_date).all()
 
     for regatta in regattas:
         event = Event()

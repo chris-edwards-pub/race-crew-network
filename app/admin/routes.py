@@ -62,6 +62,14 @@ def _require_admin():
     return None
 
 
+def _require_skipper_or_admin():
+    """Return a redirect response if the user is not a skipper or admin."""
+    if not (current_user.is_admin or current_user.is_skipper):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+    return None
+
+
 def _normalize_regatta_name(name: str) -> str:
     """Strip 4-digit year prefixes from each segment of a regatta name.
 
@@ -73,14 +81,20 @@ def _normalize_regatta_name(name: str) -> str:
     return "/".join(cleaned)
 
 
-def _find_duplicate(name: str, start_date) -> Regatta | None:
+def _find_duplicate(
+    name: str, start_date, owner_id: int | None = None
+) -> Regatta | None:
     """Find an existing regatta with the same name and start date.
 
     Compares with leading year prefixes stripped so that
     "2026 Orange Peel Regatta" matches "Orange Peel Regatta".
+    When *owner_id* is given, only check that owner's regattas.
     """
     normalized = _normalize_regatta_name(name).lower()
-    candidates = Regatta.query.filter(Regatta.start_date == start_date).all()
+    query = Regatta.query.filter(Regatta.start_date == start_date)
+    if owner_id is not None:
+        query = query.filter(Regatta.created_by == owner_id)
+    candidates = query.all()
     for r in candidates:
         if _normalize_regatta_name(r.name).lower() == normalized:
             return r
@@ -363,7 +377,7 @@ def _extract_jsonld_events(html: str) -> str:
 @bp.route("/admin/import-url")
 @login_required
 def import_url():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
     prefill_url = request.args.get("url", "")
@@ -378,7 +392,7 @@ def import_url():
 @bp.route("/admin/import-file")
 @login_required
 def import_file():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
     return render_template("admin/import_file.html", current_year=date.today().year)
@@ -408,7 +422,7 @@ def import_multiple():
 @bp.route("/admin/import-paste")
 @login_required
 def import_paste():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
     return render_template("admin/import_paste.html")
@@ -504,7 +518,7 @@ def email_test():
 @login_required
 def import_schedule_extract():
     """SSE endpoint that streams extraction progress."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -514,6 +528,7 @@ def import_schedule_extract():
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
+    user_id = current_user.id
 
     def _sse(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
@@ -636,7 +651,9 @@ def import_schedule_extract():
             start = r.get("start_date")
             name = r.get("name")
             if name and start:
-                existing = _find_duplicate(name, date.fromisoformat(start))
+                existing = _find_duplicate(
+                    name, date.fromisoformat(start), owner_id=user_id
+                )
                 if existing:
                     dup_count += 1
                     r["duplicate_of"] = {
@@ -687,7 +704,7 @@ def import_schedule_extract():
 @login_required
 def import_schedule_extract_file():
     """SSE endpoint that streams extraction progress for an uploaded file."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -696,6 +713,7 @@ def import_schedule_extract_file():
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
+    user_id = current_user.id
 
     def _sse(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
@@ -814,7 +832,9 @@ def import_schedule_extract_file():
             start = r.get("start_date")
             name = r.get("name")
             if name and start:
-                existing = _find_duplicate(name, date.fromisoformat(start))
+                existing = _find_duplicate(
+                    name, date.fromisoformat(start), owner_id=user_id
+                )
                 if existing:
                     dup_count += 1
                     r["duplicate_of"] = {
@@ -863,7 +883,7 @@ def import_schedule_extract_file():
 @login_required
 def import_schedule_extract_single():
     """SSE endpoint: extract a single regatta (no document discovery)."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -872,6 +892,7 @@ def import_schedule_extract_single():
     current_year = date.today().year
     year = int(request.form.get("year", current_year))
     task_id = str(uuid.uuid4())
+    user_id = current_user.id
 
     def _sse(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
@@ -966,7 +987,9 @@ def import_schedule_extract_single():
         start = r.get("start_date")
         name = r.get("name")
         if name and start:
-            existing = _find_duplicate(name, date.fromisoformat(start))
+            existing = _find_duplicate(
+                name, date.fromisoformat(start), owner_id=user_id
+            )
             if existing:
                 r["duplicate_of"] = {
                     "id": existing.id,
@@ -1011,7 +1034,7 @@ def import_schedule_extract_single():
 @login_required
 def import_single_preview():
     """Render single regatta editable preview from extraction results."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1031,7 +1054,7 @@ def import_single_preview():
 @login_required
 def import_schedule_preview():
     """Render extraction results from SSE extraction."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1070,7 +1093,7 @@ def import_schedule_preview():
 @bp.route("/admin/import-schedule/confirm", methods=["POST"])
 @login_required
 def import_schedule_confirm():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1107,8 +1130,8 @@ def import_schedule_confirm():
             skipped += 1
             continue
 
-        # Duplicate check: case-insensitive name + start_date
-        existing = _find_duplicate(name, start_date)
+        # Duplicate check: case-insensitive name + start_date (scoped to user)
+        existing = _find_duplicate(name, start_date, owner_id=current_user.id)
         if existing:
             skipped += 1
             continue
@@ -1174,7 +1197,7 @@ def import_schedule_confirm():
 @bp.route("/admin/import-schedule/discover", methods=["POST"])
 @login_required
 def import_schedule_discover():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1379,7 +1402,7 @@ def import_schedule_discover():
 @bp.route("/admin/import-schedule/documents")
 @login_required
 def import_schedule_documents():
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1402,7 +1425,7 @@ def import_schedule_documents():
 @login_required
 def discover_documents_for_regatta(regatta_id: int):
     """SSE endpoint: discover NOR/SI/WWW documents for an existing regatta."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1547,7 +1570,7 @@ def discover_documents_for_regatta(regatta_id: int):
 @login_required
 def review_documents_for_regatta(regatta_id: int):
     """Show discovered documents with checkboxes for an existing regatta."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 
@@ -1577,7 +1600,7 @@ def review_documents_for_regatta(regatta_id: int):
 @login_required
 def attach_documents_for_regatta(regatta_id: int):
     """Create Document records for selected discovered documents."""
-    denied = _require_admin()
+    denied = _require_skipper_or_admin()
     if denied:
         return denied
 

@@ -1,9 +1,22 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import bcrypt
 from flask_login import UserMixin
 
 from app import db, login_manager
+
+# Self-referential many-to-many: skipper <-> crew
+skipper_crew = db.Table(
+    "skipper_crew",
+    db.Column("skipper_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column("crew_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column(
+        "created_at",
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    ),
+)
 
 
 class User(UserMixin, db.Model):
@@ -15,6 +28,8 @@ class User(UserMixin, db.Model):
     display_name = db.Column(db.String(100), nullable=False)
     initials = db.Column(db.String(5), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_skipper = db.Column(db.Boolean, default=False, nullable=False)
+    invited_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -29,6 +44,19 @@ class User(UserMixin, db.Model):
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
     documents = db.relationship("Document", backref="uploaded_by_user", lazy="dynamic")
 
+    # Skipper -> their crew members
+    crew_members = db.relationship(
+        "User",
+        secondary=skipper_crew,
+        primaryjoin=id == skipper_crew.c.skipper_id,
+        secondaryjoin=id == skipper_crew.c.crew_id,
+        backref="skippers",
+        lazy="dynamic",
+    )
+
+    # Who invited this user
+    inviter = db.relationship("User", remote_side=[id], foreign_keys=[invited_by])
+
     def set_password(self, password: str) -> None:
         self.password_hash = bcrypt.hashpw(
             password.encode("utf-8"), bcrypt.gensalt()
@@ -38,6 +66,48 @@ class User(UserMixin, db.Model):
         return bcrypt.checkpw(
             password.encode("utf-8"), self.password_hash.encode("utf-8")
         )
+
+    @property
+    def is_crew(self) -> bool:
+        """True if this user is crew for at least one skipper."""
+        return len(self.skippers) > 0
+
+    def visible_regattas(self):
+        """Return a query of regattas this user can see.
+
+        - Admin: all regattas
+        - Skipper: their own regattas
+        - Crew: regattas from their skippers
+        - Skipper+Crew: union of own + skippers' regattas
+        """
+        if self.is_admin:
+            return Regatta.query
+
+        owner_ids = set()
+        if self.is_skipper:
+            owner_ids.add(self.id)
+        for skipper in self.skippers:
+            owner_ids.add(skipper.id)
+
+        if not owner_ids:
+            # User has no role — return empty query
+            return Regatta.query.filter(Regatta.id < 0)
+
+        return Regatta.query.filter(Regatta.created_by.in_(owner_ids))
+
+    def visible_regattas_split(self):
+        """Return (upcoming, past) tuples of visible regattas."""
+        today = date.today()
+        base = self.visible_regattas()
+        upcoming = (
+            base.filter(Regatta.start_date >= today).order_by(Regatta.start_date).all()
+        )
+        past = (
+            base.filter(Regatta.start_date < today)
+            .order_by(Regatta.start_date.desc())
+            .all()
+        )
+        return upcoming, past
 
 
 @login_manager.user_loader

@@ -72,6 +72,7 @@ class TestAppFactory:
             display_name="Admin Two",
             initials="A2",
             is_admin=True,
+            is_skipper=True,
         )
         user.set_password("password")
         db.session.add(user)
@@ -85,8 +86,9 @@ class TestAppFactory:
 
         resp = client.get("/")
         assert resp.status_code == 200
-        assert b">Crew<" in resp.data
+        assert b">My Crew<" in resp.data
         assert b">Import<" in resp.data
+        assert b"/admin/users" in resp.data
         assert b"/admin/settings/analytics" in resp.data
 
     def test_regatta_days_filter_single_day(self, app):
