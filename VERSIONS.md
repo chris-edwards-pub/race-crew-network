@@ -1,5 +1,10 @@
 # Version History
 
+## 0.49.2
+- Add month labels centered in the existing schedule divider treatment for Upcoming and Past sections (#56)
+- Apply month divider labels in both desktop table and mobile card views
+- Emphasize the modified divider line and month label text with bold styling
+
 ## 0.49.1
 - Clarify profile picture limits in Profile Settings (accepted formats + 10 MB maximum)
 - Add explicit profile upload size validation with a clear error message
