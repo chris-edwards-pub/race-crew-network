@@ -426,3 +426,11 @@ Point-in-time restore is available through the Lightsail console or API.
 File uploads are stored in Lightsail Object Storage (S3-compatible) and persist
 across container redeployments. Consider enabling bucket versioning for
 additional protection.
+
+---
+
+## License
+
+This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
+
+The AGPL-3.0 is the strongest copyleft open source license. It requires that anyone who modifies this software — including running it as a network service — must release their modified source code under the same license.
