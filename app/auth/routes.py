@@ -1,15 +1,47 @@
 import logging
+import os
 import secrets
+import uuid
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from werkzeug.utils import secure_filename
 
-from app import db
+from app import db, storage
 from app.admin.email_service import is_email_configured, send_email
 from app.auth import bp
 from app.models import Document, Regatta, RSVP, User, skipper_crew
 
 logger = logging.getLogger(__name__)
+
+ALLOWED_PROFILE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _build_profile_image_url(image_key: str | None) -> str | None:
+    """Return a temporary URL for a stored profile image key."""
+    if not image_key or not current_app.config.get("BUCKET_NAME"):
+        return None
+
+    try:
+        return storage.get_file_url(image_key)
+    except Exception:
+        logger.exception("Failed to generate profile image URL for key: %s", image_key)
+        return None
+
+
+def _upload_profile_image(file_storage) -> str:
+    """Validate and upload a profile image, returning its storage key."""
+    if not current_app.config.get("BUCKET_NAME"):
+        raise ValueError("Profile image storage is not configured.")
+
+    safe_name = secure_filename(file_storage.filename or "")
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:
+        raise ValueError("Profile picture must be a JPG, JPEG, PNG, GIF, or WEBP file.")
+
+    stored_filename = f"profile-images/{uuid.uuid4().hex}{ext}"
+    storage.upload_file(file_storage, stored_filename)
+    return stored_filename
 
 
 def _send_invite_email(email: str, invite_url: str, inviter_name: str) -> None:
@@ -105,6 +137,8 @@ def profile():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
+        remove_profile_image = request.form.get("remove_profile_image") == "on"
+        profile_image = request.files.get("profile_image")
 
         if not display_name or not initials or not email:
             flash("Name, initials, and email are required.", "error")
@@ -117,18 +151,43 @@ def profile():
         elif password and password != password2:
             flash("Passwords do not match.", "error")
         else:
-            current_user.display_name = display_name
-            current_user.initials = initials
-            current_user.email = email
-            current_user.phone = request.form.get("phone", "").strip() or None
-            current_user.email_opt_in = request.form.get("email_opt_in") == "on"
-            if password:
-                current_user.set_password(password)
-            db.session.commit()
-            flash("Profile updated.", "success")
-            return redirect(url_for("auth.profile"))
+            old_image_key = current_user.profile_image_key
+            new_image_key = None
+            try:
+                if profile_image and profile_image.filename:
+                    new_image_key = _upload_profile_image(profile_image)
+                    current_user.profile_image_key = new_image_key
+                elif remove_profile_image:
+                    current_user.profile_image_key = None
 
-    return render_template("profile.html")
+                current_user.display_name = display_name
+                current_user.initials = initials
+                current_user.email = email
+                current_user.phone = request.form.get("phone", "").strip() or None
+                current_user.email_opt_in = request.form.get("email_opt_in") == "on"
+                if password:
+                    current_user.set_password(password)
+
+                db.session.commit()
+            except ValueError as exc:
+                db.session.rollback()
+                flash(str(exc), "error")
+            except Exception:
+                db.session.rollback()
+                if new_image_key:
+                    storage.delete_file(new_image_key)
+                logger.exception("Failed to update profile for user %s", current_user.id)
+                flash("Unable to update profile right now. Please try again.", "error")
+            else:
+                if old_image_key and old_image_key != current_user.profile_image_key:
+                    storage.delete_file(old_image_key)
+                flash("Profile updated.", "success")
+                return redirect(url_for("auth.profile"))
+
+    return render_template(
+        "profile.html",
+        profile_image_url=_build_profile_image_url(current_user.profile_image_key),
+    )
 
 
 @bp.route("/crew/<int:user_id>")
@@ -313,6 +372,10 @@ def delete_user(user_id: int):
     elif user.id == current_user.id:
         flash("You cannot delete yourself.", "error")
     else:
+        # Delete profile image from object storage if present.
+        if user.profile_image_key:
+            storage.delete_file(user.profile_image_key)
+
         # Delete regattas created by this user (cascades their docs & RSVPs)
         for regatta in Regatta.query.filter_by(created_by=user.id).all():
             db.session.delete(regatta)

@@ -4,10 +4,15 @@
 <div class="mb-3 d-flex flex-wrap align-items-center">
     <a href="{{ url_for('regattas.pdf') }}" class="btn btn-outline-secondary btn-sm no-print" target="_blank">Print PDF</a>
     <div class="flex-grow-1 text-center">
-        {% if skippers|length == 1 %}
-        <h2 class="mb-0">{{ skippers[0].display_name }}'s Race Schedule</h2>
-        {% elif current_user.is_skipper %}
+        {% if selected_skipper == 0 %}
+        <h2 class="mb-0">Race Schedule</h2>
+        {% elif selected_skipper == current_user.id %}
         <h2 class="mb-0">{{ current_user.display_name }}'s Race Schedule</h2>
+        {% elif selected_skipper %}
+        {% set viewing_skipper = schedules|selectattr('id', 'equalto', selected_skipper)|first %}
+        <h2 class="mb-0">{{ viewing_skipper.display_name }}'s Race Schedule</h2>
+        {% elif schedules|length == 1 %}
+        <h2 class="mb-0">{{ schedules[0].display_name }}'s Race Schedule</h2>
         {% else %}
         <h2 class="mb-0">Race Schedule</h2>
         {% endif %}
@@ -15,31 +20,48 @@
 </div>
 
 <div class="mb-3 d-flex flex-wrap gap-2 btn-bar align-items-center">
-    {% if current_user.is_admin or current_user.is_skipper %}
+    {% if current_user.is_admin or (current_user.is_skipper and (selected_skipper == 0 or selected_skipper == current_user.id)) %}
     <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>
     {% endif %}
-    {% if current_user.is_skipper and not current_user.is_admin %}
+    {% if current_user.is_skipper and not current_user.is_admin and (selected_skipper == 0 or selected_skipper == current_user.id) %}
     <form method="POST" action="{{ url_for('auth.delete_schedule') }}" class="d-inline"
           onsubmit="return confirm('This will delete all your regattas and remove your crew. Are you sure?')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-outline-danger btn-sm">Delete Schedule</button>
     </form>
     {% endif %}
-    {% if skippers|length > 1 %}
-    <form method="GET" class="d-inline-flex align-items-center ms-auto">
+    <form method="GET" id="filter-form" class="d-inline-flex flex-wrap align-items-center gap-2 ms-auto">
+        {% if schedules|length > 1 %}
         <select name="skipper" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
-            <option value="">All Skippers</option>
-            {% for s in skippers %}
-            <option value="{{ s.id }}" {% if selected_skipper == s.id %}selected{% endif %}>{{ s.display_name }}</option>
+            <option value="0" {% if selected_skipper == 0 %}selected{% endif %}>All Schedules</option>
+            {% if current_user.is_skipper %}
+            <option value="{{ current_user.id }}" {% if selected_skipper == current_user.id %}selected{% endif %}>My Schedule</option>
+            {% endif %}
+            {% for s in schedules if s.id != current_user.id %}
+            <option value="{{ s.id }}" {% if selected_skipper == s.id %}selected{% endif %}>{{ s.display_name }}'s Schedule</option>
             {% endfor %}
         </select>
+        {% endif %}
+        <div class="btn-group btn-group-sm" role="group" aria-label="RSVP filter">
+            <input type="checkbox" class="btn-check" name="rsvp" value="yes"
+                   id="rsvp-yes" {% if 'yes' in rsvp_filters or not rsvp_filters %}checked{% endif %}
+                   onchange="document.getElementById('filter-form').submit()">
+            <label class="btn btn-outline-success" for="rsvp-yes">Yes</label>
+            <input type="checkbox" class="btn-check" name="rsvp" value="maybe"
+                   id="rsvp-maybe" {% if 'maybe' in rsvp_filters or not rsvp_filters %}checked{% endif %}
+                   onchange="document.getElementById('filter-form').submit()">
+            <label class="btn btn-outline-warning" for="rsvp-maybe">Maybe</label>
+            <input type="checkbox" class="btn-check" name="rsvp" value="no"
+                   id="rsvp-no" {% if 'no' in rsvp_filters or not rsvp_filters %}checked{% endif %}
+                   onchange="document.getElementById('filter-form').submit()">
+            <label class="btn btn-outline-danger" for="rsvp-no">No</label>
+        </div>
     </form>
-    {% endif %}
 </div>
 
-{% macro regatta_table(regattas, is_past, table_id) %}
-{% set can_manage = current_user.is_admin or current_user.is_skipper %}
-{% if can_manage %}
+{% set show_skipper = (selected_skipper == 0) or (selected_skipper is none and schedules|length > 1) %}
+{% macro regatta_table(regattas, is_past, table_id, show_skipper) %}
+{% if can_manage_any %}
 <form method="POST" action="{{ url_for('regattas.bulk_delete') }}" id="{{ table_id }}-form" onsubmit="return confirmBulkDelete(this)">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
@@ -50,6 +72,7 @@
             <tr>
                 <th>Date(s)</th>
                 <th>Class</th>
+                {% if show_skipper %}<th>Skipper</th>{% endif %}
                 <th>Regatta</th>
                 <th>Location</th>
                 <th class="text-nowrap">Docs</th>
@@ -57,7 +80,7 @@
                 {% if not is_past %}
                 <th>Your RSVP</th>
                 {% endif %}
-                {% if can_manage %}
+                {% if can_manage_any %}
                 <th>Edit</th>
                 <th><input type="checkbox" class="select-all" data-table="{{ table_id }}"></th>
                 {% endif %}
@@ -71,6 +94,7 @@
                     <br><small class="text-muted">{{ regatta.start_date|regatta_days(regatta.end_date) }}</small>
                 </td>
                 <td>{{ regatta.boat_class }}</td>
+                {% if show_skipper %}<td>{{ regatta.creator.display_name }}</td>{% endif %}
                 <td>
                     <strong>{{ regatta.name }}</strong>
                     {% if regatta.notes %}
@@ -98,6 +122,8 @@
                 <td>
                     <form method="POST" action="{{ url_for('regattas.rsvp', regatta_id=regatta.id) }}" class="d-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if selected_skipper is not none %}<input type="hidden" name="redirect_skipper" value="{{ selected_skipper }}">{% endif %}
+                        {% for rf in rsvp_filters %}<input type="hidden" name="redirect_rsvp" value="{{ rf }}">{% endfor %}
                         {% set my_rsvp = regatta.rsvps.filter_by(user_id=current_user.id).first() %}
                         <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
                             <option value="" {% if not my_rsvp %}selected{% endif %}>—</option>
@@ -108,20 +134,25 @@
                     </form>
                 </td>
                 {% endif %}
-                {% if can_manage %}
+                {% if can_manage_any %}
+                {% if current_user.is_admin or regatta.created_by == current_user.id %}
                 <td>
                     <a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
                 </td>
                 <td>
                     <input type="checkbox" name="selected" value="{{ regatta.id }}" form="{{ table_id }}-form">
                 </td>
+                {% else %}
+                <td></td>
+                <td></td>
+                {% endif %}
                 {% endif %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-{% if can_manage %}
+{% if can_manage_any %}
 <div class="text-end regatta-table-desktop">
     <button type="submit" form="{{ table_id }}-form" class="btn btn-sm btn-outline-danger">Delete Selected</button>
 </div>
@@ -138,13 +169,16 @@
                     <span class="badge bg-secondary ms-1">{{ regatta.boat_class }}</span>
                     {% endif %}
                 </div>
-                {% if can_manage %}
+                {% if current_user.is_admin or regatta.created_by == current_user.id %}
                 <a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}" class="btn btn-sm btn-outline-secondary ms-2">Edit</a>
                 {% endif %}
             </div>
             <small class="text-muted">
                 {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
                 <br>{{ regatta.start_date|regatta_days(regatta.end_date) }}
+                {% if show_skipper %}
+                &middot; Skipper: {{ regatta.creator.display_name }}
+                {% endif %}
                 {% if regatta.location %}
                 &middot;
                 {% if regatta.location_url %}
@@ -169,6 +203,8 @@
             <div class="mt-1">
                 <form method="POST" action="{{ url_for('regattas.rsvp', regatta_id=regatta.id) }}" class="d-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if selected_skipper is not none %}<input type="hidden" name="redirect_skipper" value="{{ selected_skipper }}">{% endif %}
+                    {% for rf in rsvp_filters %}<input type="hidden" name="redirect_rsvp" value="{{ rf }}">{% endfor %}
                     {% set my_rsvp = regatta.rsvps.filter_by(user_id=current_user.id).first() %}
                     <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
                         <option value="" {% if not my_rsvp %}selected{% endif %}>—</option>
@@ -187,17 +223,17 @@
 
 {% if upcoming %}
 <h5>Upcoming</h5>
-{{ regatta_table(upcoming, false, "upcoming") }}
+{{ regatta_table(upcoming, false, "upcoming", show_skipper) }}
 {% else %}
 <p class="text-muted">No upcoming regattas. {% if current_user.is_admin or current_user.is_skipper %}Add one!{% endif %}</p>
 {% endif %}
 
 {% if past %}
 <h5 class="mt-4">Past</h5>
-{{ regatta_table(past, true, "past") }}
+{{ regatta_table(past, true, "past", show_skipper) }}
 {% endif %}
 
-{% if current_user.is_admin or current_user.is_skipper %}
+{% if can_manage_any %}
 <script>
 document.querySelectorAll('.select-all').forEach(function(cb) {
     cb.addEventListener('change', function() {

@@ -1,5 +1,22 @@
 # Version History
 
+## 0.48.0
+- Add profile picture support in Profile Settings with image upload and preview
+- Add optional remove-profile-picture action from Profile Settings
+- Validate profile image types (JPG, JPEG, PNG, GIF, WEBP)
+- Persist uploaded profile image key on users via new database migration
+- Delete user profile image object from storage when an admin deletes that user
+- Unified schedule switcher dropdown for skipper+crew users with multiple contexts
+- Dropdown shows "All Schedules", "My Schedule", and each skipper's name
+- Per-row Edit/checkbox scoped to own regattas (not all skipper regattas)
+- Add Regatta and Delete Schedule buttons hidden when viewing another skipper's schedule
+- Page title reflects selected schedule context
+- Append "'s Schedule" to other skipper names in schedule switcher dropdown
+- Add Skipper column to desktop table and mobile cards in "All Schedules" view
+- Add RSVP attendance filter with Yes/Maybe/No toggle buttons
+- RSVP filter supports multi-select; all checked or none means no filter
+- Preserve skipper and RSVP filter state across RSVP submissions
+
 ## 0.45.0
 - Multi-user skipper/crew model with three roles: Admin, Skipper, Crew
 - Skippers own their regatta schedule and can import regattas

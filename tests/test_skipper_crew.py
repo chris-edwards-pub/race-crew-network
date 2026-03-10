@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from app.models import Document, Regatta, RSVP, User, skipper_crew
+from app.models import RSVP, Document, Regatta, User, skipper_crew
 
 
 class TestCrewManagementPage:
@@ -447,15 +447,15 @@ class TestCreateSchedule:
 
 
 class TestDeleteSchedule:
-    def test_skipper_can_delete_schedule(self, app, logged_in_skipper, db, skipper_user):
+    def test_skipper_can_delete_schedule(
+        self, app, logged_in_skipper, db, skipper_user
+    ):
         resp = logged_in_skipper.post("/delete-schedule", follow_redirects=True)
         assert b"Your schedule has been deleted." in resp.data
         db.session.refresh(skipper_user)
         assert skipper_user.is_skipper is False
 
-    def test_delete_removes_regattas(
-        self, app, logged_in_skipper, db, skipper_user
-    ):
+    def test_delete_removes_regattas(self, app, logged_in_skipper, db, skipper_user):
         regatta = Regatta(
             name="Gone Regatta",
             location="Test YC",
@@ -474,9 +474,7 @@ class TestDeleteSchedule:
     ):
         logged_in_skipper.post("/delete-schedule", follow_redirects=True)
         rows = db.session.execute(
-            skipper_crew.select().where(
-                skipper_crew.c.skipper_id == skipper_user.id
-            )
+            skipper_crew.select().where(skipper_crew.c.skipper_id == skipper_user.id)
         ).fetchall()
         assert len(rows) == 0
 
@@ -509,3 +507,281 @@ class TestDeleteSchedule:
     def test_non_skipper_gets_error(self, logged_in_crew):
         resp = logged_in_crew.post("/delete-schedule", follow_redirects=True)
         assert b"don&#39;t have a schedule" in resp.data
+
+
+class TestScheduleSwitcher:
+    """Tests for the unified schedule switcher dropdown and action scoping."""
+
+    def test_skipper_crew_sees_dropdown(self, app, db, skipper_user):
+        """Skipper+crew user with 2 contexts sees the schedule dropdown."""
+        # Create a second skipper and make skipper_user crew for them
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get("/")
+        assert b"My Schedule" in resp.data
+        assert b"Other Skipper" in resp.data
+        assert b"All Schedules" in resp.data
+
+    def test_skipper_crew_own_schedule_shows_management(self, app, db, skipper_user):
+        """Filtering to own schedule shows Add Regatta and Edit buttons."""
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+
+        regatta = Regatta(
+            name="My Regatta",
+            location="Test YC",
+            start_date=date(2026, 8, 1),
+            created_by=skipper_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get(f"/?skipper={skipper_user.id}")
+        assert b"+ Add Regatta" in resp.data
+        assert b"Edit" in resp.data
+        assert b"Delete Schedule" in resp.data
+
+    def test_skipper_crew_other_schedule_hides_management(self, app, db, skipper_user):
+        """Filtering to another skipper hides Add Regatta and Edit."""
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+
+        regatta = Regatta(
+            name="Their Regatta",
+            location="Test YC",
+            start_date=date(2026, 8, 1),
+            created_by=other_skipper.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get(f"/?skipper={other_skipper.id}")
+        assert b"+ Add Regatta" not in resp.data
+        assert b"Delete Schedule" not in resp.data
+        # The Edit column headers should not appear
+        assert b"Delete Selected" not in resp.data
+
+    def test_pure_crew_one_skipper_no_dropdown(
+        self, app, logged_in_crew, db, skipper_user
+    ):
+        """Crew with only 1 skipper sees no dropdown."""
+        regatta = Regatta(
+            name="Crew View",
+            location="Test YC",
+            start_date=date(2026, 8, 1),
+            created_by=skipper_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_crew.get("/")
+        assert b"All Schedules" not in resp.data
+        # No skipper dropdown should render
+        assert b'name="skipper"' not in resp.data
+
+    def test_pure_crew_two_skippers_shows_dropdown(self, app, db, skipper_user):
+        """Crew with 2 skippers sees the dropdown."""
+        crew = User(
+            email="multicrew@test.com",
+            display_name="Multi Crew",
+            initials="MC",
+            is_skipper=False,
+        )
+        crew.set_password("password")
+        db.session.add(crew)
+        db.session.flush()
+
+        skipper_user.crew_members.append(crew)
+
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(crew)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "multicrew@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get("/")
+        assert b"All Schedules" in resp.data
+        assert b"Skipper" in resp.data
+        assert b"Other Skipper" in resp.data
+        # Pure crew: dropdown should not include "My Schedule" option
+        html = resp.data.decode()
+        assert ">My Schedule</option>" not in html
+
+    def test_edit_only_on_own_regattas_in_all_view(self, app, db, skipper_user):
+        """In All Schedules view, Edit button only appears on own regattas."""
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+
+        own_regatta = Regatta(
+            name="Own Regatta",
+            location="Test YC",
+            start_date=date(2026, 8, 1),
+            created_by=skipper_user.id,
+        )
+        other_regatta = Regatta(
+            name="Other Regatta",
+            location="Test YC",
+            start_date=date(2026, 8, 2),
+            created_by=other_skipper.id,
+        )
+        db.session.add_all([own_regatta, other_regatta])
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get("/")
+        html = resp.data.decode()
+
+        # Own regatta row should have an edit link
+        assert f"/regattas/{own_regatta.id}/edit" in html
+        # Other regatta row should NOT have an edit link
+        assert f"/regattas/{other_regatta.id}/edit" not in html
+
+    def test_skipper_only_no_dropdown(self, app, logged_in_skipper, db, skipper_user):
+        """A skipper with no crew relationships sees no dropdown."""
+        resp = logged_in_skipper.get("/")
+        assert b"All Schedules" not in resp.data
+
+    def test_page_title_filtered_to_self(self, app, db, skipper_user):
+        """Filtering to own schedule shows own name in title."""
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get(f"/?skipper={skipper_user.id}")
+        assert (
+            b"Skipper&#39;s Race Schedule" in resp.data
+            or b"Skipper's Race Schedule" in resp.data
+        )
+
+    def test_page_title_filtered_to_other(self, app, db, skipper_user):
+        """Filtering to another skipper shows their name in title."""
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(skipper_user)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+        resp = client.get(f"/?skipper={other_skipper.id}")
+        html = resp.data.decode()
+        assert (
+            "Other Skipper&#39;s Race Schedule" in html
+            or "Other Skipper's Race Schedule" in html
+        )
+
+    def test_page_title_single_context(self, app, logged_in_crew, db, skipper_user):
+        """Single-context crew user sees skipper name in title."""
+        resp = logged_in_crew.get("/")
+        html = resp.data.decode()
+        assert (
+            "Skipper&#39;s Race Schedule" in html or "Skipper's Race Schedule" in html
+        )
+
+    def test_crew_no_edit_buttons(self, app, logged_in_crew, db, skipper_user):
+        """Pure crew user never sees Edit buttons."""
+        regatta = Regatta(
+            name="Crew View Regatta",
+            location="Test YC",
+            start_date=date(2026, 8, 1),
+            created_by=skipper_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        resp = logged_in_crew.get("/")
+        assert b"+ Add Regatta" not in resp.data
+        assert b"Delete Selected" not in resp.data

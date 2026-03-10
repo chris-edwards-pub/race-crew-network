@@ -48,7 +48,7 @@ class TestAppFactory:
                 "ENV": "production",
                 "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
                 "WTF_CSRF_ENABLED": False,
-                "SERVER_NAME": "localhost",
+                "SERVER_NAME": "prod.example",
                 "ANTHROPIC_API_KEY": "test-key",
             }
         )
@@ -60,7 +60,7 @@ class TestAppFactory:
             _db.session.commit()
 
             client = app.test_client()
-            resp = client.get("/")
+            resp = client.get("/", base_url="http://prod.example")
             assert resp.status_code == 200
             assert b"googletagmanager.com/gtag/js?id=G-SHOWME123" in resp.data
 
