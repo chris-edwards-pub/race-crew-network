@@ -18,6 +18,19 @@ def _create_regatta(db, name, created_by, days_offset=7):
     return r
 
 
+def _create_regatta_on(db, name, created_by, start_date):
+    """Helper to create a regatta on an explicit date."""
+    r = Regatta(
+        name=name,
+        location="Test Location",
+        start_date=start_date,
+        created_by=created_by,
+    )
+    db.session.add(r)
+    db.session.commit()
+    return r
+
+
 class TestDropdownLabels:
     """Dropdown shows "'s Schedule" suffix for other skippers."""
 
@@ -360,3 +373,70 @@ class TestRSVPFilterStatePreservation:
         location = resp.headers["Location"]
         assert "skipper=0" in location
         assert "rsvp=yes" in location
+
+
+class TestMonthDividerLabels:
+    """Month divider labels render once per month group per view."""
+
+    def test_upcoming_shows_month_dividers_for_each_month(
+        self, app, db, logged_in_client, admin_user
+    ):
+        today = date.today()
+        first_next_month = (today.replace(day=28) + timedelta(days=4)).replace(day=1)
+        first_after_next_month = (
+            first_next_month.replace(day=28) + timedelta(days=4)
+        ).replace(day=1)
+
+        first_month_date = first_next_month + timedelta(days=2)
+        second_month_date = first_after_next_month + timedelta(days=2)
+
+        _create_regatta_on(db, "Month One", admin_user.id, first_month_date)
+        _create_regatta_on(db, "Month Two", admin_user.id, second_month_date)
+
+        resp = logged_in_client.get("/")
+        html = resp.data.decode()
+
+        month_one = first_month_date.strftime("%B")
+        month_two = second_month_date.strftime("%B")
+
+        assert html.count(f'class="month-divider-text">{month_one}<') == 2
+        assert html.count(f'class="month-divider-text">{month_two}<') == 2
+
+    def test_past_shows_month_dividers_for_each_month(
+        self, app, db, logged_in_client, admin_user
+    ):
+        today = date.today()
+        first_last_month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        first_two_months_ago = (first_last_month - timedelta(days=1)).replace(day=1)
+
+        last_month_date = first_last_month + timedelta(days=2)
+        two_months_ago_date = first_two_months_ago + timedelta(days=2)
+
+        _create_regatta_on(db, "Past One", admin_user.id, two_months_ago_date)
+        _create_regatta_on(db, "Past Two", admin_user.id, last_month_date)
+
+        resp = logged_in_client.get("/")
+        html = resp.data.decode()
+
+        month_one = two_months_ago_date.strftime("%B")
+        month_two = last_month_date.strftime("%B")
+
+        assert html.count(f'class="month-divider-text">{month_one}<') == 2
+        assert html.count(f'class="month-divider-text">{month_two}<') == 2
+
+    def test_same_month_renders_single_divider_per_view(
+        self, app, db, logged_in_client, admin_user
+    ):
+        today = date.today()
+        first_next_month = (today.replace(day=28) + timedelta(days=4)).replace(day=1)
+        first_date = first_next_month + timedelta(days=2)
+        second_date = first_next_month + timedelta(days=8)
+
+        _create_regatta_on(db, "Same Month One", admin_user.id, first_date)
+        _create_regatta_on(db, "Same Month Two", admin_user.id, second_date)
+
+        resp = logged_in_client.get("/")
+        html = resp.data.decode()
+
+        month_label = first_date.strftime("%B")
+        assert html.count(f'class="month-divider-text">{month_label}<') == 2

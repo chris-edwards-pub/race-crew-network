@@ -66,6 +66,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endif %}
+{% set divider_colspan = 6 + (1 if show_skipper else 0) + (0 if is_past else 1) + (2 if can_manage_any else 0) %}
 <div class="table-responsive regatta-table-desktop">
     <table class="table table-hover align-middle{% if is_past %} regatta-past{% endif %}">
         <thead>
@@ -87,7 +88,19 @@
             </tr>
         </thead>
         <tbody>
+            {% set month_ns = namespace(current_month='') %}
             {% for regatta in regattas %}
+            {% set month_label = regatta.start_date.strftime('%B') %}
+            {% if month_label != month_ns.current_month %}
+            <tr class="month-divider-row">
+                <td colspan="{{ divider_colspan }}">
+                    <div class="month-divider" aria-hidden="true">
+                        <span class="month-divider-text">{{ month_label }}</span>
+                    </div>
+                </td>
+            </tr>
+            {% set month_ns.current_month = month_label %}
+            {% endif %}
             <tr>
                 <td class="text-nowrap">
                     {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
@@ -159,7 +172,15 @@
 {% endif %}
 
 <div class="regatta-cards-mobile">
+    {% set month_mobile_ns = namespace(current_month='') %}
     {% for regatta in regattas %}
+    {% set month_label = regatta.start_date.strftime('%B') %}
+    {% if month_label != month_mobile_ns.current_month %}
+    <div class="month-divider" aria-hidden="true">
+        <span class="month-divider-text">{{ month_label }}</span>
+    </div>
+    {% set month_mobile_ns.current_month = month_label %}
+    {% endif %}
     <div class="card mb-2{% if is_past %} regatta-past{% endif %}">
         <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between align-items-start">

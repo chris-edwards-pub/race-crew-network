@@ -6,7 +6,7 @@ from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.49.1"
+__version__ = "0.49.2"
 
 db = SQLAlchemy()
 migrate = Migrate()
