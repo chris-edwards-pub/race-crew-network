@@ -1,11 +1,12 @@
-from flask import Flask, has_request_context, request
+from flask import Flask, flash, has_request_context, redirect, request, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.49.0"
+__version__ = "0.49.1"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -110,5 +111,15 @@ def create_app(test_config=None):
             return f"{start_date.strftime('%a')} & {end_date.strftime('%a')}"
 
         return f"{start_date.strftime('%a')} thru {end_date.strftime('%a')}"
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_entity_too_large(_exc):
+        max_mb = int(app.config.get("PROFILE_IMAGE_MAX_BYTES", 10 * 1024 * 1024)) // (
+            1024 * 1024
+        )
+        flash(f"Profile picture must be {max_mb} MB or smaller.", "error")
+        if request.path == url_for("auth.profile"):
+            return redirect(url_for("auth.profile"))
+        return redirect(request.referrer or url_for("regattas.index"))
 
     return app

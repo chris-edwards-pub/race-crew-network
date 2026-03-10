@@ -6,6 +6,7 @@ import uuid
 from flask import (current_app, flash, redirect, render_template, request,
                    url_for)
 from flask_login import current_user, login_required, login_user, logout_user
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from app import db, storage
@@ -16,6 +17,19 @@ from app.models import RSVP, Document, Regatta, User, skipper_crew
 logger = logging.getLogger(__name__)
 
 ALLOWED_PROFILE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _profile_image_limit_bytes() -> int:
+    return int(
+        current_app.config.get(
+            "PROFILE_IMAGE_MAX_BYTES",
+            current_app.config.get("MAX_CONTENT_LENGTH", 10 * 1024 * 1024),
+        )
+    )
+
+
+def _profile_image_limit_mb() -> int:
+    return _profile_image_limit_bytes() // (1024 * 1024)
 
 
 def _build_profile_image_url(image_key: str | None) -> str | None:
@@ -39,6 +53,14 @@ def _upload_profile_image(file_storage) -> str:
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:
         raise ValueError("Profile picture must be a JPG, JPEG, PNG, GIF, or WEBP file.")
+
+    file_storage.stream.seek(0, os.SEEK_END)
+    file_size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if file_size > _profile_image_limit_bytes():
+        raise ValueError(
+            f"Profile picture must be {_profile_image_limit_mb()} MB or smaller."
+        )
 
     stored_filename = f"profile-images/{uuid.uuid4().hex}{ext}"
     storage.upload_file(file_storage, stored_filename)
@@ -173,6 +195,12 @@ def profile():
             except ValueError as exc:
                 db.session.rollback()
                 flash(str(exc), "error")
+            except RequestEntityTooLarge:
+                db.session.rollback()
+                flash(
+                    f"Profile picture must be {_profile_image_limit_mb()} MB or smaller.",
+                    "error",
+                )
             except Exception:
                 db.session.rollback()
                 if new_image_key:
@@ -189,6 +217,7 @@ def profile():
 
     return render_template(
         "profile.html",
+        profile_image_max_mb=_profile_image_limit_mb(),
         profile_image_url=_build_profile_image_url(current_user.profile_image_key),
     )
 

@@ -1,5 +1,10 @@
 # Version History
 
+## 0.49.1
+- Clarify profile picture limits in Profile Settings (accepted formats + 10 MB maximum)
+- Add explicit profile upload size validation with a clear error message
+- Handle oversized profile upload requests gracefully instead of generic failure (`Request Entity Too Large`) (#79)
+
 ## 0.49.0
 - Add GNU Affero General Public License v3.0 (AGPL-3.0)
 
