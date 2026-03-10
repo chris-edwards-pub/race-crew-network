@@ -23,7 +23,7 @@
                 </div>
                 {% endif %}
                 <input type="file" class="form-control" id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
-                <div class="form-text">Accepted formats: JPG, JPEG, PNG, GIF, WEBP.</div>
+                <div class="form-text">Accepted formats: JPG, JPEG, PNG, GIF, WEBP. Maximum file size: {{ profile_image_max_mb }} MB.</div>
             </div>
             <div class="mb-3">
                 <label for="display_name" class="form-label">Display Name</label>
