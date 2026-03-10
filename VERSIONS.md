@@ -1,5 +1,8 @@
 # Version History
 
+## 0.49.0
+- Add GNU Affero General Public License v3.0 (AGPL-3.0)
+
 ## 0.48.1
 - Fix profile picture not displaying in navbar avatar and crew profile pages (#69)
 - Fix PDF print to only include regattas matching current schedule and RSVP filters (#71)
