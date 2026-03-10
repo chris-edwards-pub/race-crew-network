@@ -3,14 +3,15 @@ import os
 import secrets
 import uuid
 
-from flask import current_app, flash, redirect, render_template, request, url_for
+from flask import (current_app, flash, redirect, render_template, request,
+                   url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.utils import secure_filename
 
 from app import db, storage
 from app.admin.email_service import is_email_configured, send_email
 from app.auth import bp
-from app.models import Document, Regatta, RSVP, User, skipper_crew
+from app.models import RSVP, Document, Regatta, User, skipper_crew
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,9 @@ def profile():
                 db.session.rollback()
                 if new_image_key:
                     storage.delete_file(new_image_key)
-                logger.exception("Failed to update profile for user %s", current_user.id)
+                logger.exception(
+                    "Failed to update profile for user %s", current_user.id
+                )
                 flash("Unable to update profile right now. Please try again.", "error")
             else:
                 if old_image_key and old_image_key != current_user.profile_image_key:
@@ -197,7 +200,11 @@ def view_profile(user_id: int):
     if not user or user.invite_token:
         flash("User not found.", "error")
         return redirect(url_for("regattas.index"))
-    return render_template("view_profile.html", user=user)
+    return render_template(
+        "view_profile.html",
+        user=user,
+        profile_image_url=_build_profile_image_url(user.profile_image_key),
+    )
 
 
 # ---------------------------------------------------------------------------

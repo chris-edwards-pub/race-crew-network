@@ -58,7 +58,7 @@
     </style>
 </head>
 <body>
-    <h1>Race Crew Network</h1>
+    <h1>{{ pdf_title }}</h1>
     <div class="subtitle">Generated {{ generated_date }}</div>
 
     {% macro regatta_rows(regattas) %}
@@ -69,6 +69,7 @@
             <br><span class="notes">{{ regatta.start_date|regatta_days(regatta.end_date) }}</span>
         </td>
         <td>{{ regatta.boat_class }}</td>
+        {% if show_skipper %}<td>{{ regatta.creator.display_name }}</td>{% endif %}
         <td>
             <strong>{{ regatta.name }}</strong>
             {% if regatta.notes %}
@@ -90,18 +91,23 @@
     {% endfor %}
     {% endmacro %}
 
+    {% macro table_header() %}
+    <tr>
+        <th>Date(s)</th>
+        <th>Class</th>
+        {% if show_skipper %}<th>Skipper</th>{% endif %}
+        <th>Regatta</th>
+        <th>Location</th>
+        <th>Docs</th>
+        <th>Crew</th>
+    </tr>
+    {% endmacro %}
+
     {% if upcoming %}
     <h2>Upcoming</h2>
     <table>
         <thead>
-            <tr>
-                <th>Date(s)</th>
-                <th>Class</th>
-                <th>Regatta</th>
-                <th>Location</th>
-                <th>Docs</th>
-                <th>Crew</th>
-            </tr>
+            {{ table_header() }}
         </thead>
         <tbody>
             {{ regatta_rows(upcoming) }}
@@ -113,14 +119,7 @@
     <h2>Past</h2>
     <table class="past-table">
         <thead>
-            <tr>
-                <th>Date(s)</th>
-                <th>Class</th>
-                <th>Regatta</th>
-                <th>Location</th>
-                <th>Docs</th>
-                <th>Crew</th>
-            </tr>
+            {{ table_header() }}
         </thead>
         <tbody>
             {{ regatta_rows(past) }}

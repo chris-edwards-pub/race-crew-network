@@ -67,7 +67,7 @@ class TestDropdownLabels:
         db.session.commit()
 
         resp = logged_in_client.get("/?skipper=0")
-        assert b"All Schedules" in resp.data
+        assert b"Combined Schedules" in resp.data
 
 
 class TestSkipperColumn:
@@ -94,6 +94,24 @@ class TestSkipperColumn:
         assert b"Jane Doe" in resp.data
         assert b"Admin" in resp.data
 
+    def test_skipper_name_links_to_profile(self, app, db, logged_in_client, admin_user):
+        other = User(
+            email="skipper2@test.com",
+            display_name="Jane Doe",
+            initials="JD",
+            is_skipper=True,
+        )
+        other.set_password("password")
+        db.session.add(other)
+        db.session.commit()
+
+        _create_regatta(db, "Regatta A", other.id)
+
+        resp = logged_in_client.get("/?skipper=0")
+        html = resp.data.decode()
+        assert f'/crew/{other.id}"' in html
+        assert "Jane Doe</a>" in html
+
     def test_single_skipper_hides_skipper_column(
         self, app, db, logged_in_client, admin_user
     ):
@@ -118,7 +136,9 @@ class TestSkipperColumn:
         _create_regatta(db, "Regatta A", other.id)
 
         resp = logged_in_client.get("/?skipper=0")
-        assert b"Skipper: Jane Doe" in resp.data
+        html = resp.data.decode()
+        assert "Skipper:" in html
+        assert "Jane Doe</a>" in html
 
 
 class TestRSVPFilter:
@@ -215,6 +235,54 @@ class TestRSVPFilter:
         resp = logged_in_client.get(f"/?skipper={admin_user.id}&rsvp=yes")
         assert b"Admin Yes" in resp.data
         assert b"Other Yes" not in resp.data
+
+    def test_filter_yes_includes_regatta_with_mixed_rsvps(
+        self, app, db, logged_in_client, admin_user
+    ):
+        """A regatta with a Yes AND a No RSVP should appear when filtering Yes."""
+        crew = User(
+            email="crew@test.com",
+            display_name="Crew",
+            initials="CR",
+        )
+        crew.set_password("password")
+        db.session.add(crew)
+        db.session.commit()
+
+        r1 = _create_regatta(db, "Mixed Regatta", admin_user.id, days_offset=10)
+        r2 = _create_regatta(db, "Only No Regatta", admin_user.id, days_offset=11)
+
+        # Mixed: admin says Yes, crew says No
+        db.session.add(RSVP(regatta_id=r1.id, user_id=admin_user.id, status="yes"))
+        db.session.add(RSVP(regatta_id=r1.id, user_id=crew.id, status="no"))
+        # Only No
+        db.session.add(RSVP(regatta_id=r2.id, user_id=crew.id, status="no"))
+        db.session.commit()
+
+        resp = logged_in_client.get("/?rsvp=yes")
+        assert b"Mixed Regatta" in resp.data
+        assert b"Only No Regatta" not in resp.data
+
+    def test_filter_no_includes_regatta_with_mixed_rsvps(
+        self, app, db, logged_in_client, admin_user
+    ):
+        """A regatta with a Yes AND a No RSVP should also appear when filtering No."""
+        crew = User(
+            email="crew@test.com",
+            display_name="Crew",
+            initials="CR",
+        )
+        crew.set_password("password")
+        db.session.add(crew)
+        db.session.commit()
+
+        r1 = _create_regatta(db, "Mixed Regatta", admin_user.id, days_offset=10)
+        db.session.add(RSVP(regatta_id=r1.id, user_id=admin_user.id, status="yes"))
+        db.session.add(RSVP(regatta_id=r1.id, user_id=crew.id, status="no"))
+        db.session.commit()
+
+        resp = logged_in_client.get("/?rsvp=no")
+        assert b"Mixed Regatta" in resp.data
 
 
 class TestRSVPToggleButtons:

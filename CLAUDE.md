@@ -31,6 +31,10 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
   - `fix/` branches bump PATCH (e.g. 0.14.0 → 0.14.1)
 - **After merging, tag the merge commit:** `git tag v<version>` and `git push origin --tags`
 
+## Task Tracking
+- When working on complex or multi-step tasks, create a todo list to track progress and remain on track
+- Check off items as they are completed to maintain visibility into what remains
+
 ## Git Workflow
 - `master` branch is production-ready — **never push directly to master**
 - All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes

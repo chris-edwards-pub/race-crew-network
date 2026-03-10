@@ -536,7 +536,7 @@ class TestScheduleSwitcher:
         resp = client.get("/")
         assert b"My Schedule" in resp.data
         assert b"Other Skipper" in resp.data
-        assert b"All Schedules" in resp.data
+        assert b"Combined Schedules" in resp.data
 
     def test_skipper_crew_own_schedule_shows_management(self, app, db, skipper_user):
         """Filtering to own schedule shows Add Regatta and Edit buttons."""
@@ -656,7 +656,7 @@ class TestScheduleSwitcher:
             follow_redirects=True,
         )
         resp = client.get("/")
-        assert b"All Schedules" in resp.data
+        assert b"Combined Schedules" in resp.data
         assert b"Skipper" in resp.data
         assert b"Other Skipper" in resp.data
         # Pure crew: dropdown should not include "My Schedule" option

@@ -83,7 +83,9 @@ class TestProfilePicture:
         )
 
         assert resp.status_code == 200
-        assert b"Profile picture must be a JPG, JPEG, PNG, GIF, or WEBP file." in resp.data
+        assert (
+            b"Profile picture must be a JPG, JPEG, PNG, GIF, or WEBP file." in resp.data
+        )
         db.session.refresh(user)
         assert user.profile_image_key is None
         mock_upload.assert_not_called()

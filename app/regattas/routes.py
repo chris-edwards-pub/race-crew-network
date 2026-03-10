@@ -14,38 +14,45 @@ from app.permissions import can_manage_regatta, can_rsvp_to_regatta
 from app.regattas import bp
 
 
-@bp.route("/")
-def index():
-    if not current_user.is_authenticated:
-        return render_template("login.html")
-
-    upcoming, past = current_user.visible_regattas_split()
-
-    # Skipper filter: default non-admin skippers to their own schedule
+def _apply_schedule_filters(upcoming, past, user):
+    """Apply skipper and RSVP query-string filters to regatta lists."""
     skipper_id = request.args.get("skipper", type=int)
-    if skipper_id is None and current_user.is_skipper and not current_user.is_admin:
-        skipper_id = current_user.id
+    if skipper_id is None and user.is_skipper and not user.is_admin:
+        skipper_id = user.id
     # skipper_id == 0 means "All Schedules" (explicit selection, no filter)
     if skipper_id:
         upcoming = [r for r in upcoming if r.created_by == skipper_id]
         past = [r for r in past if r.created_by == skipper_id]
 
-    # RSVP attendance filter
     rsvp_filters = [
         v.lower()
         for v in request.args.getlist("rsvp")
         if v.lower() in ("yes", "no", "maybe")
     ]
     if rsvp_filters and set(rsvp_filters) != {"yes", "no", "maybe"}:
+        visible_ids = {r.id for r in upcoming + past}
         rsvp_regatta_ids = {
             r.regatta_id
             for r in RSVP.query.filter(
-                RSVP.user_id == current_user.id,
+                RSVP.regatta_id.in_(visible_ids),
                 RSVP.status.in_(rsvp_filters),
             ).all()
         }
         upcoming = [r for r in upcoming if r.id in rsvp_regatta_ids]
         past = [r for r in past if r.id in rsvp_regatta_ids]
+
+    return upcoming, past, skipper_id, rsvp_filters
+
+
+@bp.route("/")
+def index():
+    if not current_user.is_authenticated:
+        return render_template("login.html")
+
+    upcoming, past = current_user.visible_regattas_split()
+    upcoming, past, skipper_id, rsvp_filters = _apply_schedule_filters(
+        upcoming, past, current_user
+    )
 
     users = (
         User.query.filter(User.invite_token.is_(None)).order_by(User.display_name).all()
@@ -74,6 +81,13 @@ def index():
     else:
         can_manage_any = False
 
+    # Build PDF URL with current filters
+    pdf_args = {}
+    if skipper_id is not None:
+        pdf_args["skipper"] = skipper_id
+    if rsvp_filters:
+        pdf_args["rsvp"] = rsvp_filters
+
     return render_template(
         "index.html",
         upcoming=upcoming,
@@ -83,6 +97,7 @@ def index():
         selected_skipper=skipper_id,
         can_manage_any=can_manage_any,
         rsvp_filters=rsvp_filters,
+        pdf_url=url_for("regattas.pdf", **pdf_args),
     )
 
 
@@ -90,11 +105,32 @@ def index():
 @login_required
 def pdf():
     upcoming, past = current_user.visible_regattas_split()
+    upcoming, past, skipper_id, _rsvp_filters = _apply_schedule_filters(
+        upcoming, past, current_user
+    )
+
+    # Determine title and whether to show skipper column
+    show_skipper = skipper_id == 0 or (
+        skipper_id is None
+        and not (current_user.is_skipper and not current_user.is_admin)
+    )
+    if skipper_id and skipper_id != 0:
+        skipper = db.session.get(User, skipper_id)
+        pdf_title = (
+            f"{skipper.display_name}'s Race Schedule" if skipper else "Race Schedule"
+        )
+    elif show_skipper:
+        pdf_title = "Combined Race Schedules"
+    else:
+        pdf_title = f"{current_user.display_name}'s Race Schedule"
+
     html_str = render_template(
         "pdf_schedule.html",
         upcoming=upcoming,
         past=past,
         generated_date=date.today().strftime("%B %d, %Y"),
+        show_skipper=show_skipper,
+        pdf_title=pdf_title,
     )
     pdf_bytes = HTML(string=html_str).write_pdf()
     response = make_response(pdf_bytes)
