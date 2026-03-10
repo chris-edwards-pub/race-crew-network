@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 
-__version__ = "0.48.0"
+__version__ = "0.48.1"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -45,6 +45,24 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_version():
         return {"app_version": __version__}
+
+    @app.context_processor
+    def inject_profile_image():
+        from flask_login import current_user as cu
+
+        url = None
+        if (
+            cu.is_authenticated
+            and cu.profile_image_key
+            and app.config.get("BUCKET_NAME")
+        ):
+            try:
+                from app import storage
+
+                url = storage.get_file_url(cu.profile_image_key)
+            except Exception:
+                pass
+        return {"current_user_profile_image_url": url}
 
     @app.context_processor
     def inject_site_settings():

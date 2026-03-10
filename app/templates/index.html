@@ -2,10 +2,10 @@
 {% block content %}
 
 <div class="mb-3 d-flex flex-wrap align-items-center">
-    <a href="{{ url_for('regattas.pdf') }}" class="btn btn-outline-secondary btn-sm no-print" target="_blank">Print PDF</a>
+    <a href="{{ pdf_url }}" class="btn btn-outline-secondary btn-sm no-print" target="_blank">Print PDF</a>
     <div class="flex-grow-1 text-center">
         {% if selected_skipper == 0 %}
-        <h2 class="mb-0">Race Schedule</h2>
+        <h2 class="mb-0">Combined Race Schedules</h2>
         {% elif selected_skipper == current_user.id %}
         <h2 class="mb-0">{{ current_user.display_name }}'s Race Schedule</h2>
         {% elif selected_skipper %}
@@ -33,7 +33,7 @@
     <form method="GET" id="filter-form" class="d-inline-flex flex-wrap align-items-center gap-2 ms-auto">
         {% if schedules|length > 1 %}
         <select name="skipper" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
-            <option value="0" {% if selected_skipper == 0 %}selected{% endif %}>All Schedules</option>
+            <option value="0" {% if selected_skipper == 0 %}selected{% endif %}>Combined Schedules</option>
             {% if current_user.is_skipper %}
             <option value="{{ current_user.id }}" {% if selected_skipper == current_user.id %}selected{% endif %}>My Schedule</option>
             {% endif %}
@@ -94,7 +94,7 @@
                     <br><small class="text-muted">{{ regatta.start_date|regatta_days(regatta.end_date) }}</small>
                 </td>
                 <td>{{ regatta.boat_class }}</td>
-                {% if show_skipper %}<td>{{ regatta.creator.display_name }}</td>{% endif %}
+                {% if show_skipper %}<td><a href="{{ url_for('auth.view_profile', user_id=regatta.created_by) }}" class="location-link">{{ regatta.creator.display_name }}</a></td>{% endif %}
                 <td>
                     <strong>{{ regatta.name }}</strong>
                     {% if regatta.notes %}
@@ -177,7 +177,7 @@
                 {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
                 <br>{{ regatta.start_date|regatta_days(regatta.end_date) }}
                 {% if show_skipper %}
-                &middot; Skipper: {{ regatta.creator.display_name }}
+                &middot; Skipper: <a href="{{ url_for('auth.view_profile', user_id=regatta.created_by) }}" class="location-link">{{ regatta.creator.display_name }}</a>
                 {% endif %}
                 {% if regatta.location %}
                 &middot;

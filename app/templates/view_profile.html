@@ -3,6 +3,11 @@
 {% block content %}
 <div class="row justify-content-center mt-3">
     <div class="col-md-5">
+        {% if profile_image_url %}
+        <div class="mb-3 text-center">
+            <img src="{{ profile_image_url }}" alt="{{ user.display_name }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+        </div>
+        {% endif %}
         <h2 class="mb-4">{{ user.display_name }}</h2>
         <table class="table">
             <tr>

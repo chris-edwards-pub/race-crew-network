@@ -30,6 +30,13 @@
     font-size: 0.85rem;
 }
 
+.nav-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .rsvp-yes { color: #198754; font-weight: bold; }
 .rsvp-no { color: #dc3545; }
 .rsvp-maybe { color: #ffc107; font-weight: bold; }

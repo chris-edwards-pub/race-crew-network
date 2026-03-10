@@ -205,7 +205,9 @@ class TestAdminUsersPage:
 
 class TestDeleteUser:
     @patch("app.auth.routes.storage.delete_file")
-    def test_delete_user_removes_profile_image(self, mock_delete_file, logged_in_client, db):
+    def test_delete_user_removes_profile_image(
+        self, mock_delete_file, logged_in_client, db
+    ):
         user = User(
             email="delete-me@test.com",
             password_hash="pending",
@@ -226,7 +228,9 @@ class TestDeleteUser:
         mock_delete_file.assert_called_once_with("profile-images/avatar.png")
 
     @patch("app.auth.routes.storage.delete_file")
-    def test_delete_user_without_profile_image(self, mock_delete_file, logged_in_client, db):
+    def test_delete_user_without_profile_image(
+        self, mock_delete_file, logged_in_client, db
+    ):
         user = User(
             email="no-image@test.com",
             password_hash="pending",

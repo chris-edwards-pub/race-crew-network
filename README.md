@@ -10,6 +10,7 @@ A simple web app for organizing sailboat regattas. Track dates, locations, NOR/S
 - Crew members see their skippers' regattas with skipper filter dropdown
 - Location links to Google Maps
 - Upload/download NOR and SI PDFs (stored in S3)
+- Profile pictures with S3 storage, displayed in navbar and crew profiles
 - Crew RSVP (Yes / No / Maybe) with color-coded initials
 - AI-powered schedule import: paste text or URL, Claude extracts regattas for review and bulk import, with auto-discovery of NOR/SI/WWW documents from regatta detail pages and regatta websites (including clubspot Parse API integration)
 - Admin: manage all users, site settings, invite skippers

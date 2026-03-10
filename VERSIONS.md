@@ -1,5 +1,13 @@
 # Version History
 
+## 0.48.1
+- Fix profile picture not displaying in navbar avatar and crew profile pages (#69)
+- Fix PDF print to only include regattas matching current schedule and RSVP filters (#71)
+- Add Skipper column and dynamic title to PDF when viewing All Schedules
+- Fix RSVP filter to match any crew member's RSVP, not just the current user's (#72)
+- Link skipper names to their profile in Combined Schedules view (#70)
+- Rename "All Schedules" to "Combined Schedules" throughout UI and PDF
+
 ## 0.48.0
 - Add profile picture support in Profile Settings with image upload and preview
 - Add optional remove-profile-picture action from Profile Settings
