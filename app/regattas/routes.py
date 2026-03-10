@@ -21,34 +21,68 @@ def index():
 
     upcoming, past = current_user.visible_regattas_split()
 
-    # Optional skipper filter
+    # Skipper filter: default non-admin skippers to their own schedule
     skipper_id = request.args.get("skipper", type=int)
+    if skipper_id is None and current_user.is_skipper and not current_user.is_admin:
+        skipper_id = current_user.id
+    # skipper_id == 0 means "All Schedules" (explicit selection, no filter)
     if skipper_id:
         upcoming = [r for r in upcoming if r.created_by == skipper_id]
         past = [r for r in past if r.created_by == skipper_id]
+
+    # RSVP attendance filter
+    rsvp_filters = [
+        v.lower()
+        for v in request.args.getlist("rsvp")
+        if v.lower() in ("yes", "no", "maybe")
+    ]
+    if rsvp_filters and set(rsvp_filters) != {"yes", "no", "maybe"}:
+        rsvp_regatta_ids = {
+            r.regatta_id
+            for r in RSVP.query.filter(
+                RSVP.user_id == current_user.id,
+                RSVP.status.in_(rsvp_filters),
+            ).all()
+        }
+        upcoming = [r for r in upcoming if r.id in rsvp_regatta_ids]
+        past = [r for r in past if r.id in rsvp_regatta_ids]
 
     users = (
         User.query.filter(User.invite_token.is_(None)).order_by(User.display_name).all()
     )
 
-    # Build skipper list for filter dropdown (skippers whose regattas are visible)
-    skippers = []
+    # Build schedule contexts for dropdown
+    schedules = []
     if current_user.is_admin:
-        skippers = (
+        schedules = (
             User.query.filter(User.is_skipper.is_(True))
             .order_by(User.display_name)
             .all()
         )
-    elif current_user.is_crew:
-        skippers = list(current_user.skippers)
+    else:
+        if current_user.is_skipper:
+            schedules.append(current_user)
+        for skipper in current_user.skippers:
+            if skipper.id != current_user.id:
+                schedules.append(skipper)
+
+    # Can user manage any regattas in current view?
+    if current_user.is_admin:
+        can_manage_any = True
+    elif current_user.is_skipper:
+        can_manage_any = skipper_id in (0, current_user.id) or not skipper_id
+    else:
+        can_manage_any = False
 
     return render_template(
         "index.html",
         upcoming=upcoming,
         past=past,
         users=users,
-        skippers=skippers,
+        schedules=schedules,
         selected_skipper=skipper_id,
+        can_manage_any=can_manage_any,
+        rsvp_filters=rsvp_filters,
     )
 
 
@@ -171,7 +205,16 @@ def rsvp(regatta_id: int):
         )
 
     db.session.commit()
-    return redirect(url_for("regattas.index"))
+
+    # Preserve filter state in redirect
+    redirect_args = {}
+    redirect_skipper = request.form.get("redirect_skipper")
+    if redirect_skipper is not None and redirect_skipper != "":
+        redirect_args["skipper"] = redirect_skipper
+    redirect_rsvp = request.form.getlist("redirect_rsvp")
+    if redirect_rsvp:
+        redirect_args["rsvp"] = redirect_rsvp
+    return redirect(url_for("regattas.index", **redirect_args))
 
 
 @bp.route("/docs/<int:doc_id>")

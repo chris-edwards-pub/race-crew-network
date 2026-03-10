@@ -4,8 +4,27 @@
 <div class="row justify-content-center mt-3">
     <div class="col-md-5">
         <h2 class="mb-4">Profile Settings</h2>
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="profile_image" class="form-label">Profile Picture</label>
+                {% if profile_image_url %}
+                <div class="mb-2">
+                    <img
+                        src="{{ profile_image_url }}"
+                        alt="Current profile picture"
+                        class="img-thumbnail"
+                        style="max-width: 160px; max-height: 160px;"
+                    >
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="remove_profile_image" name="remove_profile_image">
+                    <label class="form-check-label" for="remove_profile_image">Remove current picture</label>
+                </div>
+                {% endif %}
+                <input type="file" class="form-control" id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
+                <div class="form-text">Accepted formats: JPG, JPEG, PNG, GIF, WEBP.</div>
+            </div>
             <div class="mb-3">
                 <label for="display_name" class="form-label">Display Name</label>
                 <input type="text" class="form-control" id="display_name" name="display_name" required value="{{ current_user.display_name }}">

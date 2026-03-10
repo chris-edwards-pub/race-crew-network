@@ -40,6 +40,7 @@ class User(UserMixin, db.Model):
     calendar_token = db.Column(db.String(64), unique=True, nullable=True)
     phone = db.Column(db.String(20), nullable=True)
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
+    profile_image_key = db.Column(db.String(255), nullable=True)
 
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
     documents = db.relationship("Document", backref="uploaded_by_user", lazy="dynamic")

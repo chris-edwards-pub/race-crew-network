@@ -201,3 +201,46 @@ class TestAdminUsersPage:
         assert resp.status_code == 200
         assert b"send_email_invite" not in resp.data
         assert b"Resend Invites" not in resp.data
+
+
+class TestDeleteUser:
+    @patch("app.auth.routes.storage.delete_file")
+    def test_delete_user_removes_profile_image(self, mock_delete_file, logged_in_client, db):
+        user = User(
+            email="delete-me@test.com",
+            password_hash="pending",
+            display_name="Delete Me",
+            initials="DM",
+            profile_image_key="profile-images/avatar.png",
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/users/{user.id}/delete",
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert db.session.get(User, user.id) is None
+        mock_delete_file.assert_called_once_with("profile-images/avatar.png")
+
+    @patch("app.auth.routes.storage.delete_file")
+    def test_delete_user_without_profile_image(self, mock_delete_file, logged_in_client, db):
+        user = User(
+            email="no-image@test.com",
+            password_hash="pending",
+            display_name="No Image",
+            initials="NI",
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/users/{user.id}/delete",
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert db.session.get(User, user.id) is None
+        mock_delete_file.assert_not_called()
