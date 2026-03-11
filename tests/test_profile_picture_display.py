@@ -125,3 +125,54 @@ class TestViewProfileImage:
         html = resp.data.decode()
         assert "avatar-photo" not in html
         assert "avatar-icon" in html
+
+
+class TestProfilePagePreview:
+    @patch("app.storage.get_file_url", return_value="https://s3.example.com/pic.jpg")
+    def test_profile_preview_shows_uploaded_picture(self, mock_url, app, client, db):
+        """Profile page preview should show uploaded picture, not avatar SVG."""
+        app.config["BUCKET_NAME"] = "test-bucket"
+
+        user = User(
+            email="picuser@test.com",
+            display_name="Pic User",
+            initials="PU",
+            profile_image_key="profile-images/pic.jpg",
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "picuser@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get("/profile")
+        html = resp.data.decode()
+        # The avatar-preview div should contain an img tag, not an SVG
+        assert "avatar-photo" in html
+        assert "https://s3.example.com/pic.jpg" in html
+
+    def test_profile_preview_shows_avatar_when_no_picture(self, app, client, db):
+        """Profile page preview should show avatar SVG when no picture uploaded."""
+        user = User(
+            email="nopic@test.com",
+            display_name="No Pic",
+            initials="NP",
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "nopic@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get("/profile")
+        html = resp.data.decode()
+        assert "<svg" in html
+        assert "avatar-icon" in html

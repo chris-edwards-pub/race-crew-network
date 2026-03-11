@@ -135,6 +135,8 @@ def register(token: str):
             user.initials = initials
             user.set_password(password)
             user.invite_token = None  # Mark registration complete
+            if not user.avatar_seed:
+                user.avatar_seed = User.generate_avatar_seed()
 
             # Auto-link to inviting skipper's crew
             if user.invited_by:
@@ -284,6 +286,7 @@ def invite_user():
         invite_token=token,
         is_skipper=is_skipper,
         invited_by=current_user.id,
+        avatar_seed=User.generate_avatar_seed(),
     )
     db.session.add(user)
     db.session.commit()
@@ -526,6 +529,7 @@ def invite_crew():
         initials="??",
         invite_token=token,
         invited_by=current_user.id,
+        avatar_seed=User.generate_avatar_seed(),
     )
     db.session.add(user)
     db.session.flush()

@@ -7,6 +7,21 @@ from unittest.mock import patch
 from app.models import RSVP, Regatta, User
 
 
+class TestGenerateAvatarSeed:
+    def test_returns_prefixed_string(self):
+        seed = User.generate_avatar_seed()
+        assert seed.startswith("avatar-")
+
+    def test_returns_unique_values(self):
+        seeds = {User.generate_avatar_seed() for _ in range(50)}
+        assert len(seeds) == 50
+
+    def test_seed_has_expected_length(self):
+        seed = User.generate_avatar_seed()
+        # "avatar-" (7) + 24 hex chars = 31
+        assert len(seed) == 31
+
+
 class TestAvatarKeyProperty:
     def test_avatar_key_defaults_to_email(self, db, admin_user):
         assert admin_user.avatar_seed is None
@@ -169,3 +184,125 @@ class TestAvatarInIcal:
         assert resp.status_code == 200
         data = resp.data.decode()
         assert "AD" in data
+
+
+class TestAutoAvatarSeedOnInvite:
+    def test_invite_user_sets_avatar_seed(self, logged_in_client, admin_user, db):
+        resp = logged_in_client.post(
+            "/admin/users/invite",
+            data={"email": "newuser@test.com"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        user = User.query.filter_by(email="newuser@test.com").first()
+        assert user is not None
+        assert user.avatar_seed is not None
+        assert user.avatar_seed.startswith("avatar-")
+
+    def test_invite_crew_sets_avatar_seed(self, logged_in_client, admin_user, db):
+        resp = logged_in_client.post(
+            "/my-crew/invite",
+            data={"email": "crewnew@test.com"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        user = User.query.filter_by(email="crewnew@test.com").first()
+        assert user is not None
+        assert user.avatar_seed is not None
+        assert user.avatar_seed.startswith("avatar-")
+
+
+class TestAutoAvatarSeedOnRegister:
+    def test_register_backfills_seed_if_missing(self, client, db, admin_user):
+        """Legacy invited users without avatar_seed get one on registration."""
+        user = User(
+            email="legacy@test.com",
+            password_hash="pending",
+            display_name="legacy@test.com",
+            initials="??",
+            invite_token="legacy-token-123",
+            invited_by=admin_user.id,
+        )
+        db.session.add(user)
+        db.session.commit()
+        assert user.avatar_seed is None
+
+        client.post(
+            "/register/legacy-token-123",
+            data={
+                "display_name": "Legacy User",
+                "initials": "LU",
+                "password": "password123",
+                "password2": "password123",
+            },
+            follow_redirects=True,
+        )
+        db.session.refresh(user)
+        assert user.invite_token is None
+        assert user.avatar_seed is not None
+        assert user.avatar_seed.startswith("avatar-")
+
+    def test_register_preserves_existing_seed(self, client, db, admin_user):
+        """Users who already have avatar_seed keep it on registration."""
+        user = User(
+            email="seeded@test.com",
+            password_hash="pending",
+            display_name="seeded@test.com",
+            initials="??",
+            invite_token="seeded-token-456",
+            invited_by=admin_user.id,
+            avatar_seed="avatar-existing-seed",
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/register/seeded-token-456",
+            data={
+                "display_name": "Seeded User",
+                "initials": "SU",
+                "password": "password123",
+                "password2": "password123",
+            },
+            follow_redirects=True,
+        )
+        db.session.refresh(user)
+        assert user.avatar_seed == "avatar-existing-seed"
+
+
+class TestCliAvatarSeed:
+    def test_init_admin_sets_avatar_seed(self, app, db):
+        runner = app.test_cli_runner()
+        result = runner.invoke(
+            args=["init-admin"],
+            env={
+                "INIT_ADMIN_EMAIL": "cliadmin@test.com",
+                "INIT_ADMIN_PASSWORD": "password123",
+            },
+        )
+        assert result.exit_code == 0
+        user = User.query.filter_by(email="cliadmin@test.com").first()
+        assert user is not None
+        assert user.avatar_seed is not None
+        assert user.avatar_seed.startswith("avatar-")
+
+    def test_create_admin_sets_avatar_seed(self, app, db):
+        runner = app.test_cli_runner()
+        result = runner.invoke(
+            args=[
+                "create-admin",
+                "--email",
+                "cliadmin2@test.com",
+                "--password",
+                "password123",
+                "--name",
+                "CLI Admin",
+                "--initials",
+                "CA",
+            ],
+        )
+        assert result.exit_code == 0
+        user = User.query.filter_by(email="cliadmin2@test.com").first()
+        assert user is not None
+        assert user.avatar_seed is not None
+        assert user.avatar_seed.startswith("avatar-")

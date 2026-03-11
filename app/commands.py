@@ -30,6 +30,7 @@ def register_commands(app: Flask) -> None:
             initials="AD",
             is_admin=True,
             is_skipper=True,
+            avatar_seed=User.generate_avatar_seed(),
         )
         user.set_password(password)
         db.session.add(user)
@@ -53,6 +54,7 @@ def register_commands(app: Flask) -> None:
             initials=initials.upper(),
             is_admin=True,
             is_skipper=True,
+            avatar_seed=User.generate_avatar_seed(),
         )
         user.set_password(password)
         db.session.add(user)
