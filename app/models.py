@@ -41,6 +41,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20), nullable=True)
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     profile_image_key = db.Column(db.String(255), nullable=True)
+    avatar_seed = db.Column(db.String(100), nullable=True)
 
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
     documents = db.relationship("Document", backref="uploaded_by_user", lazy="dynamic")
@@ -67,6 +68,11 @@ class User(UserMixin, db.Model):
         return bcrypt.checkpw(
             password.encode("utf-8"), self.password_hash.encode("utf-8")
         )
+
+    @property
+    def avatar_key(self) -> str:
+        """Return the seed used for Multiavatar generation."""
+        return self.avatar_seed or self.email
 
     @property
     def is_crew(self) -> bool:

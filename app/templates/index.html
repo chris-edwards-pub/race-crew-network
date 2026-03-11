@@ -128,7 +128,7 @@
                 </td>
                 <td>
                     {% for rsvp in regatta.rsvps|sort_rsvps %}
-                    <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
+                    <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
                     {% endfor %}
                 </td>
                 {% if not is_past %}
@@ -217,7 +217,7 @@
                 <a href="{% if doc.url %}{{ doc.url }}{% else %}{{ url_for('regattas.download_doc', doc_id=doc.id) }}{% endif %}" class="badge bg-info text-decoration-none doc-link" target="_blank">{{ doc.doc_type }}</a>
                 {% endfor %}
                 {% for rsvp in regatta.rsvps|sort_rsvps %}
-                <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</a>
+                <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
                 {% endfor %}
             </div>
             {% if not is_past %}

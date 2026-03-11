@@ -84,7 +84,7 @@
         </td>
         <td>
             {% for rsvp in regatta.rsvps|sort_rsvps %}
-            <span class="crew-{{ rsvp.status }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }}</span>
+            <span class="crew-{{ rsvp.status }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(18) }}</span>
             {% endfor %}
         </td>
     </tr>

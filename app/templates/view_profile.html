@@ -3,16 +3,25 @@
 {% block content %}
 <div class="row justify-content-center mt-3">
     <div class="col-md-5">
-        {% if profile_image_url %}
         <div class="mb-3 text-center">
-            <img src="{{ profile_image_url }}" alt="{{ user.display_name }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+            {% if user.profile_image_key %}
+            {{ user|user_icon(120) }}
+            <div class="small text-muted mt-2">Profile picture</div>
+            {% else %}
+            {{ user|avatar_svg(120) }}
+            {% endif %}
         </div>
-        {% endif %}
         <h2 class="mb-4">{{ user.display_name }}</h2>
         <table class="table">
             <tr>
                 <th>Initials</th>
-                <td><span class="badge bg-secondary">{{ user.initials }}</span></td>
+                <td>
+                    <span class="badge bg-secondary">{{ user.initials }}</span>
+                    {% if user.profile_image_key %}
+                    {{ user|user_icon(24) }}
+                    {% endif %}
+                    {{ user|avatar_svg(24) }}
+                </td>
             </tr>
             <tr>
                 <th>Email</th>

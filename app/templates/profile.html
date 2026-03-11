@@ -6,24 +6,23 @@
         <h2 class="mb-4">Profile Settings</h2>
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="remove_profile_image" id="remove_profile_image" value="">
             <div class="mb-3">
-                <label for="profile_image" class="form-label">Profile Picture</label>
-                {% if profile_image_url %}
-                <div class="mb-2">
-                    <img
-                        src="{{ profile_image_url }}"
-                        alt="Current profile picture"
-                        class="img-thumbnail"
-                        style="max-width: 160px; max-height: 160px;"
-                    >
+                <label class="form-label">Profile Picture</label>
+                <div class="d-flex flex-wrap align-items-start gap-4 mb-2">
+                    <div>
+                        <input type="hidden" name="avatar_seed" id="avatar_seed" value="{{ current_user.avatar_seed or '' }}">
+                        <div class="d-flex align-items-center gap-3">
+                            <div id="avatar-preview" style="width:120px;height:120px;">
+                                {{ current_user|avatar_svg(120) }}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="regenerate-avatar">Regenerate</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-check mb-2">
-                    <input type="checkbox" class="form-check-input" id="remove_profile_image" name="remove_profile_image">
-                    <label class="form-check-label" for="remove_profile_image">Remove current picture</label>
-                </div>
-                {% endif %}
                 <input type="file" class="form-control" id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
                 <div class="form-text">Accepted formats: JPG, JPEG, PNG, GIF, WEBP. Maximum file size: {{ profile_image_max_mb }} MB.</div>
+                <div class="form-text">Click Regenerate to replace any uploaded profile picture with the avatar when you save.</div>
             </div>
             <div class="mb-3">
                 <label for="display_name" class="form-label">Display Name</label>
@@ -64,4 +63,17 @@
         </form>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@multiavatar/multiavatar/multiavatar.min.js"></script>
+<script>
+document.getElementById('regenerate-avatar').addEventListener('click', function() {
+    var seed = 'avatar-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+    document.getElementById('avatar_seed').value = seed;
+    document.getElementById('remove_profile_image').value = 'on';
+    var svg = multiavatar(seed);
+    document.getElementById('avatar-preview').innerHTML =
+        '<span class="avatar-icon" style="display:inline-block;width:120px;height:120px;">' + svg + '</span>';
+});
+</script>
 {% endblock %}

@@ -56,7 +56,7 @@
                     </li>
                     {% endif %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle nav-avatar" href="#" role="button" data-bs-toggle="dropdown">{% if current_user_profile_image_url %}<img src="{{ current_user_profile_image_url }}" alt="{{ current_user.initials }}" class="nav-avatar-img">{% else %}{{ current_user.initials }}{% endif %}</a>
+                        <a class="nav-link dropdown-toggle nav-avatar" href="#" role="button" data-bs-toggle="dropdown">{{ current_user|user_icon(28) }} {{ current_user.initials }}</a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile Settings</a></li>
                             {% if not current_user.is_skipper and not current_user.is_admin %}

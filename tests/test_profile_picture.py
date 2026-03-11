@@ -91,7 +91,9 @@ class TestProfilePicture:
         mock_upload.assert_not_called()
 
     @patch("app.auth.routes.storage.delete_file")
-    def test_remove_profile_picture(self, mock_delete, app, client, db):
+    def test_regenerate_replaces_profile_picture_and_deletes_old(
+        self, mock_delete, app, client, db
+    ):
         user = User(
             email="crew@test.com",
             display_name="Crew",
@@ -126,6 +128,29 @@ class TestProfilePicture:
         db.session.refresh(user)
         assert user.profile_image_key is None
         mock_delete.assert_called_once_with("profile-images/old.png")
+
+    def test_profile_page_hides_remove_picture_checkbox(self, app, client, db):
+        user = User(
+            email="crew@test.com",
+            display_name="Crew",
+            initials="CR",
+            is_admin=False,
+            is_skipper=False,
+            profile_image_key="profile-images/old.png",
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "crew@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get("/profile")
+        html = resp.data.decode()
+        assert "Remove current picture" not in html
 
     @patch("app.auth.routes.storage.upload_file")
     def test_rejects_oversized_profile_picture(self, mock_upload, app, client, db):

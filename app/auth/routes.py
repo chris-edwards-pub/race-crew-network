@@ -188,6 +188,8 @@ def profile():
                 current_user.email = email
                 current_user.phone = request.form.get("phone", "").strip() or None
                 current_user.email_opt_in = request.form.get("email_opt_in") == "on"
+                avatar_seed = request.form.get("avatar_seed", "").strip()
+                current_user.avatar_seed = avatar_seed or None
                 if password:
                     current_user.set_password(password)
 
