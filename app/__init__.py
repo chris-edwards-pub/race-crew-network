@@ -3,10 +3,11 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.49.2"
+__version__ = "0.50.1"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -14,6 +15,19 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 login_manager.login_message = None
 csrf = CSRFProtect()
+
+
+def _avatar_svg_markup(user, size=20):
+    """Render a Multiavatar inline SVG for a user-like object."""
+    from multiavatar.multiavatar import multiavatar
+
+    key = user.avatar_key if hasattr(user, "avatar_key") else str(user)
+    svg = multiavatar(key, None, None)
+    return Markup(
+        f'<span class="avatar-icon" style="display:inline-block;'
+        f"width:{size}px;height:{size}px;vertical-align:middle;"
+        f'">{svg}</span>'
+    )
 
 
 def create_app(test_config=None):
@@ -90,6 +104,38 @@ def create_app(test_config=None):
             "ga_measurement_id": ga_measurement_id,
             "is_dev_or_test": is_dev_or_test,
         }
+
+    @app.template_filter("avatar_svg")
+    def avatar_svg_filter(user, size=20):
+        """Render a Multiavatar inline SVG for a user."""
+        return _avatar_svg_markup(user, size)
+
+    @app.template_filter("user_icon")
+    def user_icon_filter(user, size=20):
+        """Render profile picture when present; otherwise render avatar fallback."""
+        if (
+            user
+            and getattr(user, "profile_image_key", None)
+            and app.config.get("BUCKET_NAME")
+        ):
+            try:
+                from app import storage
+
+                image_url = escape(storage.get_file_url(user.profile_image_key))
+                display_name = escape(getattr(user, "display_name", "User"))
+                return Markup(
+                    f'<span class="avatar-icon" style="display:inline-block;'
+                    f"width:{size}px;height:{size}px;vertical-align:middle;"
+                    '>'
+                    f'<img class="avatar-photo" src="{image_url}" alt="{display_name}" '
+                    f'style="width:100%;height:100%;border-radius:50%;object-fit:cover;">'
+                    "</span>"
+                )
+            except Exception:
+                # Fall through to avatar rendering if image URL generation fails.
+                pass
+
+        return _avatar_svg_markup(user, size)
 
     @app.template_filter("sort_rsvps")
     def sort_rsvps(rsvps):

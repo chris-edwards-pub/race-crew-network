@@ -5,39 +5,42 @@ from unittest.mock import patch
 from app.models import User
 
 
-class TestNavbarProfileImage:
-    @patch("app.storage.get_file_url", return_value="https://s3.example.com/pic.jpg")
-    def test_navbar_shows_profile_image_when_set(self, mock_url, app, client, db):
+class TestNavbarAvatar:
+    def test_navbar_shows_avatar_and_initials(self, app, client, db):
+        user = User(
+            email="user@test.com",
+            display_name="Test User",
+            initials="TU",
+            is_admin=False,
+            is_skipper=False,
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "user@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get("/")
+        html = resp.data.decode()
+        assert "avatar-icon" in html
+        assert "TU</a>" in html
+
+    @patch(
+        "app.storage.get_file_url",
+        return_value="https://s3.example.com/navbar.jpg",
+    )
+    def test_navbar_prefers_uploaded_profile_picture(self, mock_url, app, client, db):
         app.config["BUCKET_NAME"] = "test-bucket"
 
         user = User(
             email="user@test.com",
             display_name="Test User",
             initials="TU",
-            is_admin=False,
-            is_skipper=False,
-            profile_image_key="profile-images/pic.jpg",
-        )
-        user.set_password("password")
-        db.session.add(user)
-        db.session.commit()
-
-        client.post(
-            "/login",
-            data={"email": "user@test.com", "password": "password"},
-            follow_redirects=True,
-        )
-
-        resp = client.get("/")
-        html = resp.data.decode()
-        assert "nav-avatar-img" in html
-        assert 'alt="TU"' in html
-
-    def test_navbar_shows_initials_when_no_image(self, app, client, db):
-        user = User(
-            email="user@test.com",
-            display_name="Test User",
-            initials="TU",
+            profile_image_key="profile-images/user.jpg",
             is_admin=False,
             is_skipper=False,
         )
@@ -53,15 +56,13 @@ class TestNavbarProfileImage:
 
         resp = client.get("/")
         html = resp.data.decode()
-        assert "nav-avatar-img" not in html
-        assert ">TU</a>" in html
+        assert "https://s3.example.com/navbar.jpg" in html
+        assert "avatar-photo" in html
+        mock_url.assert_called()
 
 
 class TestViewProfileImage:
-    @patch(
-        "app.auth.routes.storage.get_file_url",
-        return_value="https://s3.example.com/pic.jpg",
-    )
+    @patch("app.storage.get_file_url", return_value="https://s3.example.com/pic.jpg")
     def test_view_profile_shows_image(self, mock_url, app, client, db):
         app.config["BUCKET_NAME"] = "test-bucket"
 
@@ -92,7 +93,9 @@ class TestViewProfileImage:
         resp = client.get(f"/crew/{target.id}")
         html = resp.data.decode()
         assert "https://s3.example.com/pic.jpg" in html
-        assert 'alt="Target User"' in html
+        assert "avatar-photo" in html
+        assert "<svg" in html
+        assert "Profile picture" in html
 
     def test_view_profile_no_image_no_img_tag(self, app, client, db):
         viewer = User(
@@ -120,4 +123,5 @@ class TestViewProfileImage:
 
         resp = client.get(f"/crew/{target.id}")
         html = resp.data.decode()
-        assert "rounded-circle" not in html
+        assert "avatar-photo" not in html
+        assert "avatar-icon" in html

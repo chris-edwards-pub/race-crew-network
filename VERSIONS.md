@@ -1,5 +1,19 @@
 # Version History
 
+## 0.50.1
+- Prioritize uploaded profile pictures over generated avatars across navbar, schedules, user lists, and PDF
+- Keep generated avatar visible on crew profile pages while restoring a large top profile icon section
+- Update Profile Settings so Regenerate replaces uploaded profile pictures on save and removes old S3 image
+- Simplify Profile Settings copy and align avatar preview sizing with crew profile display
+
+## 0.50.0
+- Add unique Multiavatar icons to user profiles for visual crew disambiguation (#73)
+- Each user gets a deterministic avatar generated from their email address
+- Avatars displayed alongside initials in schedule crew badges, PDF, navbar, and all user lists
+- Regenerate avatar button in Profile Settings with live preview
+- Navbar shows initials + avatar instead of profile picture
+- New `avatar_seed` column on User model with database migration
+
 ## 0.49.2
 - Add month labels centered in the existing schedule divider treatment for Upcoming and Past sections (#56)
 - Apply month divider labels in both desktop table and mobile card views

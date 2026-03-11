@@ -15,6 +15,11 @@
                 <input type="text" class="form-control" id="initials" name="initials" required maxlength="3" pattern="[A-Za-z0-9]{2,3}" title="2-3 letters or numbers" value="{{ user.initials }}" style="text-transform: uppercase;">
             </div>
             <div class="mb-3">
+                <label class="form-label">Current Icon</label>
+                <div>{{ user|user_icon(48) }}</div>
+                <div class="form-text">Uploaded profile pictures override avatars. Users can manage both in Profile Settings.</div>
+            </div>
+            <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required value="{{ user.email }}">
             </div>

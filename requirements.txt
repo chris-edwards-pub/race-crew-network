@@ -11,6 +11,7 @@ gunicorn==23.0.0
 python-dotenv==1.0.1
 icalendar==6.1.3
 weasyprint==68.1
+multiavatar>=1.0.0
 boto3>=1.35.0
 anthropic>=0.43.0
 requests>=2.31.0
