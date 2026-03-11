@@ -34,7 +34,7 @@ def _profile_image_limit_mb() -> int:
 
 def _build_profile_image_url(image_key: str | None) -> str | None:
     """Return a temporary URL for a stored profile image key."""
-    if not image_key or not current_app.config.get("BUCKET_NAME"):
+    if not image_key:
         return None
 
     try:
@@ -46,9 +46,6 @@ def _build_profile_image_url(image_key: str | None) -> str | None:
 
 def _upload_profile_image(file_storage) -> str:
     """Validate and upload a profile image, returning its storage key."""
-    if not current_app.config.get("BUCKET_NAME"):
-        raise ValueError("Profile image storage is not configured.")
-
     safe_name = secure_filename(file_storage.filename or "")
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:

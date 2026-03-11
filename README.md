@@ -69,7 +69,9 @@ cp .env.example .env
 ```
 
 Edit `.env` and set `SECRET_KEY`, `INIT_ADMIN_EMAIL`, `INIT_ADMIN_PASSWORD`, and
-optionally `ANTHROPIC_API_KEY` for the AI schedule import feature.
+optionally `ANTHROPIC_API_KEY` for the AI schedule import feature. Leave
+`BUCKET_NAME` empty to use local filesystem storage for uploads (files are saved
+to the `uploads/` directory); set it to an S3 bucket name for production.
 
 ```bash
 ./dev.sh start
