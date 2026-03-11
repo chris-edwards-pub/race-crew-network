@@ -1,5 +1,13 @@
 # Version History
 
+## 0.52.1
+- Fix PDF title/content mismatch for crew members viewing a single skipper's schedule
+- PDF link now includes skipper param when only one schedule context exists, matching the page title
+- Fix PDF crew column showing full names instead of initials when profile pictures can't load
+- Use inline avatar SVGs instead of profile image URLs in PDF for reliable rendering
+- Add month divider rows to PDF schedule matching the web view's month labels
+- Prevent crew badge line wrapping in PDF (check + initials + avatar stay on one line)
+
 ## 0.52.0
 - Add local filesystem storage fallback when BUCKET_NAME is not set
 - Uploads automatically use local disk (UPLOAD_FOLDER) in local dev, S3 in production
