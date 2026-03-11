@@ -85,6 +85,8 @@ def index():
     pdf_args = {}
     if skipper_id is not None:
         pdf_args["skipper"] = skipper_id
+    elif len(schedules) == 1:
+        pdf_args["skipper"] = schedules[0].id
     if rsvp_filters:
         pdf_args["rsvp"] = rsvp_filters
 

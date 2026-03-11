@@ -40,6 +40,15 @@
         .past-table {
             opacity: 0.6;
         }
+        .month-divider-cell {
+            text-align: center;
+            background-color: #f8f8f8;
+            border-left: none;
+            border-right: none;
+            padding: 3px 6px;
+            font-size: 10px;
+        }
+        .crew-badge { white-space: nowrap; }
         .crew-yes { color: #0f5132; }
         .crew-no { color: #842029; }
         .crew-maybe { color: #664d03; }
@@ -62,7 +71,18 @@
     <div class="subtitle">Generated {{ generated_date }}</div>
 
     {% macro regatta_rows(regattas) %}
+    {% set month_ns = namespace(current_month='') %}
+    {% set col_count = 7 + (1 if show_skipper else 0) %}
     {% for regatta in regattas %}
+    {% set month_label = regatta.start_date.strftime('%B') %}
+    {% if month_label != month_ns.current_month %}
+    <tr>
+        <td colspan="{{ col_count }}" class="month-divider-cell">
+            <strong>{{ month_label }}</strong>
+        </td>
+    </tr>
+    {% set month_ns.current_month = month_label %}
+    {% endif %}
     <tr>
         <td style="white-space: nowrap;">
             {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
@@ -84,7 +104,7 @@
         </td>
         <td>
             {% for rsvp in regatta.rsvps|sort_rsvps %}
-            <span class="crew-{{ rsvp.status }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(18) }}</span>
+            <span class="crew-badge crew-{{ rsvp.status }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %}&nbsp;{{ rsvp.user.initials }}&nbsp;{{ rsvp.user|avatar_svg(18) }}</span>
             {% endfor %}
         </td>
     </tr>

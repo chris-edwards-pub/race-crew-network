@@ -157,6 +157,75 @@ class TestPDFSkipperColumnAndTitle:
         assert "Jane Doe" in rendered_html
 
 
+class TestCrewPDFTitle:
+    def test_crew_single_skipper_pdf_link_includes_skipper_param(
+        self, app, db, logged_in_crew, crew_user, skipper_user
+    ):
+        """Crew member with one skipper: PDF link should include ?skipper=<id>."""
+        _create_regatta(db, "Skipper Race", skipper_user.id, days_offset=10)
+
+        resp = logged_in_crew.get("/")
+        html = resp.data.decode()
+        assert f"schedule.pdf?skipper={skipper_user.id}" in html
+
+    @patch("app.regattas.routes.HTML")
+    def test_crew_single_skipper_pdf_title_matches_page(
+        self, mock_html, app, db, logged_in_crew, crew_user, skipper_user
+    ):
+        """PDF for crew with one skipper should show skipper's name, not 'Combined'."""
+        mock_html.return_value.write_pdf.return_value = b"%PDF-fake"
+        _create_regatta(db, "Skipper Race", skipper_user.id, days_offset=10)
+
+        resp = logged_in_crew.get(f"/schedule.pdf?skipper={skipper_user.id}")
+        assert resp.status_code == 200
+        rendered_html = mock_html.call_args[1]["string"]
+        assert "Skipper" in rendered_html
+        assert "Combined Race Schedules" not in rendered_html
+        assert "<th>Skipper</th>" not in rendered_html
+
+
+class TestPDFMonthDividers:
+    @patch("app.regattas.routes.HTML")
+    def test_pdf_includes_month_divider_rows(
+        self, mock_html, app, db, logged_in_client, admin_user
+    ):
+        """PDF should include month divider rows between regattas in different months."""
+        mock_html.return_value.write_pdf.return_value = b"%PDF-fake"
+
+        _create_regatta(db, "March Race", admin_user.id, days_offset=10)
+        _create_regatta(db, "April Race", admin_user.id, days_offset=40)
+
+        resp = logged_in_client.get(f"/schedule.pdf?skipper={admin_user.id}")
+        assert resp.status_code == 200
+        rendered_html = mock_html.call_args[1]["string"]
+        assert "month-divider-cell" in rendered_html
+
+
+class TestPDFCrewColumnRendering:
+    @patch("app.regattas.routes.HTML")
+    def test_pdf_uses_avatar_svg_not_profile_image(
+        self, mock_html, app, db, logged_in_client, admin_user
+    ):
+        """PDF crew column should use avatar_svg, not user_icon, to avoid broken images."""
+        mock_html.return_value.write_pdf.return_value = b"%PDF-fake"
+
+        # Give admin a profile_image_key to trigger user_icon's <img> path
+        admin_user.profile_image_key = "uploads/fake-photo.jpg"
+        db.session.commit()
+
+        r = _create_regatta(db, "Test Regatta", admin_user.id, days_offset=10)
+        db.session.add(RSVP(regatta_id=r.id, user_id=admin_user.id, status="yes"))
+        db.session.commit()
+
+        resp = logged_in_client.get(f"/schedule.pdf?skipper={admin_user.id}")
+        assert resp.status_code == 200
+        rendered_html = mock_html.call_args[1]["string"]
+        # Should NOT contain the display_name as alt text from a broken <img>
+        assert "avatar-photo" not in rendered_html
+        # Should contain inline SVG avatar instead
+        assert "avatar-icon" in rendered_html
+
+
 class TestPDFLinkCarriesFilters:
     def test_pdf_link_includes_skipper_param(
         self, app, db, logged_in_client, admin_user
