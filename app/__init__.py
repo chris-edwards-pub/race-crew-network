@@ -7,7 +7,7 @@ from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.51.0"
+__version__ = "0.52.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -46,12 +46,14 @@ def create_app(test_config=None):
     from app.calendar import bp as calendar_bp
     from app.email import bp as email_bp
     from app.regattas import bp as regattas_bp
+    from app.storage_routes import bp as storage_bp
 
     app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(email_bp)
     app.register_blueprint(regattas_bp)
+    app.register_blueprint(storage_bp)
 
     from app.commands import register_commands
 
@@ -66,11 +68,7 @@ def create_app(test_config=None):
         from flask_login import current_user as cu
 
         url = None
-        if (
-            cu.is_authenticated
-            and cu.profile_image_key
-            and app.config.get("BUCKET_NAME")
-        ):
+        if cu.is_authenticated and cu.profile_image_key:
             try:
                 from app import storage
 
@@ -113,11 +111,7 @@ def create_app(test_config=None):
     @app.template_filter("user_icon")
     def user_icon_filter(user, size=20):
         """Render profile picture when present; otherwise render avatar fallback."""
-        if (
-            user
-            and getattr(user, "profile_image_key", None)
-            and app.config.get("BUCKET_NAME")
-        ):
+        if user and getattr(user, "profile_image_key", None):
             try:
                 from app import storage
 
@@ -126,7 +120,7 @@ def create_app(test_config=None):
                 return Markup(
                     f'<span class="avatar-icon" style="display:inline-block;'
                     f"width:{size}px;height:{size}px;vertical-align:middle;"
-                    ">"
+                    '">'
                     f'<img class="avatar-photo" src="{image_url}" alt="{display_name}" '
                     f'style="width:100%;height:100%;border-radius:50%;object-fit:cover;">'
                     "</span>"

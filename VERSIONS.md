@@ -1,5 +1,12 @@
 # Version History
 
+## 0.52.0
+- Add local filesystem storage fallback when BUCKET_NAME is not set
+- Uploads automatically use local disk (UPLOAD_FOLDER) in local dev, S3 in production
+- New storage blueprint serves locally stored files at /uploads/ (login required)
+- Remove BUCKET_NAME guards so profile pictures and documents work without S3
+- Zero configuration needed for local development — just leave BUCKET_NAME empty
+
 ## 0.51.0
 - Auto-assign random Multiavatar to every new user at creation time
 - All user creation points (admin invite, crew invite, registration, CLI commands) generate a unique avatar seed
