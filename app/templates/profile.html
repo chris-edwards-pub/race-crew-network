@@ -14,7 +14,7 @@
                         <input type="hidden" name="avatar_seed" id="avatar_seed" value="{{ current_user.avatar_seed or '' }}">
                         <div class="d-flex align-items-center gap-3">
                             <div id="avatar-preview" style="width:120px;height:120px;">
-                                {{ current_user|avatar_svg(120) }}
+                                {{ current_user|user_icon(120) }}
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="regenerate-avatar">Regenerate</button>
                         </div>
@@ -71,9 +71,22 @@ document.getElementById('regenerate-avatar').addEventListener('click', function(
     var seed = 'avatar-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
     document.getElementById('avatar_seed').value = seed;
     document.getElementById('remove_profile_image').value = 'on';
+    document.getElementById('profile_image').value = '';
     var svg = multiavatar(seed);
     document.getElementById('avatar-preview').innerHTML =
         '<span class="avatar-icon" style="display:inline-block;width:120px;height:120px;">' + svg + '</span>';
+});
+document.getElementById('profile_image').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var url = URL.createObjectURL(file);
+        document.getElementById('avatar-preview').innerHTML =
+            '<span class="avatar-icon" style="display:inline-block;width:120px;height:120px;">' +
+            '<img class="avatar-photo" src="' + url + '" alt="Preview" ' +
+            'style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' +
+            '</span>';
+        document.getElementById('remove_profile_image').value = '';
+    }
 });
 </script>
 {% endblock %}

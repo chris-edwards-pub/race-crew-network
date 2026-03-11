@@ -1,5 +1,13 @@
 # Version History
 
+## 0.51.0
+- Auto-assign random Multiavatar to every new user at creation time
+- All user creation points (admin invite, crew invite, registration, CLI commands) generate a unique avatar seed
+- Data migration backfills existing users with their email as avatar seed to preserve current avatars
+- Profile page preview shows uploaded profile picture when present instead of always showing avatar SVG
+- File selection preview in profile settings shows chosen image before saving
+- Regenerate button clears file input to avoid conflicting selections
+
 ## 0.50.1
 - Prioritize uploaded profile pictures over generated avatars across navbar, schedules, user lists, and PDF
 - Keep generated avatar visible on crew profile pages while restoring a large top profile icon section

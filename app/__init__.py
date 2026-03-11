@@ -7,7 +7,7 @@ from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.50.1"
+__version__ = "0.51.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -126,7 +126,7 @@ def create_app(test_config=None):
                 return Markup(
                     f'<span class="avatar-icon" style="display:inline-block;'
                     f"width:{size}px;height:{size}px;vertical-align:middle;"
-                    '>'
+                    ">"
                     f'<img class="avatar-photo" src="{image_url}" alt="{display_name}" '
                     f'style="width:100%;height:100%;border-radius:50%;object-fit:cover;">'
                     "</span>"

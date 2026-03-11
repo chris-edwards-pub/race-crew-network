@@ -1,3 +1,4 @@
+import secrets
 from datetime import date, datetime, timezone
 
 import bcrypt
@@ -68,6 +69,11 @@ class User(UserMixin, db.Model):
         return bcrypt.checkpw(
             password.encode("utf-8"), self.password_hash.encode("utf-8")
         )
+
+    @staticmethod
+    def generate_avatar_seed() -> str:
+        """Generate a unique random seed for Multiavatar."""
+        return f"avatar-{secrets.token_hex(12)}"
 
     @property
     def avatar_key(self) -> str:
