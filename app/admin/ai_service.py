@@ -116,7 +116,10 @@ def extract_regattas(content: str, year: int) -> list[dict]:
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
+            timeout=30.0,
         )
+    except anthropic.APITimeoutError:
+        raise ConnectionError("Claude API request timed out. Please try again.")
     except anthropic.APIConnectionError:
         raise ConnectionError("Could not connect to the Claude API.")
     except anthropic.RateLimitError:
@@ -188,7 +191,10 @@ def discover_documents(content: str, regatta_name: str, source_url: str) -> list
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
+            timeout=30.0,
         )
+    except anthropic.APITimeoutError:
+        raise ConnectionError("Claude API request timed out. Please try again.")
     except anthropic.APIConnectionError:
         raise ConnectionError("Could not connect to the Claude API.")
     except anthropic.RateLimitError:
@@ -221,7 +227,10 @@ def discover_documents_deep(
             model="claude-sonnet-4-20250514",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
+            timeout=30.0,
         )
+    except anthropic.APITimeoutError:
+        raise ConnectionError("Claude API request timed out. Please try again.")
     except anthropic.APIConnectionError:
         raise ConnectionError("Could not connect to the Claude API.")
     except anthropic.RateLimitError:

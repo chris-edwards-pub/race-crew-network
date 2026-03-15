@@ -1,5 +1,10 @@
 # Version History
 
+## 0.54.1
+- Add 30-second timeout to all Anthropic API calls in document discovery and regatta extraction (#77)
+- Catch `APITimeoutError` explicitly with clear error message instead of hanging indefinitely
+- Existing error handling for connection, rate-limit, and status errors unchanged
+
 ## 0.54.0
 - Add scheduled email reminders (Phase 2): RSVP daily digest, RSVP reminders (14 days before), and coming-up reminders (3 days before)
 - Skippers can switch to daily digest mode for batched RSVP summary emails
