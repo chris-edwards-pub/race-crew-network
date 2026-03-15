@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import anthropic
 import pytest
 
 from app.admin.ai_service import (_parse_json_response, discover_documents,
@@ -82,6 +83,31 @@ class TestExtractRegattas:
             result = extract_regattas("content", 2026)
             assert result[0]["name"] == "Fenced"
 
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_timeout_raises_connection_error(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.messages.create.side_effect = anthropic.APITimeoutError(
+            request=MagicMock()
+        )
+
+        with app.app_context():
+            with pytest.raises(ConnectionError, match="timed out"):
+                extract_regattas("content", 2026)
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_passes_timeout_to_api(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text='[{"name": "Test"}]')]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            extract_regattas("content", 2026)
+            _, kwargs = mock_client.messages.create.call_args
+            assert kwargs["timeout"] == 30.0
+
 
 # --- discover_documents ---
 
@@ -117,6 +143,31 @@ class TestDiscoverDocuments:
             result = discover_documents("content", "Test", "http://example.com")
             assert result == []
 
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_timeout_raises_connection_error(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.messages.create.side_effect = anthropic.APITimeoutError(
+            request=MagicMock()
+        )
+
+        with app.app_context():
+            with pytest.raises(ConnectionError, match="timed out"):
+                discover_documents("content", "Test", "http://example.com")
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_passes_timeout_to_api(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="[]")]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            discover_documents("content", "Test", "http://example.com")
+            _, kwargs = mock_client.messages.create.call_args
+            assert kwargs["timeout"] == 30.0
+
 
 # --- discover_documents_deep ---
 
@@ -143,3 +194,28 @@ class TestDiscoverDocumentsDeep:
             )
             assert len(result) == 2
             assert {d["doc_type"] for d in result} == {"NOR", "SI"}
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_timeout_raises_connection_error(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.messages.create.side_effect = anthropic.APITimeoutError(
+            request=MagicMock()
+        )
+
+        with app.app_context():
+            with pytest.raises(ConnectionError, match="timed out"):
+                discover_documents_deep("content", "Test", "http://example.com")
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_passes_timeout_to_api(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="[]")]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            discover_documents_deep("content", "Test", "http://example.com")
+            _, kwargs = mock_client.messages.create.call_args
+            assert kwargs["timeout"] == 30.0
