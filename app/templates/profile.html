@@ -46,6 +46,29 @@
                 <label class="form-check-label" for="email_opt_in">Receive email communications</label>
                 <div class="form-text">Uncheck to stop receiving emails from Race Crew Network.</div>
             </div>
+            <h5 class="mt-3">Notification Settings</h5>
+            {% if current_user.is_skipper %}
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="rsvp_notification" name="rsvp_notification"
+                       {% if current_user.notification_preferences.rsvp_notification %}checked{% endif %}>
+                <label class="form-check-label" for="rsvp_notification">RSVP notifications</label>
+                <div class="form-text">Receive an email when crew members RSVP to your regattas.</div>
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">Notification delivery</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rsvp_delivery" id="rsvp_delivery_per" value="per_rsvp"
+                           {% if current_user.notification_preferences.rsvp_delivery != 'digest' %}checked{% endif %}>
+                    <label class="form-check-label" for="rsvp_delivery_per">Immediately</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="rsvp_delivery" id="rsvp_delivery_digest" value="digest"
+                           {% if current_user.notification_preferences.rsvp_delivery == 'digest' %}checked{% endif %}>
+                    <label class="form-check-label" for="rsvp_delivery_digest">Daily digest</label>
+                </div>
+                <div class="form-text">Choose whether to receive notifications immediately or batched into a daily summary.</div>
+            </div>
             <hr>
             <p class="text-muted">Leave password blank to keep your current password.</p>
             <div class="mb-3">

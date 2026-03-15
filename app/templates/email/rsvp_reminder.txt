@@ -1,0 +1,9 @@
+Hi {{ crew_name }},
+
+{{ regatta.name }} is coming up on {{ regatta.start_date.strftime('%b %d, %Y') }} at {{ regatta.location }}.
+
+{{ skipper_name }} would like to know if you can make it.
+
+RSVP now: {{ schedule_url }}
+
+Manage your notification preferences: {{ profile_url }}

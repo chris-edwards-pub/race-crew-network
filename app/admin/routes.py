@@ -15,7 +15,7 @@ from flask import (Response, flash, jsonify, redirect, render_template,
                    request, stream_with_context, url_for)
 from flask_login import current_user, login_required
 
-from app import db
+from app import csrf, db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
@@ -476,16 +476,42 @@ def email_settings():
         if ses_region:
             _upsert_site_setting("ses_region", ses_region)
 
+        # Reminder settings
+        rsvp_days = request.form.get("reminder_rsvp_days_before", "").strip()
+        upcoming_days = request.form.get("reminder_upcoming_days_before", "").strip()
+        api_token = request.form.get("reminder_api_token", "").strip()
+
+        if rsvp_days:
+            _upsert_site_setting("reminder_rsvp_days_before", rsvp_days)
+        if upcoming_days:
+            _upsert_site_setting("reminder_upcoming_days_before", upcoming_days)
+        _upsert_site_setting("reminder_api_token", api_token)
+
         flash("Email settings updated.", "success")
         return redirect(url_for("admin.email_settings"))
 
     settings = load_email_settings()
+
+    # Load reminder settings
+    rsvp_days_setting = SiteSetting.query.filter_by(
+        key="reminder_rsvp_days_before"
+    ).first()
+    upcoming_days_setting = SiteSetting.query.filter_by(
+        key="reminder_upcoming_days_before"
+    ).first()
+    api_token_setting = SiteSetting.query.filter_by(key="reminder_api_token").first()
+
     return render_template(
         "admin/email_settings.html",
         ses_sender=settings["ses_sender"],
         ses_sender_to=settings["ses_sender_to"],
         ses_region=settings["ses_region"],
         email_configured=is_email_configured(),
+        reminder_rsvp_days=rsvp_days_setting.value if rsvp_days_setting else "14",
+        reminder_upcoming_days=(
+            upcoming_days_setting.value if upcoming_days_setting else "3"
+        ),
+        reminder_api_token=(api_token_setting.value if api_token_setting else ""),
     )
 
 
@@ -512,6 +538,28 @@ def email_test():
     except ClientError as exc:
         error_msg = exc.response["Error"].get("Message", str(exc))
         return jsonify({"success": False, "error": error_msg}), 500
+
+
+@bp.route("/admin/api/send-reminders", methods=["GET"])
+@csrf.exempt
+def send_reminders_api():
+    """Token-authenticated endpoint to trigger all scheduled reminders.
+
+    Called by AWS EventBridge or manually from admin UI.
+    No login required — uses token-based auth only.
+    """
+    token = request.args.get("token", "")
+    if not token:
+        return jsonify({"error": "Missing token"}), 403
+
+    stored_token = SiteSetting.query.filter_by(key="reminder_api_token").first()
+    if not stored_token or not stored_token.value or stored_token.value != token:
+        return jsonify({"error": "Invalid token"}), 403
+
+    from app.notifications.service import send_all_reminders
+
+    summary = send_all_reminders()
+    return jsonify(summary)
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])

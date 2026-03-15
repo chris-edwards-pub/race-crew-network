@@ -167,6 +167,9 @@
 </div>
 {% if can_manage_any %}
 <div class="text-end regatta-table-desktop">
+    {% if current_user.is_skipper and crew_list %}
+    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openNotifyModal('{{ table_id }}')">Notify Crew via Email</button>
+    {% endif %}
     <button type="submit" form="{{ table_id }}-form" class="btn btn-sm btn-outline-danger">Delete Selected</button>
 </div>
 {% endif %}
@@ -254,6 +257,56 @@
 {{ regatta_table(past, true, "past", show_skipper) }}
 {% endif %}
 
+{% if current_user.is_skipper and crew_list %}
+<!-- Notify Crew Modal -->
+<div class="modal fade" id="notifyCrewModal" tabindex="-1" aria-labelledby="notifyCrewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('regattas.notify_crew_action') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="notify-selected-inputs"></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notifyCrewModalLabel">Notify Crew via Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Selected Regattas:</label>
+                        <ul id="notify-regatta-list" class="list-unstyled mb-0"></ul>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Send to:</label>
+                        {% for item in crew_list %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="crew[]" value="{{ item.user.id }}"
+                                   id="crew-{{ item.user.id }}"
+                                   {% if item.eligible %}checked{% else %}disabled{% endif %}>
+                            <label class="form-check-label {% if not item.eligible %}text-muted{% endif %}" for="crew-{{ item.user.id }}">
+                                {{ item.user.display_name }}
+                                {% if not item.eligible %}
+                                <small>({{ item.reason }})</small>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label for="notify-message" class="form-label fw-bold">Message (optional):</label>
+                        <textarea class="form-control" id="notify-message" name="message" rows="3" placeholder="Add a personal message..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Notification</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if can_manage_any %}
 <script>
 document.querySelectorAll('.select-all').forEach(function(cb) {
@@ -273,6 +326,37 @@ function confirmBulkDelete(form) {
         return false;
     }
     return confirm('Delete ' + count + ' selected regatta(s)?');
+}
+
+function openNotifyModal(tableId) {
+    var formId = tableId + '-form';
+    var checked = document.querySelectorAll('input[name="selected"][form="' + formId + '"]:checked');
+    if (checked.length === 0) {
+        alert('No regattas selected.');
+        return;
+    }
+    // Populate hidden inputs and regatta list
+    var inputsDiv = document.getElementById('notify-selected-inputs');
+    var listEl = document.getElementById('notify-regatta-list');
+    inputsDiv.innerHTML = '';
+    listEl.innerHTML = '';
+    checked.forEach(function(cb) {
+        // Hidden input for form submission
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selected[]';
+        input.value = cb.value;
+        inputsDiv.appendChild(input);
+        // Find regatta name from the row
+        var row = cb.closest('tr');
+        var nameCell = row ? row.querySelector('td strong') : null;
+        var name = nameCell ? nameCell.textContent.trim() : 'Regatta #' + cb.value;
+        var li = document.createElement('li');
+        li.textContent = '• ' + name;
+        listEl.appendChild(li);
+    });
+    var modal = new bootstrap.Modal(document.getElementById('notifyCrewModal'));
+    modal.show();
 }
 </script>
 {% endif %}

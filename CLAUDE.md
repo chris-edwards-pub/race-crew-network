@@ -1,7 +1,7 @@
 # Race Crew Network — Project Standards
 
 ## Python Standards
-- Python 3.11+
+- Python 3.13
 - Type hints encouraged on function signatures
 - f-strings over `.format()` or `%` formatting
 - Use pathlib for file paths where practical

@@ -1,0 +1,13 @@
+Hi {{ crew_name }},
+
+{% if custom_message %}{{ custom_message }}
+
+{% endif %}{{ skipper_name }} wants you to know about the following regatta(s):
+
+{% for r in regattas %}
+- {{ r.start_date.strftime('%b %d') }}{% if r.end_date %} – {{ r.end_date.strftime('%b %d') }}{% endif %}, {{ r.start_date.strftime('%Y') }} | {{ r.boat_class }} | {{ r.name }} | {{ r.location }}
+{% endfor %}
+
+View your schedule and RSVP: {{ schedule_url }}
+
+Manage your notification preferences: {{ profile_url }}

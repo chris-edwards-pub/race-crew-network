@@ -1,0 +1,12 @@
+Hi {{ skipper_name }},
+
+Here's your RSVP summary for today:
+
+{% for summary in regatta_summaries %}
+{{ summary.regatta.name }} ({{ summary.regatta.start_date.strftime('%b %d') }}{% if summary.regatta.end_date %} – {{ summary.regatta.end_date.strftime('%b %d') }}{% endif %}, {{ summary.regatta.start_date.strftime('%Y') }}, {{ summary.regatta.location }})
+{% for rsvp in summary.rsvps %}  - {{ rsvp.user.display_name }} — {{ rsvp.status }}
+{% endfor %}
+{% endfor %}
+View your schedule: {{ schedule_url }}
+
+Prefer instant RSVP notifications? Update your notification settings: {{ profile_url }}

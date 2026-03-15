@@ -1,0 +1,11 @@
+RSVP Update
+
+{{ crew_member }} has RSVPed {{ status }} for {{ regatta_name }}.
+
+Regatta: {{ regatta_name }}
+Date: {{ regatta_date.strftime('%b %d') }}{% if regatta_end_date %} – {{ regatta_end_date.strftime('%b %d') }}{% endif %}, {{ regatta_date.strftime('%Y') }}
+Location: {{ regatta_location }}
+
+View your schedule: {{ schedule_url }}
+
+Prefer a daily summary instead? Update your notification settings: {{ profile_url }}
