@@ -1,5 +1,27 @@
 # Version History
 
+## 0.54.0
+- Add scheduled email reminders (Phase 2): RSVP daily digest, RSVP reminders (14 days before), and coming-up reminders (3 days before)
+- Skippers can switch to daily digest mode for batched RSVP summary emails
+- Crew members can choose between immediate and daily digest notification delivery
+- RSVP and coming-up reminders only sent to crew previously notified about that regatta
+- Crew daily digest batches RSVP reminders and coming-up reminders into one email
+- Secured API endpoint (`/admin/api/send-reminders?token=...`) for AWS EventBridge scheduling
+- `flask send-reminders` CLI command for local dev/testing
+- Admin email settings page adds reminder timing configuration and API token management
+- Notification settings section on profile page now available to all users (not just skippers)
+- All notification emails include link to switch delivery mode on profile page
+- Deduplication via NotificationLog prevents duplicate reminder emails on re-run
+
+## 0.53.0
+- Add email notification system (Phase 1)
+- Skipper-initiated "Notify Crew" bulk action: select regattas and crew members, send one summary email per crew member
+- Automatic RSVP-to-skipper notifications: skipper receives an email when crew RSVPs
+- Notification preferences on profile page: skippers can toggle RSVP notifications on/off
+- NotificationLog model tracks all sent notifications per regatta-crew pair
+- New email templates for crew notifications and RSVP alerts
+- Notify Crew modal with crew selection, optional custom message, and regatta summary
+
 ## 0.52.1
 - Fix PDF title/content mismatch for crew members viewing a single skipper's schedule
 - PDF link now includes skipper param when only one schedule context exists, matching the page title

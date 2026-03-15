@@ -56,13 +56,61 @@
                 >
                 <div class="form-text">AWS region for SES. Defaults to the app's AWS_REGION if left blank.</div>
             </div>
+            <hr>
+            <h4 class="mt-3">Reminder Settings</h4>
+            <p class="text-muted">
+                Configure automated email reminders sent by the daily scheduler.
+            </p>
+            <div class="mb-3">
+                <label for="reminder_rsvp_days_before" class="form-label">RSVP reminder (days before)</label>
+                <input
+                    type="number"
+                    class="form-control"
+                    id="reminder_rsvp_days_before"
+                    name="reminder_rsvp_days_before"
+                    value="{{ reminder_rsvp_days }}"
+                    min="1"
+                    max="90"
+                >
+                <div class="form-text">Send RSVP reminder this many days before the regatta start date.</div>
+            </div>
+            <div class="mb-3">
+                <label for="reminder_upcoming_days_before" class="form-label">Coming up reminder (days before)</label>
+                <input
+                    type="number"
+                    class="form-control"
+                    id="reminder_upcoming_days_before"
+                    name="reminder_upcoming_days_before"
+                    value="{{ reminder_upcoming_days }}"
+                    min="1"
+                    max="30"
+                >
+                <div class="form-text">Send "coming up" reminder this many days before the regatta start date.</div>
+            </div>
+            <div class="mb-3">
+                <label for="reminder_api_token" class="form-label">Reminder API token</label>
+                <div class="input-group">
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="reminder_api_token"
+                        name="reminder_api_token"
+                        value="{{ reminder_api_token }}"
+                        placeholder="Generate or paste a token"
+                    >
+                    <button type="button" class="btn btn-outline-secondary" id="btn-generate-token">Generate</button>
+                </div>
+                <div class="form-text">Token for the <code>/admin/api/send-reminders?token=...</code> endpoint. Leave empty to disable.</div>
+            </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-primary">Save Settings</button>
                 <button type="button" class="btn btn-outline-success" id="btn-test-email" {% if not email_configured %}disabled{% endif %}>Send Test Email</button>
+                <button type="button" class="btn btn-outline-info" id="btn-send-reminders" {% if not email_configured or not reminder_api_token %}disabled{% endif %}>Send Reminders Now</button>
                 <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary">Cancel</a>
             </div>
         </form>
         <div id="test-email-result" class="mt-3" style="display:none;"></div>
+        <div id="reminder-result" class="mt-3" style="display:none;"></div>
     </div>
 </div>
 {% endblock %}
@@ -100,6 +148,49 @@ document.getElementById('btn-test-email').addEventListener('click', function() {
     .finally(() => {
         btn.disabled = false;
         btn.textContent = 'Send Test Email';
+    });
+});
+document.getElementById('btn-generate-token').addEventListener('click', function() {
+    var array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    var token = Array.from(array, function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    document.getElementById('reminder_api_token').value = token;
+});
+document.getElementById('btn-send-reminders').addEventListener('click', function() {
+    var btn = this;
+    var resultDiv = document.getElementById('reminder-result');
+    var token = document.getElementById('reminder_api_token').value;
+    if (!token) {
+        resultDiv.className = 'mt-3 alert alert-warning';
+        resultDiv.textContent = 'Save an API token first.';
+        resultDiv.style.display = 'block';
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    resultDiv.style.display = 'none';
+
+    fetch('/admin/api/send-reminders?token=' + encodeURIComponent(token))
+    .then(function(resp) { return resp.json().then(function(data) { return {status: resp.status, data: data}; }); })
+    .then(function(result) {
+        if (result.status === 200) {
+            var d = result.data;
+            resultDiv.className = 'mt-3 alert alert-success';
+            resultDiv.textContent = 'Reminders sent: ' + d.digests + ' digest(s), ' + d.crew_digests + ' crew digest(s), ' + d.rsvp_reminders + ' RSVP reminder(s), ' + d.coming_up_reminders + ' coming-up reminder(s).';
+        } else {
+            resultDiv.className = 'mt-3 alert alert-danger';
+            resultDiv.textContent = result.data.error || 'Failed to send reminders.';
+        }
+        resultDiv.style.display = 'block';
+    })
+    .catch(function() {
+        resultDiv.className = 'mt-3 alert alert-danger';
+        resultDiv.textContent = 'Network error — could not reach server.';
+        resultDiv.style.display = 'block';
+    })
+    .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Send Reminders Now';
     });
 });
 </script>

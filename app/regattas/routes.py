@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import date
@@ -10,8 +11,12 @@ from weasyprint import HTML
 
 from app import db, storage
 from app.models import RSVP, Document, Regatta, User
+from app.notifications.service import (get_eligible_crew, notify_crew,
+                                       notify_rsvp_to_skipper)
 from app.permissions import can_manage_regatta, can_rsvp_to_regatta
 from app.regattas import bp
+
+logger = logging.getLogger(__name__)
 
 
 def _apply_schedule_filters(upcoming, past, user):
@@ -90,6 +95,11 @@ def index():
     if rsvp_filters:
         pdf_args["rsvp"] = rsvp_filters
 
+    # Crew list for "Notify Crew" modal (skippers only)
+    crew_list = []
+    if current_user.is_skipper:
+        crew_list = get_eligible_crew(current_user)
+
     return render_template(
         "index.html",
         upcoming=upcoming,
@@ -100,6 +110,7 @@ def index():
         can_manage_any=can_manage_any,
         rsvp_filters=rsvp_filters,
         pdf_url=url_for("regattas.pdf", **pdf_args),
+        crew_list=crew_list,
     )
 
 
@@ -218,6 +229,64 @@ def bulk_delete():
     return redirect(url_for("regattas.index"))
 
 
+@bp.route("/regattas/notify-crew", methods=["POST"])
+@login_required
+def notify_crew_action():
+    if not current_user.is_skipper:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    selected_ids = request.form.getlist("selected[]")
+    crew_ids = request.form.getlist("crew[]")
+    message = request.form.get("message", "").strip() or None
+
+    if not selected_ids:
+        flash("No regattas selected.", "warning")
+        return redirect(url_for("regattas.index"))
+
+    if not crew_ids:
+        flash("No crew members selected.", "warning")
+        return redirect(url_for("regattas.index"))
+
+    # Validate regattas belong to current user
+    regattas = []
+    for rid in selected_ids:
+        try:
+            regatta = db.session.get(Regatta, int(rid))
+        except (ValueError, TypeError):
+            continue
+        if regatta and regatta.created_by == current_user.id:
+            regattas.append(regatta)
+
+    if not regattas:
+        flash("No valid regattas selected.", "warning")
+        return redirect(url_for("regattas.index"))
+
+    # Validate crew members belong to current user's crew
+    crew_members = []
+    valid_crew_ids = {c.id for c in current_user.crew_members.all()}
+    for cid in crew_ids:
+        try:
+            uid = int(cid)
+        except (ValueError, TypeError):
+            continue
+        if uid in valid_crew_ids:
+            user = db.session.get(User, uid)
+            if user:
+                crew_members.append(user)
+
+    if not crew_members:
+        flash("No valid crew members selected.", "warning")
+        return redirect(url_for("regattas.index"))
+
+    sent = notify_crew(regattas, crew_members, message, current_user)
+    flash(
+        f"Notified {sent} crew member(s) about {len(regattas)} regatta(s).",
+        "success",
+    )
+    return redirect(url_for("regattas.index"))
+
+
 @bp.route("/regattas/<int:regatta_id>/rsvp", methods=["POST"])
 @login_required
 def rsvp(regatta_id: int):
@@ -237,12 +306,17 @@ def rsvp(regatta_id: int):
 
     if existing:
         existing.status = status
+        rsvp_obj = existing
     else:
-        db.session.add(
-            RSVP(regatta_id=regatta_id, user_id=current_user.id, status=status)
-        )
+        rsvp_obj = RSVP(regatta_id=regatta_id, user_id=current_user.id, status=status)
+        db.session.add(rsvp_obj)
 
     db.session.commit()
+
+    try:
+        notify_rsvp_to_skipper(rsvp_obj)
+    except Exception:
+        logger.exception("Failed to send RSVP notification for regatta %s", regatta.id)
 
     # Preserve filter state in redirect
     redirect_args = {}

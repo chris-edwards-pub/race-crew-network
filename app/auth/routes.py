@@ -136,6 +136,7 @@ def register(token: str):
                 user.avatar_seed = User.generate_avatar_seed()
 
             # Auto-link to inviting skipper's crew
+            inviter = None
             if user.invited_by:
                 inviter = db.session.get(User, user.invited_by)
                 if inviter and inviter.is_skipper:
@@ -143,6 +144,19 @@ def register(token: str):
                         inviter.crew_members.append(user)
 
             db.session.commit()
+
+            # Notify the skipper that crew member joined
+            if inviter and inviter.is_skipper:
+                try:
+                    from app.notifications.service import notify_crew_joined
+
+                    notify_crew_joined(user, inviter)
+                except Exception:
+                    logger.exception(
+                        "Failed to send crew-joined notification for user %s",
+                        user.id,
+                    )
+
             login_user(user)
             flash("Welcome aboard!", "success")
             return redirect(url_for("regattas.index"))
@@ -192,6 +206,26 @@ def profile():
                 if password:
                     current_user.set_password(password)
 
+                # Save notification preferences
+                import json
+
+                old_prefs = current_user.notification_preferences.copy()
+                prefs = old_prefs.copy()
+                if current_user.is_skipper:
+                    prefs["rsvp_notification"] = (
+                        request.form.get("rsvp_notification") == "on"
+                    )
+                rsvp_delivery = request.form.get("rsvp_delivery", "per_rsvp")
+                if rsvp_delivery in ("per_rsvp", "digest"):
+                    prefs["rsvp_delivery"] = rsvp_delivery
+                current_user.notification_prefs = json.dumps(prefs)
+
+                # Detect digest → instant switch for flush after commit
+                switching_to_instant = (
+                    old_prefs.get("rsvp_delivery") == "digest"
+                    and prefs.get("rsvp_delivery") == "per_rsvp"
+                )
+
                 db.session.commit()
             except ValueError as exc:
                 db.session.rollback()
@@ -213,6 +247,22 @@ def profile():
             else:
                 if old_image_key and old_image_key != current_user.profile_image_key:
                     storage.delete_file(old_image_key)
+
+                # Flush pending digest items when switching to instant
+                if switching_to_instant:
+                    try:
+                        from app.notifications.service import (
+                            flush_crew_digest, flush_skipper_digest)
+
+                        if current_user.is_skipper:
+                            flush_skipper_digest(current_user)
+                        flush_crew_digest(current_user)
+                    except Exception:
+                        logger.exception(
+                            "Failed to flush digest for user %s",
+                            current_user.id,
+                        )
+
                 flash("Profile updated.", "success")
                 return redirect(url_for("auth.profile"))
 

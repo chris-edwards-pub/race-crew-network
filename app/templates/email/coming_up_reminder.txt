@@ -1,0 +1,10 @@
+Hi {{ crew_name }},
+
+Just a reminder — {{ regatta.name }} is in {{ days }} days!
+
+Date: {{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}
+Location: {{ regatta.location }}
+
+View your schedule: {{ schedule_url }}
+
+Manage your notification preferences: {{ profile_url }}

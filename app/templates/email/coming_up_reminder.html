@@ -1,0 +1,15 @@
+<h2>Coming Up</h2>
+<p>Hi {{ crew_name }},</p>
+<p>Just a reminder — <strong>{{ regatta.name }}</strong> is in {{ days }} days!</p>
+<table style="border-collapse:collapse;margin:16px 0;" cellpadding="8">
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">Date</td>
+        <td style="border:1px solid #dee2e6;">{{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">Location</td>
+        <td style="border:1px solid #dee2e6;">{{ regatta.location }}</td>
+    </tr>
+</table>
+<p><a href="{{ schedule_url }}">View your schedule</a></p>
+<p style="font-size:13px;color:#666;">Manage your notification preferences: <a href="{{ profile_url }}">{{ profile_url }}</a></p>

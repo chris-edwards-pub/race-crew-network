@@ -1,0 +1,14 @@
+<h2>Daily RSVP Summary</h2>
+<p>Hi {{ skipper_name }},</p>
+<p>Here's your RSVP summary for today:</p>
+{% for summary in regatta_summaries %}
+<h3 style="margin-bottom:4px;">{{ summary.regatta.name }}</h3>
+<p style="margin-top:0;color:#666;">{{ summary.regatta.start_date.strftime('%b %d') }}{% if summary.regatta.end_date %} – {{ summary.regatta.end_date.strftime('%b %d') }}{% endif %}, {{ summary.regatta.start_date.strftime('%Y') }} — {{ summary.regatta.location }}</p>
+<ul style="margin-top:0;">
+{% for rsvp in summary.rsvps %}
+    <li>{{ rsvp.user.display_name }} — {{ rsvp.status }}</li>
+{% endfor %}
+</ul>
+{% endfor %}
+<p><a href="{{ schedule_url }}">View your schedule</a></p>
+<p style="font-size:13px;color:#666;">Prefer instant RSVP notifications? <a href="{{ profile_url }}">Update your notification settings</a></p>

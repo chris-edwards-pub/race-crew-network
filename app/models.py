@@ -1,3 +1,4 @@
+import json
 import secrets
 from datetime import date, datetime, timezone
 
@@ -43,6 +44,7 @@ class User(UserMixin, db.Model):
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     profile_image_key = db.Column(db.String(255), nullable=True)
     avatar_seed = db.Column(db.String(100), nullable=True)
+    notification_prefs = db.Column(db.Text, nullable=True)
 
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
     documents = db.relationship("Document", backref="uploaded_by_user", lazy="dynamic")
@@ -84,6 +86,21 @@ class User(UserMixin, db.Model):
     def is_crew(self) -> bool:
         """True if this user is crew for at least one skipper."""
         return len(self.skippers) > 0
+
+    @property
+    def notification_preferences(self) -> dict:
+        """Return notification preferences with defaults."""
+        defaults = {
+            "rsvp_notification": True,
+            "rsvp_delivery": "per_rsvp",
+        }
+        if self.notification_prefs:
+            try:
+                stored = json.loads(self.notification_prefs)
+                defaults.update(stored)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return defaults
 
     def visible_regattas(self):
         """Return a query of regattas this user can see.
@@ -221,6 +238,26 @@ class TaskResult(db.Model):
     data_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class NotificationLog(db.Model):
+    __tablename__ = "notification_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    notification_type = db.Column(db.String(50), nullable=False)
+    regatta_id = db.Column(db.Integer, db.ForeignKey("regattas.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    sent_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    trigger_date = db.Column(db.Date, default=date.today, nullable=False)
+
+    regatta = db.relationship("Regatta", backref="notification_logs")
+    user = db.relationship("User", backref="notification_logs")
+
+    __table_args__ = (
+        db.Index("ix_notification_type_regatta", "notification_type", "regatta_id"),
     )
 
 

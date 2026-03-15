@@ -1,0 +1,21 @@
+<h2>Daily Update</h2>
+<p>Hi {{ crew_name }},</p>
+<p>Here's what's happening with your schedule:</p>
+{% if rsvp_needed %}
+<h3>RSVP Needed</h3>
+<ul>
+{% for regatta in rsvp_needed %}
+    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }}) — please RSVP</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% if coming_up %}
+<h3>Coming Up</h3>
+<ul>
+{% for regatta in coming_up %}
+    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }})</li>
+{% endfor %}
+</ul>
+{% endif %}
+<p><a href="{{ schedule_url }}">View your schedule</a></p>
+<p style="font-size:13px;color:#666;">Manage your notification preferences: <a href="{{ profile_url }}">{{ profile_url }}</a></p>

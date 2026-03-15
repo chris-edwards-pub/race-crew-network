@@ -1,0 +1,28 @@
+<h2>Race Schedule Update</h2>
+<p>Hi {{ crew_name }},</p>
+{% if custom_message %}
+<p>{{ custom_message }}</p>
+{% endif %}
+<p>{{ skipper_name }} wants you to know about the following regatta(s):</p>
+<table style="border-collapse:collapse;width:100%;margin:16px 0;" cellpadding="8">
+    <thead>
+        <tr style="background-color:#f8f9fa;">
+            <th style="border:1px solid #dee2e6;text-align:left;">Date</th>
+            <th style="border:1px solid #dee2e6;text-align:left;">Class</th>
+            <th style="border:1px solid #dee2e6;text-align:left;">Regatta</th>
+            <th style="border:1px solid #dee2e6;text-align:left;">Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in regattas %}
+        <tr>
+            <td style="border:1px solid #dee2e6;white-space:nowrap;">{{ r.start_date.strftime('%b %d') }}{% if r.end_date %} – {{ r.end_date.strftime('%b %d') }}{% endif %}, {{ r.start_date.strftime('%Y') }}</td>
+            <td style="border:1px solid #dee2e6;">{{ r.boat_class }}</td>
+            <td style="border:1px solid #dee2e6;">{{ r.name }}</td>
+            <td style="border:1px solid #dee2e6;">{{ r.location }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p><a href="{{ schedule_url }}">View your schedule and RSVP</a></p>
+<p style="font-size:13px;color:#666;">Manage your notification preferences: <a href="{{ profile_url }}">{{ profile_url }}</a></p>

@@ -1,3 +1,4 @@
+import json
 import os
 
 import click
@@ -60,3 +61,11 @@ def register_commands(app: Flask) -> None:
         db.session.add(user)
         db.session.commit()
         click.echo(f"Admin user '{name}' ({initials.upper()}) created successfully.")
+
+    @app.cli.command("send-reminders")
+    def send_reminders() -> None:
+        """Send all scheduled reminder emails (digests, RSVP reminders, coming-up reminders)."""
+        from app.notifications.service import send_all_reminders
+
+        summary = send_all_reminders()
+        click.echo(json.dumps(summary, indent=2))

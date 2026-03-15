@@ -1,0 +1,22 @@
+<h2>RSVP Update</h2>
+<p><strong>{{ crew_member }}</strong> has RSVPed <strong>{{ status }}</strong> for <strong>{{ regatta_name }}</strong>.</p>
+<table style="border-collapse:collapse;margin:16px 0;" cellpadding="8">
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">Regatta</td>
+        <td style="border:1px solid #dee2e6;">{{ regatta_name }}</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">Date</td>
+        <td style="border:1px solid #dee2e6;">{{ regatta_date.strftime('%b %d') }}{% if regatta_end_date %} – {{ regatta_end_date.strftime('%b %d') }}{% endif %}, {{ regatta_date.strftime('%Y') }}</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">Location</td>
+        <td style="border:1px solid #dee2e6;">{{ regatta_location }}</td>
+    </tr>
+    <tr>
+        <td style="border:1px solid #dee2e6;background-color:#f8f9fa;font-weight:bold;">RSVP</td>
+        <td style="border:1px solid #dee2e6;">{{ crew_member }} — {{ status }}</td>
+    </tr>
+</table>
+<p><a href="{{ schedule_url }}">View your schedule</a></p>
+<p style="font-size:13px;color:#666;">Prefer a daily summary instead? <a href="{{ profile_url }}">Update your notification settings</a></p>
