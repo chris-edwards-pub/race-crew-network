@@ -10,4 +10,5 @@ Hi {{ crew_name }},
 
 View your schedule and RSVP: {{ schedule_url }}
 
+Add races to your calendar: {{ subscribe_url }}
 Manage your notification preferences: {{ profile_url }}

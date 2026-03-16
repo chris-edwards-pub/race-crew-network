@@ -11,4 +11,5 @@ Here's what's happening with your schedule:
 {% endif %}
 View your schedule: {{ schedule_url }}
 
+Add races to your calendar: {{ subscribe_url }}
 Manage your notification preferences: {{ profile_url }}

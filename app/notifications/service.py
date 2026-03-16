@@ -51,6 +51,7 @@ def notify_crew(
 
     schedule_url = url_for("regattas.index", _external=True)
     profile_url = url_for("auth.profile", _external=True)
+    subscribe_url = url_for("calendar.subscribe", _external=True)
     sent_count = 0
 
     for crew in crew_members:
@@ -68,6 +69,7 @@ def notify_crew(
             custom_message=message,
             schedule_url=schedule_url,
             profile_url=profile_url,
+            subscribe_url=subscribe_url,
         )
         body_text = render_template(
             "email/notify_crew.txt",
@@ -77,6 +79,7 @@ def notify_crew(
             custom_message=message,
             schedule_url=schedule_url,
             profile_url=profile_url,
+            subscribe_url=subscribe_url,
         )
 
         try:
@@ -435,6 +438,7 @@ def send_crew_digests() -> int:
 
         schedule_url = url_for("regattas.index", _external=True)
         profile_url = url_for("auth.profile", _external=True)
+        subscribe_url = url_for("calendar.subscribe", _external=True)
         subject = "Race Crew Network — Daily Update"
 
         body_html = render_template(
@@ -444,6 +448,7 @@ def send_crew_digests() -> int:
             coming_up=coming_up,
             schedule_url=schedule_url,
             profile_url=profile_url,
+            subscribe_url=subscribe_url,
         )
         body_text = render_template(
             "email/crew_digest.txt",
@@ -452,6 +457,7 @@ def send_crew_digests() -> int:
             coming_up=coming_up,
             schedule_url=schedule_url,
             profile_url=profile_url,
+            subscribe_url=subscribe_url,
         )
 
         try:
@@ -545,6 +551,7 @@ def send_rsvp_reminders(days_before: int | None = None) -> int:
 
             schedule_url = url_for("regattas.index", _external=True)
             profile_url = url_for("auth.profile", _external=True)
+            subscribe_url = url_for("calendar.subscribe", _external=True)
             skipper = regatta.creator
 
             subject = (
@@ -559,6 +566,7 @@ def send_rsvp_reminders(days_before: int | None = None) -> int:
                 skipper_name=skipper.display_name if skipper else "Your skipper",
                 schedule_url=schedule_url,
                 profile_url=profile_url,
+                subscribe_url=subscribe_url,
             )
             body_text = render_template(
                 "email/rsvp_reminder.txt",
@@ -567,6 +575,7 @@ def send_rsvp_reminders(days_before: int | None = None) -> int:
                 skipper_name=skipper.display_name if skipper else "Your skipper",
                 schedule_url=schedule_url,
                 profile_url=profile_url,
+                subscribe_url=subscribe_url,
             )
 
             try:
@@ -652,6 +661,7 @@ def send_coming_up_reminders(days_before: int | None = None) -> int:
 
             schedule_url = url_for("regattas.index", _external=True)
             profile_url = url_for("auth.profile", _external=True)
+            subscribe_url = url_for("calendar.subscribe", _external=True)
 
             subject = (
                 f"Coming Up: {regatta.name} — "
@@ -665,6 +675,7 @@ def send_coming_up_reminders(days_before: int | None = None) -> int:
                 days=days_before,
                 schedule_url=schedule_url,
                 profile_url=profile_url,
+                subscribe_url=subscribe_url,
             )
             body_text = render_template(
                 "email/coming_up_reminder.txt",
@@ -673,6 +684,7 @@ def send_coming_up_reminders(days_before: int | None = None) -> int:
                 days=days_before,
                 schedule_url=schedule_url,
                 profile_url=profile_url,
+                subscribe_url=subscribe_url,
             )
 
             try:
