@@ -1,10 +1,9 @@
 import secrets
 from datetime import timedelta
 
-from flask import Response, flash, redirect, url_for
+from flask import Response, render_template, url_for
 from flask_login import current_user, login_required
 from icalendar import Calendar, Event
-from markupsafe import Markup
 
 from app import db
 from app.calendar import bp
@@ -22,13 +21,12 @@ def subscribe():
     feed_url = url_for(
         "calendar.ical_feed", token=current_user.calendar_token, _external=True
     )
-    flash(
-        Markup(
-            f'Subscribe to this URL in your calendar app: <a href="{feed_url}" class="alert-link">{feed_url}</a>'
-        ),
-        "success",
+    webcal_url = feed_url.replace("https://", "webcal://", 1).replace(
+        "http://", "webcal://", 1
     )
-    return redirect(url_for("regattas.index"))
+    return render_template(
+        "calendar/subscribe.html", feed_url=feed_url, webcal_url=webcal_url
+    )
 
 
 @bp.route("/calendar/<token>.ics")
@@ -43,7 +41,13 @@ def ical_feed(token: str):
     cal.add("x-wr-calname", "Race Crew Network")
     cal.add("method", "PUBLISH")
 
-    regattas = user.visible_regattas().order_by(Regatta.start_date).all()
+    regattas = (
+        user.visible_regattas()
+        .join(RSVP, (RSVP.regatta_id == Regatta.id) & (RSVP.user_id == user.id))
+        .filter(RSVP.status.in_(["yes", "maybe"]))
+        .order_by(Regatta.start_date)
+        .all()
+    )
 
     for regatta in regattas:
         event = Event()

@@ -33,7 +33,7 @@
             <div class="collapse navbar-collapse" id="navMenu">
                 <div class="navbar-nav ms-auto align-items-center gap-2">
                     <a class="nav-link nav-pill-link" href="{{ url_for('regattas.index') }}">Home</a>
-                    <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">iCal</a>
+                    <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">Calendar</a>
                     {% if current_user.is_admin or current_user.is_skipper %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('auth.my_crew') }}">My Crew</a>
                     <li class="nav-item dropdown">
