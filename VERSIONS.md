@@ -1,5 +1,12 @@
 # Version History
 
+## 0.57.2
+- Upgrade all GitHub Actions to Node.js 24 runtime to resolve deprecation warnings
+- actions/checkout v4 → v6, docker/login-action v3 → v4, docker/setup-buildx-action v3 → v4
+- docker/build-push-action v6 → v7, actions/upload-artifact v4 → v6
+- github/codeql-action v3 → v4, aws-actions/configure-aws-credentials v4 → v6
+- aquasecurity/trivy-action 0.34.2 → 0.35.0
+
 ## 0.57.1
 - Fix CVE-2025-47278: Flask session signing fallback key used in wrong order (fixed in 3.1.1)
 - Fix CVE-2026-27205: Flask missing `Vary: Cookie` header enabling cache poisoning (fixed in 3.1.3)
