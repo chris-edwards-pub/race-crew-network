@@ -341,6 +341,12 @@ workflow has three stages:
 The container service handles HTTPS termination, health checks, and rolling
 deployments automatically. No SSH, nginx, or certbot required.
 
+A **daily vulnerability scan** runs at 6 AM UTC via a separate GitHub Actions
+workflow. It scans the `latest` GHCR image with Trivy and automatically creates
+or updates a GitHub Issue (labeled `security/vulnerability-scan`) when
+CRITICAL/HIGH vulnerabilities are found. Issues are auto-closed when scans come
+back clean. Run it manually with `gh workflow run vulnerability-scan.yml`.
+
 ### Container images
 
 Images are stored in GHCR at:

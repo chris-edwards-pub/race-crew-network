@@ -1,5 +1,11 @@
 # Version History
 
+## 0.57.0
+- Add daily vulnerability scan workflow (GitHub Actions) that scans the latest GHCR image with Trivy
+- Automatically creates/updates GitHub Issues when CRITICAL/HIGH vulnerabilities are found
+- Uploads SARIF results to GitHub Security tab
+- Auto-closes issues when scans come back clean
+
 ## 0.56.1
 - Fix CVE-2026-32274: bump black minimum version to 26.3.1 (arbitrary file writes via cache)
 - Fix CVE-2026-0861, CVE-2025-71238: add `apt-get upgrade` to Dockerfile to pick up patched glibc and kernel packages
