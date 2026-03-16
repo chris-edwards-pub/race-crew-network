@@ -763,27 +763,43 @@ def import_schedule_extract_file():
     task_id = str(uuid.uuid4())
     user_id = current_user.id
 
+    # Read upload data eagerly — the stream may be closed before the
+    # SSE generator runs (SpooledTemporaryFile lifecycle).
+    if uploaded and uploaded.filename:
+        file_bytes = uploaded.stream.read()
+        file_name = uploaded.filename
+    else:
+        file_bytes = None
+        file_name = None
+
     def _sse(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
     def generate():
         _cleanup_stale_task_results()
-        if not uploaded or not uploaded.filename:
+        if file_bytes is None or not file_name:
             yield _sse({"type": "error", "message": "No file uploaded."})
             yield _sse({"type": "failed"})
             return
 
-        filename = uploaded.filename
+        filename = file_name
         yield _sse({"type": "progress", "message": f"Reading file: {filename}..."})
 
-        # Read raw bytes for hashing, then reset stream for text extraction
-        raw_bytes = uploaded.stream.read()
+        raw_bytes = file_bytes
         content_hash = hashlib.sha256(raw_bytes).hexdigest()
         cache_key = f"file-sha256:{content_hash}"
-        uploaded.stream.seek(0)
+
+        # Wrap bytes in a FileStorage so extract_text_from_file can read it
+        from io import BytesIO
+
+        from werkzeug.datastructures import FileStorage
+
+        file_obj = FileStorage(
+            stream=BytesIO(raw_bytes), filename=filename
+        )
 
         try:
-            content = extract_text_from_file(uploaded, filename)
+            content = extract_text_from_file(file_obj, filename)
         except ValueError as e:
             yield _sse({"type": "error", "message": str(e)})
             yield _sse({"type": "failed"})

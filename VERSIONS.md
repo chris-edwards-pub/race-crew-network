@@ -1,5 +1,10 @@
 # Version History
 
+## 0.57.1
+- Fix CVE-2025-47278: Flask session signing fallback key used in wrong order (fixed in 3.1.1)
+- Fix CVE-2026-27205: Flask missing `Vary: Cookie` header enabling cache poisoning (fixed in 3.1.3)
+- Bump Flask from 3.1.0 to 3.1.3
+
 ## 0.57.0
 - Add daily vulnerability scan workflow (GitHub Actions) that scans the latest GHCR image with Trivy
 - Automatically creates/updates GitHub Issues when CRITICAL/HIGH vulnerabilities are found
