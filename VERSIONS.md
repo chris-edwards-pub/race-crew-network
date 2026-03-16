@@ -1,5 +1,13 @@
 # Version History
 
+## 0.55.0
+- Replace flash+redirect calendar subscribe flow with dedicated subscription page
+- Add "Open in Calendar App" button using webcal:// protocol for one-tap subscribe (Apple Calendar, Outlook)
+- Add step-by-step setup instructions for Apple Calendar (iPhone/iPad/Mac), Google Calendar, and Outlook
+- Subscription URL with copy button for manual setup
+- Rename navbar link from "iCal" to "Calendar"
+- Add comprehensive tests for subscribe page
+
 ## 0.54.1
 - Add 30-second timeout to all Anthropic API calls in document discovery and regatta extraction (#77)
 - Catch `APITimeoutError` explicitly with clear error message instead of hanging indefinitely
