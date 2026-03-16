@@ -6,4 +6,5 @@ Hi {{ crew_name }},
 
 RSVP now: {{ schedule_url }}
 
+Add races to your calendar: {{ subscribe_url }}
 Manage your notification preferences: {{ profile_url }}

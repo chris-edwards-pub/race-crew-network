@@ -111,6 +111,7 @@ def index():
         rsvp_filters=rsvp_filters,
         pdf_url=url_for("regattas.pdf", **pdf_args),
         crew_list=crew_list,
+        show_calendar_banner=current_user.calendar_token is None,
     )
 
 

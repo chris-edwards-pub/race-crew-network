@@ -19,6 +19,14 @@
     </div>
 </div>
 
+{% if show_calendar_banner %}
+<div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+    Sync your race schedule! Add your Yes/Maybe regattas to your phone or computer calendar.
+    <a href="{{ url_for('calendar.subscribe') }}" class="alert-link">Subscribe now</a>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
 <div class="mb-3 d-flex flex-wrap gap-2 btn-bar align-items-center">
     {% if current_user.is_admin or (current_user.is_skipper and (selected_skipper == 0 or selected_skipper == current_user.id)) %}
     <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>

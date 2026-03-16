@@ -1,5 +1,10 @@
 # Version History
 
+## 0.56.0
+- Add calendar subscribe links to all email footers (notify crew, RSVP reminder, coming-up reminder, crew digest)
+- Add calendar subscription banner on home page for users without a subscription
+- Add calendar subscription section on profile page with URL copy or generate button
+
 ## 0.55.0
 - Replace flash+redirect calendar subscribe flow with dedicated subscription page
 - Add "Open in Calendar App" button using webcal:// protocol for one-tap subscribe (Apple Calendar, Outlook)
