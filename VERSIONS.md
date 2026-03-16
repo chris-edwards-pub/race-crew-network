@@ -1,5 +1,9 @@
 # Version History
 
+## 0.57.3
+- Force Node.js 24 runtime for transitive action dependencies (e.g. actions/cache inside trivy-action)
+- Add `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` env var to deploy and vulnerability-scan workflows
+
 ## 0.57.2
 - Upgrade all GitHub Actions to Node.js 24 runtime to resolve deprecation warnings
 - actions/checkout v4 → v6, docker/login-action v3 → v4, docker/setup-buildx-action v3 → v4
