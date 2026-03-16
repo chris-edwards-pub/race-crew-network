@@ -1,5 +1,9 @@
 # Version History
 
+## 0.56.1
+- Fix CVE-2026-32274: bump black minimum version to 26.3.1 (arbitrary file writes via cache)
+- Fix CVE-2026-0861, CVE-2025-71238: add `apt-get upgrade` to Dockerfile to pick up patched glibc and kernel packages
+
 ## 0.56.0
 - Add calendar subscribe links to all email footers (notify crew, RSVP reminder, coming-up reminder, crew digest)
 - Add calendar subscription banner on home page for users without a subscription
