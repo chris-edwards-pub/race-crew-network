@@ -43,7 +43,7 @@ class TestSkipperCrewRelationship:
     def test_is_crew_false_for_skipper(self, app, db, skipper_user):
         assert skipper_user.is_crew is False
 
-    def test_visible_regattas_admin_sees_all(self, app, db, admin_user, skipper_user):
+    def test_visible_regattas_admin_sees_own(self, app, db, admin_user, skipper_user):
         r1 = Regatta(
             name="Admin Regatta",
             location="YC",
@@ -60,7 +60,8 @@ class TestSkipperCrewRelationship:
         db.session.commit()
 
         visible = admin_user.visible_regattas().all()
-        assert len(visible) == 2
+        assert len(visible) == 1
+        assert visible[0].name == "Admin Regatta"
 
     def test_visible_regattas_skipper_sees_own(self, app, db, admin_user, skipper_user):
         r1 = Regatta(

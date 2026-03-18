@@ -10,18 +10,8 @@ from app.models import Document, ImportCache, Regatta, SiteSetting, User
 class TestAdminAccessUnauthenticated:
     """Tests that run without login — must come before authenticated tests."""
 
-    def test_import_url_requires_login(self, client):
-        resp = client.get("/admin/import-url")
-        assert resp.status_code == 302
-        assert "/login" in resp.headers["Location"]
-
-    def test_import_file_requires_login(self, client):
-        resp = client.get("/admin/import-file")
-        assert resp.status_code == 302
-        assert "/login" in resp.headers["Location"]
-
-    def test_import_paste_requires_login(self, client):
-        resp = client.get("/admin/import-paste")
+    def test_import_requires_login(self, client):
+        resp = client.get("/admin/import")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
@@ -40,8 +30,8 @@ class TestAdminAccessUnauthenticated:
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
-    def test_import_url_requires_admin(self, app, client, db):
-        """Non-admin user should be denied."""
+    def test_import_requires_admin_or_skipper(self, app, client, db):
+        """Non-admin, non-skipper user should be denied."""
         user = User(
             email="crew@test.com",
             display_name="Crew",
@@ -57,7 +47,7 @@ class TestAdminAccessUnauthenticated:
             data={"email": "crew@test.com", "password": "password"},
             follow_redirects=True,
         )
-        resp = client.get("/admin/import-url", follow_redirects=True)
+        resp = client.get("/admin/import", follow_redirects=True)
         assert b"Access denied" in resp.data
 
     def test_analytics_settings_requires_admin(self, app, client, db):
@@ -123,35 +113,43 @@ class TestAdminAccessUnauthenticated:
 class TestAdminAccessAuthenticated:
     """Tests that require an admin login."""
 
-    def test_import_url_accessible_for_admin(self, logged_in_client):
-        resp = logged_in_client.get("/admin/import-url")
+    def test_import_accessible_for_admin(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import")
         assert resp.status_code == 200
+        assert b"Import Events" in resp.data
         assert b"Import from URL" in resp.data
-
-    def test_import_file_accessible_for_admin(self, logged_in_client):
-        resp = logged_in_client.get("/admin/import-file")
-        assert resp.status_code == 200
         assert b"Import from File" in resp.data
-
-    def test_import_paste_accessible_for_admin(self, logged_in_client):
-        resp = logged_in_client.get("/admin/import-paste")
-        assert resp.status_code == 200
         assert b"Paste Schedule Text" in resp.data
 
-    def test_legacy_import_schedule_redirects_to_url(self, logged_in_client):
+    def test_legacy_import_url_redirects(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-url")
+        assert resp.status_code == 302
+        assert "/admin/import" in resp.headers["Location"]
+
+    def test_legacy_import_file_redirects(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-file")
+        assert resp.status_code == 302
+        assert "/admin/import" in resp.headers["Location"]
+
+    def test_legacy_import_paste_redirects(self, logged_in_client):
+        resp = logged_in_client.get("/admin/import-paste")
+        assert resp.status_code == 302
+        assert "/admin/import" in resp.headers["Location"]
+
+    def test_legacy_import_schedule_redirects(self, logged_in_client):
         resp = logged_in_client.get("/admin/import-schedule")
         assert resp.status_code == 302
-        assert "/admin/import-url" in resp.headers["Location"]
+        assert "/admin/import" in resp.headers["Location"]
 
-    def test_legacy_import_single_redirects_to_url(self, logged_in_client):
+    def test_legacy_import_single_redirects(self, logged_in_client):
         resp = logged_in_client.get("/admin/import-single")
         assert resp.status_code == 302
-        assert "/admin/import-url" in resp.headers["Location"]
+        assert "/admin/import" in resp.headers["Location"]
 
-    def test_legacy_import_multiple_redirects_to_url(self, logged_in_client):
+    def test_legacy_import_multiple_redirects(self, logged_in_client):
         resp = logged_in_client.get("/admin/import-multiple")
         assert resp.status_code == 302
-        assert "/admin/import-url" in resp.headers["Location"]
+        assert "/admin/import" in resp.headers["Location"]
 
     def test_analytics_settings_accessible_for_admin(self, logged_in_client):
         resp = logged_in_client.get("/admin/settings/analytics")
@@ -268,7 +266,7 @@ class TestImportScheduleConfirm:
             data={},
             follow_redirects=True,
         )
-        assert b"No regattas selected" in resp.data
+        assert b"No events selected" in resp.data
 
     def test_imports_regatta(self, app, logged_in_client, db):
         resp = logged_in_client.post(
@@ -286,7 +284,7 @@ class TestImportScheduleConfirm:
             },
             follow_redirects=True,
         )
-        assert b"Successfully imported 1 regatta" in resp.data
+        assert b"Successfully imported 1 event" in resp.data
 
         regatta = Regatta.query.filter_by(name="Test Regatta").first()
         assert regatta is not None
@@ -310,7 +308,7 @@ class TestImportScheduleConfirm:
             },
             follow_redirects=True,
         )
-        assert b"Successfully imported 1 regatta" in resp.data
+        assert b"Successfully imported 1 event" in resp.data
 
         regatta = Regatta.query.filter_by(name="No Class Regatta").first()
         assert regatta is not None
@@ -340,7 +338,7 @@ class TestImportScheduleConfirm:
             },
             follow_redirects=True,
         )
-        assert b"Skipped 1 regatta" in resp.data
+        assert b"Skipped 1 event" in resp.data
 
     def test_imports_with_documents(self, app, logged_in_client, db):
         resp = logged_in_client.post(
@@ -363,7 +361,7 @@ class TestImportScheduleConfirm:
             },
             follow_redirects=True,
         )
-        assert b"Successfully imported 1 regatta" in resp.data
+        assert b"Successfully imported 1 event" in resp.data
         assert b"2 document(s) attached" in resp.data
 
 
@@ -711,7 +709,7 @@ class TestImportConfirmSourceUrl:
             },
             follow_redirects=True,
         )
-        assert b"Successfully imported 1 regatta" in resp.data
+        assert b"Successfully imported 1 event" in resp.data
 
         regatta = Regatta.query.filter_by(name="Source URL Regatta").first()
         assert regatta is not None
@@ -732,7 +730,7 @@ class TestImportConfirmSourceUrl:
             },
             follow_redirects=True,
         )
-        assert b"Successfully imported 1 regatta" in resp.data
+        assert b"Successfully imported 1 event" in resp.data
 
         regatta = Regatta.query.filter_by(name="No Source Regatta").first()
         assert regatta is not None
@@ -820,7 +818,7 @@ class TestReviewDocumentsForRegatta:
             "/admin/regattas/99999/review-documents?task_id=bogus",
             follow_redirects=True,
         )
-        assert b"Regatta not found" in resp.data
+        assert b"Event not found" in resp.data
 
 
 class TestAttachDocumentsForRegatta:
@@ -924,4 +922,4 @@ class TestAttachDocumentsForRegatta:
             data={"doc_count": "0"},
             follow_redirects=True,
         )
-        assert b"Regatta not found" in resp.data
+        assert b"Event not found" in resp.data

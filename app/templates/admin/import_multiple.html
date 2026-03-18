@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Import Multiple Regattas — Race Crew Network{% endblock %}
+{% block title %}Import Multiple Events — Race Crew Network{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <h2 class="mb-4">Import Multiple Regattas</h2>
-        <p class="text-muted">Enter a URL containing a regatta schedule. The AI will extract all events for review.</p>
+        <h2 class="mb-4">Import Multiple Events</h2>
+        <p class="text-muted">Enter a URL containing a race schedule. The AI will extract all events for review.</p>
 
         <form id="import-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="schedule_url" class="form-label">Schedule URL</label>
-                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/regatta-schedule" value="{{ prefill_url or '' }}" required>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/race-schedule" value="{{ prefill_url or '' }}" required>
             </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="force_extract" name="force_extract" value="1" {% if prefill_force %}checked{% endif %}>
@@ -41,7 +41,7 @@ document.getElementById('import-form').addEventListener('submit', function(e) {
     var startOverBtn = document.getElementById('terminal-start-over');
     var titleEl = document.getElementById('terminalModalTitle');
 
-    titleEl.textContent = 'Extracting Regattas...';
+    titleEl.textContent = 'Extracting Events...';
     startOverBtn.href = "{{ url_for('admin.import_multiple') }}";
     output.textContent = '';
     modal.show();

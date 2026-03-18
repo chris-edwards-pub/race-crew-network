@@ -3,16 +3,16 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <h2 class="mb-4">Preview — {{ regattas|length }} regatta(s) found</h2>
+        <h2 class="mb-4">Preview — {{ regattas|length }} event(s) found</h2>
         <p class="text-muted">Review and edit the extracted data. Uncheck rows you don't want to import.</p>
 
         {% if cache_info %}
         <div class="alert alert-info d-flex align-items-center justify-content-between" role="alert">
             <span>
                 Using cached results from {{ cache_info.extracted_at.strftime('%b %d, %Y') }}
-                ({{ cache_info.regatta_count }} regattas).
+                ({{ cache_info.regatta_count }} events).
             </span>
-            <a href="{{ url_for('admin.import_url', url=cache_info.source_url, force=1) }}" class="btn btn-sm btn-outline-primary ms-2">Re-extract from source</a>
+            <a href="{{ url_for('admin.import_regattas', url=cache_info.source_url, force=1) }}" class="btn btn-sm btn-outline-primary ms-2">Re-extract from source</a>
         </div>
         {% endif %}
 
@@ -31,7 +31,7 @@ document.getElementById('btn-find-docs')?.addEventListener('click', function() {
     var form = document.getElementById('import-form');
     var selected = form.querySelectorAll('input[name="selected"]:checked');
     if (selected.length === 0) {
-        alert('No regattas selected.');
+        alert('No events selected.');
         return;
     }
 

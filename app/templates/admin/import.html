@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Import Events — Race Crew Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4">Import Events</h2>
+
+        <!-- Import from URL -->
+        <h5>Import from URL</h5>
+        <p class="text-muted">Enter a URL containing an event page, race schedule, club calendar, or race series. The AI will extract all events for review.</p>
+
+        <form id="import-url-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_url" class="form-label">Schedule URL</label>
+                <input type="url" class="form-control" id="schedule_url" name="schedule_url" placeholder="https://example.com/race-schedule" value="{{ prefill_url or '' }}" required>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="url_force_extract" name="force_extract" value="1" {% if prefill_force %}checked{% endif %}>
+                <label class="form-check-label" for="url_force_extract">Force re-extract (bypass cache)</label>
+            </div>
+            <button type="submit" id="btn-url-submit" class="btn btn-primary">Extract Schedule</button>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- Import from File -->
+        <h5>Import from File</h5>
+        <p class="text-muted">Upload a PDF, DOCX, or plain text file containing an event page, race schedule, club calendar, or race series. The AI will extract all events for review.</p>
+
+        <form id="import-file-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_file" class="form-label">Schedule File</label>
+                <input type="file" class="form-control" id="schedule_file" name="schedule_file" accept=".pdf,.docx,.txt" required>
+                <div class="form-text">Supported formats: PDF, DOCX, TXT</div>
+            </div>
+            <div class="mb-3">
+                <label for="year" class="form-label">Year</label>
+                <input type="number" class="form-control" id="year" name="year" value="{{ current_year }}" style="max-width: 120px;">
+                <div class="form-text">Used to infer dates when the schedule doesn't include the year.</div>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="file_force_extract" name="force_extract" value="1">
+                <label class="form-check-label" for="file_force_extract">Force re-extract (bypass cache)</label>
+            </div>
+            <button type="submit" id="btn-file-submit" class="btn btn-primary">Extract Schedule</button>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- Paste Schedule Text -->
+        <h5>Paste Schedule Text</h5>
+        <p class="text-muted">Paste an event page, race schedule, club calendar, or race series. The AI will extract all events for review.</p>
+
+        <form id="import-paste-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="schedule_text" class="form-label">Schedule Text</label>
+                <textarea class="form-control" id="schedule_text" name="schedule_text" rows="10" placeholder="Paste race schedule here..." required></textarea>
+            </div>
+            <button type="submit" id="btn-paste-submit" class="btn btn-primary">Extract Schedule</button>
+        </form>
+
+        <div class="mt-3">
+            <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </div>
+</div>
+
+{% include "admin/_terminal_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import-sse.js') }}"></script>
+<script>
+var startOverUrl = "{{ url_for('admin.import_regattas') }}";
+
+function startExtraction(formEl, btnId) {
+    var btn = document.getElementById(btnId);
+    btn.disabled = true;
+
+    var modal = new bootstrap.Modal(document.getElementById('terminalModal'));
+    var output = document.getElementById('terminal-output');
+    var startOverBtn = document.getElementById('terminal-start-over');
+    var titleEl = document.getElementById('terminalModalTitle');
+
+    titleEl.textContent = 'Extracting Events...';
+    startOverBtn.href = startOverUrl;
+    output.textContent = '';
+    modal.show();
+
+    return { modal: modal, output: output, startOverBtn: startOverBtn, btn: btn };
+}
+
+function handleError(ctx, err) {
+    terminalAppend(ctx.output, '\u2717', 'Connection error: ' + err.message, '#f44747');
+    ctx.startOverBtn.style.display = 'inline-block';
+}
+
+// Import from URL
+document.getElementById('import-url-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var url = document.getElementById('schedule_url').value.trim();
+    if (!url) return;
+
+    var ctx = startExtraction(this, 'btn-url-submit');
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+            return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
+        }, ctx.startOverBtn));
+    }).catch(function(err) { handleError(ctx, err); });
+});
+
+// Import from File
+document.getElementById('import-file-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('schedule_file');
+    if (!fileInput.files.length) return;
+
+    var ctx = startExtraction(this, 'btn-file-submit');
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract_file') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+            return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
+        }, ctx.startOverBtn));
+    }).catch(function(err) { handleError(ctx, err); });
+});
+
+// Paste Schedule Text
+document.getElementById('import-paste-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var text = document.getElementById('schedule_text').value.trim();
+    if (!text) return;
+
+    var ctx = startExtraction(this, 'btn-paste-submit');
+    var formData = new FormData(this);
+    var csrfToken = formData.get('csrf_token');
+
+    fetch("{{ url_for('admin.import_schedule_extract') }}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken},
+        body: formData
+    }).then(function(response) {
+        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+            return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
+        }, ctx.startOverBtn));
+    }).catch(function(err) { handleError(ctx, err); });
+});
+</script>
+{% endblock %}

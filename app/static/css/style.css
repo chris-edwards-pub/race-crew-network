@@ -49,7 +49,7 @@
 .rsvp-no { color: #dc3545; }
 .rsvp-maybe { color: #ffc107; font-weight: bold; }
 
-.regatta-past {
+.event-past {
     opacity: 0.5;
 }
 
@@ -143,10 +143,10 @@
 
 /* Mobile card toggle */
 @media (max-width: 767.98px) {
-    .regatta-table-desktop { display: none !important; }
+    .event-table-desktop { display: none !important; }
 }
 @media (min-width: 768px) {
-    .regatta-cards-mobile { display: none !important; }
+    .event-cards-mobile { display: none !important; }
 }
 
 /* Print styles */
@@ -162,7 +162,7 @@
         display: none !important;
     }
 
-    .regatta-past {
+    .event-past {
         opacity: 0.7;
     }
 

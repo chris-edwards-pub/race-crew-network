@@ -374,58 +374,62 @@ def _extract_jsonld_events(html: str) -> str:
     return "\n".join(lines)
 
 
-@bp.route("/admin/import-url")
+@bp.route("/admin/import")
 @login_required
-def import_url():
+def import_regattas():
     denied = _require_skipper_or_admin()
     if denied:
         return denied
     prefill_url = request.args.get("url", "")
     prefill_force = request.args.get("force", "")
     return render_template(
-        "admin/import_url.html",
+        "admin/import.html",
         prefill_url=prefill_url,
         prefill_force=prefill_force,
+        current_year=date.today().year,
     )
+
+
+@bp.route("/admin/import-url")
+@login_required
+def import_url():
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
 
 
 @bp.route("/admin/import-file")
 @login_required
 def import_file():
-    denied = _require_skipper_or_admin()
-    if denied:
-        return denied
-    return render_template("admin/import_file.html", current_year=date.today().year)
-
-
-@bp.route("/admin/import-schedule")
-@login_required
-def import_schedule():
-    """Legacy URL — redirect to import-url."""
-    return redirect(url_for("admin.import_url"))
-
-
-@bp.route("/admin/import-single")
-@login_required
-def import_single():
-    """Legacy URL — redirect to import-url."""
-    return redirect(url_for("admin.import_url"))
-
-
-@bp.route("/admin/import-multiple")
-@login_required
-def import_multiple():
-    """Legacy URL — redirect to import-url."""
-    return redirect(url_for("admin.import_url"))
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
 
 
 @bp.route("/admin/import-paste")
 @login_required
 def import_paste():
-    denied = _require_skipper_or_admin()
-    if denied:
-        return denied
-    return render_template("admin/import_paste.html")
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
+
+
+@bp.route("/admin/import-schedule")
+@login_required
+def import_schedule():
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
+
+
+@bp.route("/admin/import-single")
+@login_required
+def import_single():
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
+
+
+@bp.route("/admin/import-multiple")
+@login_required
+def import_multiple():
+    """Legacy URL — redirect to combined import page."""
+    return redirect(url_for("admin.import_regattas"))
 
 
 @bp.route("/admin/settings/analytics", methods=["GET", "POST"])
@@ -731,7 +735,7 @@ def import_schedule_extract():
         )
 
         upcoming = len(regattas) - past_count
-        summary = f"Found {len(regattas)} regatta(s)"
+        summary = f"Found {len(regattas)} event(s)"
         if past_count:
             summary += f" ({upcoming} upcoming, {past_count} past)"
         if from_cache:
@@ -928,7 +932,7 @@ def import_schedule_extract_file():
         )
 
         upcoming = len(regattas) - past_count
-        summary = f"Found {len(regattas)} regatta(s)"
+        summary = f"Found {len(regattas)} event(s)"
         if past_count:
             summary += f" ({upcoming} upcoming, {past_count} past)"
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
@@ -1126,10 +1130,10 @@ def import_schedule_preview():
     data = _pop_task_result(task_id, "extraction") if task_id else None
     if not data:
         flash("Extraction results not found or expired.", "error")
-        return redirect(url_for("admin.import_url"))
+        return redirect(url_for("admin.import_regattas"))
 
-    # Determine start_over_url from source (default to import_url)
-    start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
+    # Determine start_over_url from source (default to import page)
+    start_over_url = request.args.get("start_over_url", url_for("admin.import_regattas"))
 
     # Build cache info for the template
     from_cache = data.get("from_cache", False)
@@ -1163,8 +1167,8 @@ def import_schedule_confirm():
 
     selected = request.form.getlist("selected")
     if not selected:
-        flash("No regattas selected for import.", "warning")
-        return redirect(url_for("admin.import_url"))
+        flash("No events selected for import.", "warning")
+        return redirect(url_for("admin.import_regattas"))
 
     created = 0
     skipped = 0
@@ -1247,13 +1251,13 @@ def import_schedule_confirm():
 
     db.session.commit()
 
-    msg = f"Successfully imported {created} regatta(s)."
+    msg = f"Successfully imported {created} event(s)."
     if docs_created:
         msg += f" {docs_created} document(s) attached."
     if created:
         flash(msg, "success")
     if skipped:
-        flash(f"Skipped {skipped} regatta(s) (invalid or duplicate).", "warning")
+        flash(f"Skipped {skipped} event(s) (invalid or duplicate).", "warning")
 
     return redirect(url_for("regattas.index"))
 
@@ -1288,7 +1292,7 @@ def import_schedule_discover():
         )
 
     if not regatta_data:
-        msg = json.dumps({"type": "error", "message": "No regattas selected."})
+        msg = json.dumps({"type": "error", "message": "No events selected."})
         return Response(
             f"data: {msg}\n\n",
             content_type="text/event-stream",
@@ -1449,7 +1453,7 @@ def import_schedule_discover():
 
         regattas_with_docs = sum(1 for r in regatta_data if r["documents"])
         summary = (
-            f"Found {total_docs} document(s) " f"for {regattas_with_docs} regatta(s)"
+            f"Found {total_docs} document(s) " f"for {regattas_with_docs} event(s)"
         )
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
@@ -1474,9 +1478,9 @@ def import_schedule_documents():
     regatta_data = _pop_task_result(task_id, "discovery") if task_id else None
     if not regatta_data:
         flash("Document discovery results not found or expired.", "error")
-        return redirect(url_for("admin.import_url"))
+        return redirect(url_for("admin.import_regattas"))
 
-    start_over_url = request.args.get("start_over_url", url_for("admin.import_url"))
+    start_over_url = request.args.get("start_over_url", url_for("admin.import_regattas"))
 
     return render_template(
         "admin/import_schedule_documents.html",
@@ -1640,7 +1644,7 @@ def review_documents_for_regatta(regatta_id: int):
 
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
-        flash("Regatta not found.", "error")
+        flash("Event not found.", "error")
         return redirect(url_for("regattas.index"))
 
     task_id = request.args.get("task_id", "")
@@ -1670,7 +1674,7 @@ def attach_documents_for_regatta(regatta_id: int):
 
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
-        flash("Regatta not found.", "error")
+        flash("Event not found.", "error")
         return redirect(url_for("regattas.index"))
 
     doc_count_str = request.form.get("doc_count", "0")

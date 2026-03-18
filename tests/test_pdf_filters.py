@@ -145,6 +145,8 @@ class TestPDFSkipperColumnAndTitle:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         _create_regatta(db, "Admin Regatta", admin_user.id, days_offset=10)
