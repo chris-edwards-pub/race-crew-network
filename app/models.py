@@ -105,14 +105,10 @@ class User(UserMixin, db.Model):
     def visible_regattas(self):
         """Return a query of regattas this user can see.
 
-        - Admin: all regattas
         - Skipper: their own regattas
         - Crew: regattas from their skippers
         - Skipper+Crew: union of own + skippers' regattas
         """
-        if self.is_admin:
-            return Regatta.query
-
         owner_ids = set()
         if self.is_skipper:
             owner_ids.add(self.id)

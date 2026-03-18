@@ -87,7 +87,6 @@ class TestAppFactory:
         resp = client.get("/")
         assert resp.status_code == 200
         assert b">My Crew<" in resp.data
-        assert b">Import<" in resp.data
         assert b"/admin/users" in resp.data
         assert b"/admin/settings/analytics" in resp.data
 

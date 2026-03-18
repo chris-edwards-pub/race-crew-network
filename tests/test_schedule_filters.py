@@ -37,7 +37,7 @@ class TestDropdownLabels:
     def test_other_skipper_shows_schedule_suffix(
         self, app, db, logged_in_client, admin_user
     ):
-        # Create another skipper so dropdown appears (admin + other = 2 schedules)
+        # Create another skipper and link admin as crew so dropdown appears
         other = User(
             email="skipper2@test.com",
             display_name="John Smith",
@@ -46,6 +46,8 @@ class TestDropdownLabels:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         resp = logged_in_client.get("/")
@@ -63,6 +65,8 @@ class TestDropdownLabels:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         resp = logged_in_client.get("/")
@@ -77,6 +81,8 @@ class TestDropdownLabels:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         resp = logged_in_client.get("/?skipper=0")
@@ -97,6 +103,8 @@ class TestSkipperColumn:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         _create_regatta(db, "Regatta A", admin_user.id)
@@ -116,6 +124,8 @@ class TestSkipperColumn:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         _create_regatta(db, "Regatta A", other.id)
@@ -144,6 +154,8 @@ class TestSkipperColumn:
         )
         other.set_password("password")
         db.session.add(other)
+        db.session.flush()
+        other.crew_members.append(admin_user)
         db.session.commit()
 
         _create_regatta(db, "Regatta A", other.id)

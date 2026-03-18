@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def _apply_schedule_filters(upcoming, past, user):
     """Apply skipper and RSVP query-string filters to regatta lists."""
     skipper_id = request.args.get("skipper", type=int)
-    if skipper_id is None and user.is_skipper and not user.is_admin:
+    if skipper_id is None and user.is_skipper:
         skipper_id = user.id
     # skipper_id == 0 means "All Schedules" (explicit selection, no filter)
     if skipper_id:
@@ -65,23 +65,14 @@ def index():
 
     # Build schedule contexts for dropdown
     schedules = []
-    if current_user.is_admin:
-        schedules = (
-            User.query.filter(User.is_skipper.is_(True))
-            .order_by(User.display_name)
-            .all()
-        )
-    else:
-        if current_user.is_skipper:
-            schedules.append(current_user)
-        for skipper in current_user.skippers:
-            if skipper.id != current_user.id:
-                schedules.append(skipper)
+    if current_user.is_skipper:
+        schedules.append(current_user)
+    for skipper in current_user.skippers:
+        if skipper.id != current_user.id:
+            schedules.append(skipper)
 
     # Can user manage any regattas in current view?
-    if current_user.is_admin:
-        can_manage_any = True
-    elif current_user.is_skipper:
+    if current_user.is_skipper:
         can_manage_any = skipper_id in (0, current_user.id) or not skipper_id
     else:
         can_manage_any = False
@@ -126,7 +117,7 @@ def pdf():
     # Determine title and whether to show skipper column
     show_skipper = skipper_id == 0 or (
         skipper_id is None
-        and not (current_user.is_skipper and not current_user.is_admin)
+        and not current_user.is_skipper
     )
     if skipper_id and skipper_id != 0:
         skipper = db.session.get(User, skipper_id)
@@ -171,7 +162,7 @@ def create():
 def edit(regatta_id: int):
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
-        flash("Regatta not found.", "error")
+        flash("Event not found.", "error")
         return redirect(url_for("regattas.index"))
 
     if not can_manage_regatta(current_user, regatta):
@@ -198,7 +189,7 @@ def delete(regatta_id: int):
     if regatta:
         db.session.delete(regatta)
         db.session.commit()
-        flash(f"Regatta '{regatta.name}' deleted.", "success")
+        flash(f"Event '{regatta.name}' deleted.", "success")
     return redirect(url_for("regattas.index"))
 
 
@@ -211,7 +202,7 @@ def bulk_delete():
 
     selected = request.form.getlist("selected")
     if not selected:
-        flash("No regattas selected.", "warning")
+        flash("No events selected.", "warning")
         return redirect(url_for("regattas.index"))
 
     count = 0
@@ -226,7 +217,7 @@ def bulk_delete():
             count += 1
 
     db.session.commit()
-    flash(f"Deleted {count} regatta(s).", "success")
+    flash(f"Deleted {count} event(s).", "success")
     return redirect(url_for("regattas.index"))
 
 
@@ -242,7 +233,7 @@ def notify_crew_action():
     message = request.form.get("message", "").strip() or None
 
     if not selected_ids:
-        flash("No regattas selected.", "warning")
+        flash("No events selected.", "warning")
         return redirect(url_for("regattas.index"))
 
     if not crew_ids:
@@ -260,7 +251,7 @@ def notify_crew_action():
             regattas.append(regatta)
 
     if not regattas:
-        flash("No valid regattas selected.", "warning")
+        flash("No valid events selected.", "warning")
         return redirect(url_for("regattas.index"))
 
     # Validate crew members belong to current user's crew
@@ -282,7 +273,7 @@ def notify_crew_action():
 
     sent = notify_crew(regattas, crew_members, message, current_user)
     flash(
-        f"Notified {sent} crew member(s) about {len(regattas)} regatta(s).",
+        f"Notified {sent} crew member(s) about {len(regattas)} event(s).",
         "success",
     )
     return redirect(url_for("regattas.index"))
@@ -349,11 +340,11 @@ def download_doc(doc_id: int):
 def upload_doc(regatta_id: int):
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta:
-        flash("Regatta not found.", "error")
+        flash("Event not found.", "error")
         return redirect(url_for("regattas.index"))
 
     if not can_manage_regatta(current_user, regatta):
-        flash("Regatta not found.", "error")
+        flash("Event not found.", "error")
         return redirect(url_for("regattas.index"))
 
     doc_type = request.form.get("doc_type", "Other")
@@ -460,5 +451,5 @@ def _save_regatta(regatta: Regatta | None):
     regatta.source_url = source_url or None
 
     db.session.commit()
-    flash(f"Regatta '{name}' saved.", "success")
+    flash(f"Event '{name}' saved.", "success")
     return redirect(url_for("regattas.index"))

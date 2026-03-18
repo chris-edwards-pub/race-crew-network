@@ -36,14 +36,6 @@
                     <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">Calendar</a>
                     {% if current_user.is_admin or current_user.is_skipper %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('auth.my_crew') }}">My Crew</a>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Import</a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('admin.import_url') }}">Import from URL</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin.import_file') }}">Import from File</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin.import_paste') }}">Paste Schedule Text</a></li>
-                        </ul>
-                    </li>
                     {% endif %}
                     {% if current_user.is_admin %}
                     <li class="nav-item dropdown">

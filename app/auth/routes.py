@@ -510,6 +510,11 @@ def delete_schedule():
         flash("You don't have a schedule to delete.", "error")
         return redirect(url_for("regattas.index"))
 
+    confirm_text = request.form.get("confirm_text", "").strip().lower()
+    if confirm_text != "delete":
+        flash("Please type 'delete' to confirm.", "error")
+        return redirect(url_for("regattas.index"))
+
     # Delete all regattas created by this user (cascades their docs & RSVPs)
     for regatta in Regatta.query.filter_by(created_by=current_user.id).all():
         db.session.delete(regatta)
@@ -542,6 +547,22 @@ def my_crew():
         crew=crew,
         email_configured=is_email_configured(),
     )
+
+
+@bp.route("/leave-skipper/<int:skipper_id>", methods=["POST"])
+@login_required
+def leave_skipper(skipper_id: int):
+    skipper = db.session.get(User, skipper_id)
+    if not skipper:
+        flash("Skipper not found.", "warning")
+    elif skipper not in current_user.skippers:
+        flash("You are not on that skipper's crew.", "warning")
+    else:
+        skipper.crew_members.remove(current_user)
+        db.session.commit()
+        flash(f"You have left {skipper.display_name}'s crew.", "success")
+
+    return redirect(url_for("auth.profile"))
 
 
 @bp.route("/my-crew/invite", methods=["POST"])

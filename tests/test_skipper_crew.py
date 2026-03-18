@@ -388,25 +388,13 @@ class TestRegistrationAutoLink:
 
 
 class TestSkipperImportAccess:
-    def test_skipper_can_access_import_url(self, logged_in_skipper):
-        resp = logged_in_skipper.get("/admin/import-url")
+    def test_skipper_can_access_import(self, logged_in_skipper):
+        resp = logged_in_skipper.get("/admin/import")
         assert resp.status_code == 200
-        assert b"Import from URL" in resp.data
+        assert b"Import Events" in resp.data
 
-    def test_skipper_can_access_import_file(self, logged_in_skipper):
-        resp = logged_in_skipper.get("/admin/import-file")
-        assert resp.status_code == 200
-
-    def test_skipper_can_access_import_paste(self, logged_in_skipper):
-        resp = logged_in_skipper.get("/admin/import-paste")
-        assert resp.status_code == 200
-
-    def test_crew_denied_import_url(self, logged_in_crew):
-        resp = logged_in_crew.get("/admin/import-url", follow_redirects=True)
-        assert b"Access denied" in resp.data
-
-    def test_crew_denied_import_file(self, logged_in_crew):
-        resp = logged_in_crew.get("/admin/import-file", follow_redirects=True)
+    def test_crew_denied_import(self, logged_in_crew):
+        resp = logged_in_crew.get("/admin/import", follow_redirects=True)
         assert b"Access denied" in resp.data
 
     def test_skipper_denied_admin_settings(self, logged_in_skipper):
@@ -450,10 +438,34 @@ class TestDeleteSchedule:
     def test_skipper_can_delete_schedule(
         self, app, logged_in_skipper, db, skipper_user
     ):
-        resp = logged_in_skipper.post("/delete-schedule", follow_redirects=True)
+        resp = logged_in_skipper.post(
+            "/delete-schedule",
+            data={"confirm_text": "delete"},
+            follow_redirects=True,
+        )
         assert b"Your schedule has been deleted." in resp.data
         db.session.refresh(skipper_user)
         assert skipper_user.is_skipper is False
+
+    def test_delete_requires_confirmation_text(
+        self, app, logged_in_skipper, db, skipper_user
+    ):
+        resp = logged_in_skipper.post("/delete-schedule", follow_redirects=True)
+        assert b"type &#39;delete&#39; to confirm" in resp.data
+        db.session.refresh(skipper_user)
+        assert skipper_user.is_skipper is True
+
+    def test_delete_wrong_confirmation_text(
+        self, app, logged_in_skipper, db, skipper_user
+    ):
+        resp = logged_in_skipper.post(
+            "/delete-schedule",
+            data={"confirm_text": "nope"},
+            follow_redirects=True,
+        )
+        assert b"type &#39;delete&#39; to confirm" in resp.data
+        db.session.refresh(skipper_user)
+        assert skipper_user.is_skipper is True
 
     def test_delete_removes_regattas(self, app, logged_in_skipper, db, skipper_user):
         regatta = Regatta(
@@ -466,13 +478,21 @@ class TestDeleteSchedule:
         db.session.commit()
         rid = regatta.id
 
-        logged_in_skipper.post("/delete-schedule", follow_redirects=True)
+        logged_in_skipper.post(
+            "/delete-schedule",
+            data={"confirm_text": "delete"},
+            follow_redirects=True,
+        )
         assert db.session.get(Regatta, rid) is None
 
     def test_delete_unlinks_crew(
         self, app, logged_in_skipper, db, skipper_user, crew_user
     ):
-        logged_in_skipper.post("/delete-schedule", follow_redirects=True)
+        logged_in_skipper.post(
+            "/delete-schedule",
+            data={"confirm_text": "delete"},
+            follow_redirects=True,
+        )
         rows = db.session.execute(
             skipper_crew.select().where(skipper_crew.c.skipper_id == skipper_user.id)
         ).fetchall()
@@ -483,7 +503,11 @@ class TestDeleteSchedule:
     ):
         """After skipper deletes schedule, orphaned crew can still self-promote."""
         # Skipper deletes their schedule, orphaning crew
-        logged_in_skipper.post("/delete-schedule", follow_redirects=True)
+        logged_in_skipper.post(
+            "/delete-schedule",
+            data={"confirm_text": "delete"},
+            follow_redirects=True,
+        )
         db.session.refresh(crew_user)
         assert crew_user not in skipper_user.crew_members.all()
 
@@ -507,6 +531,57 @@ class TestDeleteSchedule:
     def test_non_skipper_gets_error(self, logged_in_crew):
         resp = logged_in_crew.post("/delete-schedule", follow_redirects=True)
         assert b"don&#39;t have a schedule" in resp.data
+
+
+class TestLeaveSkipper:
+    def test_crew_leaves_skipper(self, app, logged_in_crew, db, crew_user, skipper_user):
+        resp = logged_in_crew.post(
+            f"/leave-skipper/{skipper_user.id}",
+            follow_redirects=True,
+        )
+        assert b"You have left" in resp.data
+        assert crew_user not in skipper_user.crew_members.all()
+
+    def test_nonexistent_skipper(self, logged_in_crew):
+        resp = logged_in_crew.post(
+            "/leave-skipper/99999",
+            follow_redirects=True,
+        )
+        assert b"Skipper not found" in resp.data
+
+    def test_not_member_of_skipper(self, app, logged_in_crew, db):
+        other_skipper = User(
+            email="other_skip@test.com",
+            display_name="Other Skip",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.commit()
+
+        resp = logged_in_crew.post(
+            f"/leave-skipper/{other_skipper.id}",
+            follow_redirects=True,
+        )
+        assert b"not on that skipper" in resp.data
+
+    def test_login_required(self, client):
+        resp = client.post("/leave-skipper/1")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_get_not_allowed(self, logged_in_crew):
+        resp = logged_in_crew.get("/leave-skipper/1")
+        assert resp.status_code == 405
+
+    def test_schedule_shows_leave_button(self, logged_in_crew, skipper_user):
+        resp = logged_in_crew.get(f"/?skipper={skipper_user.id}")
+        assert b"Leave Schedule" in resp.data
+
+    def test_schedule_hides_leave_on_own(self, logged_in_skipper, skipper_user):
+        resp = logged_in_skipper.get(f"/?skipper={skipper_user.id}")
+        assert b"Leave Schedule" not in resp.data
 
 
 class TestScheduleSwitcher:
@@ -567,7 +642,7 @@ class TestScheduleSwitcher:
             follow_redirects=True,
         )
         resp = client.get(f"/?skipper={skipper_user.id}")
-        assert b"+ Add Regatta" in resp.data
+        assert b"+ Add Event" in resp.data
         assert b"Edit" in resp.data
         assert b"Delete Schedule" in resp.data
 
@@ -600,7 +675,7 @@ class TestScheduleSwitcher:
             follow_redirects=True,
         )
         resp = client.get(f"/?skipper={other_skipper.id}")
-        assert b"+ Add Regatta" not in resp.data
+        assert b"+ Add Event" not in resp.data
         assert b"Delete Schedule" not in resp.data
         # The Edit column headers should not appear
         assert b"Delete Selected" not in resp.data
@@ -783,5 +858,5 @@ class TestScheduleSwitcher:
         db.session.commit()
 
         resp = logged_in_crew.get("/")
-        assert b"+ Add Regatta" not in resp.data
+        assert b"+ Add Event" not in resp.data
         assert b"Delete Selected" not in resp.data

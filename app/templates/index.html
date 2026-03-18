@@ -21,7 +21,7 @@
 
 {% if show_calendar_banner %}
 <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
-    Sync your race schedule! Add your Yes/Maybe regattas to your phone or computer calendar.
+    Sync your race schedule! Add your Yes/Maybe events to your phone or computer calendar.
     <a href="{{ url_for('calendar.subscribe') }}" class="alert-link">Subscribe now</a>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
@@ -29,14 +29,21 @@
 
 <div class="mb-3 d-flex flex-wrap gap-2 btn-bar align-items-center">
     {% if current_user.is_admin or (current_user.is_skipper and (selected_skipper == 0 or selected_skipper == current_user.id)) %}
-    <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Regatta</a>
+    <a href="{{ url_for('regattas.create') }}" class="btn btn-primary btn-sm">+ Add Event</a>
+    <a href="{{ url_for('admin.import_regattas') }}" class="btn btn-outline-primary btn-sm">Import Events</a>
     {% endif %}
     {% if current_user.is_skipper and not current_user.is_admin and (selected_skipper == 0 or selected_skipper == current_user.id) %}
-    <form method="POST" action="{{ url_for('auth.delete_schedule') }}" class="d-inline"
-          onsubmit="return confirm('This will delete all your regattas and remove your crew. Are you sure?')">
+    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteScheduleModal">Delete Schedule</button>
+    {% endif %}
+    {% if selected_skipper and selected_skipper != 0 and selected_skipper != current_user.id %}
+    {% set viewing_skipper = schedules|selectattr('id', 'equalto', selected_skipper)|first %}
+    {% if viewing_skipper %}
+    <form method="POST" action="{{ url_for('auth.leave_skipper', skipper_id=selected_skipper) }}"
+          onsubmit="return confirm('Leave {{ viewing_skipper.display_name }}\'s crew?');" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-danger btn-sm">Delete Schedule</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm">Leave Schedule</button>
     </form>
+    {% endif %}
     {% endif %}
     <form method="GET" id="filter-form" class="d-inline-flex flex-wrap align-items-center gap-2 ms-auto">
         {% if schedules|length > 1 %}
@@ -75,14 +82,14 @@
 </form>
 {% endif %}
 {% set divider_colspan = 6 + (1 if show_skipper else 0) + (0 if is_past else 1) + (2 if can_manage_any else 0) %}
-<div class="table-responsive regatta-table-desktop">
-    <table class="table table-hover align-middle{% if is_past %} regatta-past{% endif %}">
+<div class="table-responsive event-table-desktop">
+    <table class="table table-hover align-middle{% if is_past %} event-past{% endif %}">
         <thead>
             <tr>
                 <th>Date(s)</th>
                 <th>Class</th>
                 {% if show_skipper %}<th>Skipper</th>{% endif %}
-                <th>Regatta</th>
+                <th>Event</th>
                 <th>Location</th>
                 <th class="text-nowrap">Docs</th>
                 <th class="text-nowrap">Crew</th>
@@ -174,7 +181,7 @@
     </table>
 </div>
 {% if can_manage_any %}
-<div class="text-end regatta-table-desktop">
+<div class="text-end event-table-desktop">
     {% if current_user.is_skipper and crew_list %}
     <button type="button" class="btn btn-sm btn-outline-primary" onclick="openNotifyModal('{{ table_id }}')">Notify Crew via Email</button>
     {% endif %}
@@ -182,7 +189,7 @@
 </div>
 {% endif %}
 
-<div class="regatta-cards-mobile">
+<div class="event-cards-mobile">
     {% set month_mobile_ns = namespace(current_month='') %}
     {% for regatta in regattas %}
     {% set month_label = regatta.start_date.strftime('%B') %}
@@ -192,7 +199,7 @@
     </div>
     {% set month_mobile_ns.current_month = month_label %}
     {% endif %}
-    <div class="card mb-2{% if is_past %} regatta-past{% endif %}">
+    <div class="card mb-2{% if is_past %} event-past{% endif %}">
         <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
@@ -257,7 +264,7 @@
 <h5>Upcoming</h5>
 {{ regatta_table(upcoming, false, "upcoming", show_skipper) }}
 {% else %}
-<p class="text-muted">No upcoming regattas. {% if current_user.is_admin or current_user.is_skipper %}Add one!{% endif %}</p>
+<p class="text-muted">No upcoming events. {% if current_user.is_admin or current_user.is_skipper %}Add one!{% endif %}</p>
 {% endif %}
 
 {% if past %}
@@ -279,7 +286,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Selected Regattas:</label>
+                        <label class="form-label fw-bold">Selected Events:</label>
                         <ul id="notify-regatta-list" class="list-unstyled mb-0"></ul>
                     </div>
                     <hr>
@@ -330,17 +337,17 @@ function confirmBulkDelete(form) {
     var formId = form.id;
     var count = document.querySelectorAll('input[name="selected"][form="' + formId + '"]:checked').length;
     if (count === 0) {
-        alert('No regattas selected.');
+        alert('No events selected.');
         return false;
     }
-    return confirm('Delete ' + count + ' selected regatta(s)?');
+    return confirm('Delete ' + count + ' selected event(s)?');
 }
 
 function openNotifyModal(tableId) {
     var formId = tableId + '-form';
     var checked = document.querySelectorAll('input[name="selected"][form="' + formId + '"]:checked');
     if (checked.length === 0) {
-        alert('No regattas selected.');
+        alert('No events selected.');
         return;
     }
     // Populate hidden inputs and regatta list
@@ -358,7 +365,7 @@ function openNotifyModal(tableId) {
         // Find regatta name from the row
         var row = cb.closest('tr');
         var nameCell = row ? row.querySelector('td strong') : null;
-        var name = nameCell ? nameCell.textContent.trim() : 'Regatta #' + cb.value;
+        var name = nameCell ? nameCell.textContent.trim() : 'Event #' + cb.value;
         var li = document.createElement('li');
         li.textContent = '• ' + name;
         listEl.appendChild(li);
@@ -366,6 +373,45 @@ function openNotifyModal(tableId) {
     var modal = new bootstrap.Modal(document.getElementById('notifyCrewModal'));
     modal.show();
 }
+</script>
+{% endif %}
+
+{% if current_user.is_skipper and not current_user.is_admin and (selected_skipper == 0 or selected_skipper == current_user.id) %}
+<!-- Delete Schedule Modal -->
+<div class="modal fade" id="deleteScheduleModal" tabindex="-1" aria-labelledby="deleteScheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('auth.delete_schedule') }}" id="deleteScheduleForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteScheduleModalLabel">Delete Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger fw-bold">This will permanently delete all your events and remove your crew.</p>
+                    <p>Type <strong>delete</strong> below to confirm:</p>
+                    <input type="text" class="form-control" id="deleteConfirmInput" name="confirm_text" autocomplete="off" placeholder="Type delete to confirm">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="deleteScheduleBtn" disabled>Delete Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var input = document.getElementById('deleteConfirmInput');
+    var btn = document.getElementById('deleteScheduleBtn');
+    input.addEventListener('input', function() {
+        btn.disabled = input.value.trim().toLowerCase() !== 'delete';
+    });
+    document.getElementById('deleteScheduleModal').addEventListener('hidden.bs.modal', function() {
+        input.value = '';
+        btn.disabled = true;
+    });
+})();
 </script>
 {% endif %}
 {% endblock %}

@@ -52,7 +52,7 @@
                 <input type="checkbox" class="form-check-input" id="rsvp_notification" name="rsvp_notification"
                        {% if current_user.notification_preferences.rsvp_notification %}checked{% endif %}>
                 <label class="form-check-label" for="rsvp_notification">RSVP notifications</label>
-                <div class="form-text">Receive an email when crew members RSVP to your regattas.</div>
+                <div class="form-text">Receive an email when crew members RSVP to your events.</div>
             </div>
             {% endif %}
             <div class="mb-3">
@@ -80,7 +80,7 @@
                         onclick="navigator.clipboard.writeText(document.getElementById('ical-url').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000);">Copy</button>
             </div>
             {% else %}
-            <p class="form-text">Add your Yes/Maybe regattas to your phone or computer calendar.</p>
+            <p class="form-text">Add your Yes/Maybe events to your phone or computer calendar.</p>
             <a href="{{ url_for('calendar.subscribe') }}" class="btn btn-outline-primary btn-sm mb-3">Generate Calendar Feed</a>
             {% endif %}
             <hr>

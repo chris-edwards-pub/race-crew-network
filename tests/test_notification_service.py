@@ -302,7 +302,7 @@ class TestNotifyCrewRoute:
             data={"crew[]": ["1"]},
             follow_redirects=True,
         )
-        assert b"No regattas selected" in resp.data
+        assert b"No events selected" in resp.data
         mock_notify.assert_not_called()
 
 

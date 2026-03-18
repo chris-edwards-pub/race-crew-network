@@ -1,20 +1,20 @@
 # Race Crew Network
 
-A simple web app for organizing sailboat regattas. Track dates, locations, NOR/SI documents, and crew availability with Yes/No/Maybe RSVPs.
+A simple web app for organizing sailing events. Track dates, locations, NOR/SI documents, and crew availability with Yes/No/Maybe RSVPs.
 
 ## Features
 
 - **Multi-user roles**: Admin (site-wide), Skipper (owns schedule + crew), Crew (views + RSVPs)
-- Single-page regatta table sorted by date, scoped to user's visible regattas
-- Skippers manage their own crew and import their own regatta schedule
-- Crew members see their skippers' regattas with skipper filter dropdown
+- Single-page event table sorted by date, scoped to user's visible events
+- Skippers manage their own crew and import their own event schedule
+- Crew members see their skippers' events with skipper filter dropdown
 - Location links to Google Maps
 - Upload/download NOR and SI PDFs (stored in S3)
 - Profile pictures with S3 storage, displayed in navbar and crew profiles
 - Crew RSVP (Yes / No / Maybe) with color-coded initials and unique Multiavatar icons
-- AI-powered schedule import: paste text or URL, Claude extracts regattas for review and bulk import, with auto-discovery of NOR/SI/WWW documents from regatta detail pages and regatta websites (including clubspot Parse API integration)
+- AI-powered schedule import: paste text or URL, Claude extracts events for review and bulk import, with auto-discovery of NOR/SI/WWW documents from event detail pages and event websites (including clubspot Parse API integration)
 - Admin: manage all users, site settings, invite skippers
-- Skipper: add/edit/delete own regattas, upload documents, invite crew, import schedules
+- Skipper: add/edit/delete own events, upload documents, invite crew, import schedules
 - Crew: view skipper's schedule, download docs, set RSVP
 - Invite-based registration (no public sign-up)
 

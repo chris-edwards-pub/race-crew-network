@@ -1,5 +1,20 @@
 # Version History
 
+## 0.60.0
+- Add "Leave Schedule" button so crew members can remove themselves from a skipper's crew
+- Remove admin override for schedule visibility — admins now see only their own and crew schedules like all other users
+
+## 0.59.0
+- Rename user-facing "Regatta/Regattas" terminology to "Event/Events" throughout the website
+- Update page titles, headings, button labels, flash messages, email templates, and form text
+- Rename CSS classes from regatta-* to event-* for consistency
+- Internal code identifiers (models, variables, URLs, database) remain unchanged
+
+## 0.58.0
+- Combine Import from URL, Import from File, and Paste Schedule Text into a single Import Regattas page
+- Remove Import dropdown from navbar; add "Import Regattas" button on home page next to "+ Add Regatta"
+- Old import URLs redirect to the new combined page
+
 ## 0.57.3
 - Force Node.js 24 runtime for transitive action dependencies (e.g. actions/cache inside trivy-action)
 - Add `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` env var to deploy and vulnerability-scan workflows
