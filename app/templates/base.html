@@ -69,6 +69,16 @@
         </div>
     </nav>
 
+    {% if session.get('impersonating_admin_id') %}
+    <div class="alert alert-warning text-center mb-0 rounded-0 py-2">
+        <strong>Viewing as {{ current_user.display_name }}</strong> —
+        <form method="POST" action="{{ url_for('auth.stop_impersonation') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-warning">Exit</button>
+        </form>
+    </div>
+    {% endif %}
+
     <div class="container mt-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

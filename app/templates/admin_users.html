@@ -82,6 +82,12 @@
                     <td>
                         <div class="d-flex flex-wrap gap-1">
                             <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            {% if user.id != current_user.id and not user.invite_token %}
+                            <form method="POST" action="{{ url_for('auth.impersonate', user_id=user.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-warning">Assume</button>
+                            </form>
+                            {% endif %}
                             {% if user.id != current_user.id %}
                             <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
