@@ -4,7 +4,7 @@ import secrets
 import uuid
 
 from flask import (current_app, flash, redirect, render_template, request,
-                   url_for)
+                   session, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -482,6 +482,46 @@ def delete_user(user_id: int):
         flash(f"User {user.display_name} deleted.", "success")
 
     return redirect(url_for("auth.admin_users"))
+
+
+@bp.route("/admin/users/<int:user_id>/impersonate", methods=["POST"])
+@login_required
+def impersonate(user_id: int):
+    if not current_user.is_admin:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    if user_id == current_user.id:
+        flash("You cannot impersonate yourself.", "error")
+        return redirect(url_for("auth.admin_users"))
+
+    target = db.session.get(User, user_id)
+    if not target:
+        flash("User not found.", "error")
+        return redirect(url_for("auth.admin_users"))
+
+    session["impersonating_admin_id"] = current_user.id
+    login_user(target)
+    flash(f"You are now viewing as {target.display_name}.", "info")
+    return redirect(url_for("regattas.index"))
+
+
+@bp.route("/admin/stop-impersonation", methods=["POST"])
+@login_required
+def stop_impersonation():
+    admin_id = session.pop("impersonating_admin_id", None)
+    if not admin_id:
+        flash("You are not impersonating anyone.", "warning")
+        return redirect(url_for("regattas.index"))
+
+    admin_user = db.session.get(User, admin_id)
+    if not admin_user:
+        flash("Original admin account not found.", "error")
+        return redirect(url_for("regattas.index"))
+
+    login_user(admin_user)
+    flash("Returned to your account.", "success")
+    return redirect(url_for("regattas.index"))
 
 
 # ---------------------------------------------------------------------------

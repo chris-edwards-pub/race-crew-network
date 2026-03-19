@@ -534,7 +534,9 @@ class TestDeleteSchedule:
 
 
 class TestLeaveSkipper:
-    def test_crew_leaves_skipper(self, app, logged_in_crew, db, crew_user, skipper_user):
+    def test_crew_leaves_skipper(
+        self, app, logged_in_crew, db, crew_user, skipper_user
+    ):
         resp = logged_in_crew.post(
             f"/leave-skipper/{skipper_user.id}",
             follow_redirects=True,
@@ -860,3 +862,101 @@ class TestScheduleSwitcher:
         resp = logged_in_crew.get("/")
         assert b"+ Add Event" not in resp.data
         assert b"Delete Selected" not in resp.data
+
+
+class TestAdminImpersonate:
+    def test_admin_can_impersonate_user(self, app, logged_in_client, db, admin_user):
+        target = User(
+            email="target@test.com",
+            display_name="Target User",
+            initials="TU",
+        )
+        target.set_password("password")
+        db.session.add(target)
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            f"/admin/users/{target.id}/impersonate",
+            follow_redirects=True,
+        )
+        assert b"Viewing as Target User" in resp.data
+        with logged_in_client.session_transaction() as sess:
+            assert sess["impersonating_admin_id"] == admin_user.id
+
+    def test_banner_appears_while_impersonating(
+        self, app, logged_in_client, db, admin_user
+    ):
+        target = User(
+            email="target@test.com",
+            display_name="Target User",
+            initials="TU",
+        )
+        target.set_password("password")
+        db.session.add(target)
+        db.session.commit()
+
+        logged_in_client.post(f"/admin/users/{target.id}/impersonate")
+        resp = logged_in_client.get("/")
+        assert b"Viewing as Target User" in resp.data
+        assert b"Exit" in resp.data
+
+    def test_stop_impersonation_restores_admin(
+        self, app, logged_in_client, db, admin_user
+    ):
+        target = User(
+            email="target@test.com",
+            display_name="Target User",
+            initials="TU",
+        )
+        target.set_password("password")
+        db.session.add(target)
+        db.session.commit()
+
+        logged_in_client.post(f"/admin/users/{target.id}/impersonate")
+        resp = logged_in_client.post(
+            "/admin/stop-impersonation",
+            follow_redirects=True,
+        )
+        assert b"Returned to your account" in resp.data
+        assert b"Viewing as" not in resp.data
+        with logged_in_client.session_transaction() as sess:
+            assert "impersonating_admin_id" not in sess
+
+    def test_non_admin_cannot_impersonate(self, app, logged_in_crew, db):
+        target = User(
+            email="target@test.com",
+            display_name="Target User",
+            initials="TU",
+        )
+        target.set_password("password")
+        db.session.add(target)
+        db.session.commit()
+
+        resp = logged_in_crew.post(
+            f"/admin/users/{target.id}/impersonate",
+            follow_redirects=True,
+        )
+        assert b"Access denied" in resp.data
+
+    def test_cannot_impersonate_yourself(self, app, logged_in_client, db, admin_user):
+        resp = logged_in_client.post(
+            f"/admin/users/{admin_user.id}/impersonate",
+            follow_redirects=True,
+        )
+        assert b"cannot impersonate yourself" in resp.data
+
+    def test_cannot_impersonate_nonexistent_user(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/users/99999/impersonate",
+            follow_redirects=True,
+        )
+        assert b"User not found" in resp.data
+
+    def test_login_required(self, client):
+        resp = client.post("/admin/users/1/impersonate")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_get_not_allowed(self, logged_in_client, admin_user):
+        resp = logged_in_client.get("/admin/users/1/impersonate")
+        assert resp.status_code == 405

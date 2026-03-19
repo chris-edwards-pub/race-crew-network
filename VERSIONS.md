@@ -1,5 +1,10 @@
 # Version History
 
+## 0.61.0
+- Add admin "Assume Identity" feature to impersonate another user for troubleshooting
+- Persistent warning banner shown while impersonating with one-click exit
+- Full access control: admin-only, cannot impersonate self or pending users
+
 ## 0.60.0
 - Add "Leave Schedule" button so crew members can remove themselves from a skipper's crew
 - Remove admin override for schedule visibility — admins now see only their own and crew schedules like all other users

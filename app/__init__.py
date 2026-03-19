@@ -7,7 +7,7 @@ from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 
-__version__ = "0.60.0"
+__version__ = "0.61.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
