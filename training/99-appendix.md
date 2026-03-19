@@ -1,7 +1,111 @@
 # Appendix: Quick Reference
 
-This appendix provides quick reference materials for Flask, SQLAlchemy, Jinja2,
-Docker, and common troubleshooting scenarios.
+This appendix provides quick reference materials for all topics covered in
+the 18-day curriculum.
+
+# Model Reference
+
+## Models Summary (8 + 1 Association Table)
+
+| Model | Table | Key Fields | Day |
+|-------|-------|------------|-----|
+| User | users | email, is_admin, is_skipper, avatar_seed, profile_image_key, email_opt_in, notification_prefs, calendar_token | 3 |
+| Regatta | regattas | name, boat_class, start_date, end_date, location, created_by | 3 |
+| Document | documents | filename, doc_type, storage_key, regatta_id, uploaded_by | 3 |
+| RSVP | rsvps | user_id, regatta_id, status (yes/no/maybe) | 3 |
+| ImportCache | import_cache | url, year, results_json, regatta_count | 13 |
+| TaskResult | task_results | id (UUID), result_type, data_json | 13 |
+| NotificationLog | notification_log | notification_type, regatta_id, user_id, sent_at, trigger_date | 11 |
+| SiteSetting | site_settings | key (unique), value | 15 |
+| skipper_crew | skipper_crew | skipper_id, crew_id, created_at (association table) | 9 |
+
+## User Fields
+
+| Field | Type | Purpose | Day |
+|-------|------|---------|-----|
+| email | String | Login identifier, unique | 3 |
+| password_hash | String | bcrypt hash | 3 |
+| display_name | String | Shown in UI | 3 |
+| initials | String(5) | Shown in RSVP badges | 3 |
+| is_admin | Boolean | Admin role flag | 3 |
+| is_skipper | Boolean | Skipper role flag | 3 |
+| invite_token | String | Pending registration token | 4 |
+| invited_by | Integer FK | Who invited this user | 4 |
+| avatar_seed | String | Multiavatar SVG seed | 14 |
+| profile_image_key | String | S3/local storage key | 8 |
+| email_opt_in | Boolean | Email preference (default True) | 10 |
+| notification_prefs | Text | JSON: rsvp_notification, rsvp_delivery | 11 |
+| phone | String(30) | Optional phone number | 3 |
+| calendar_token | String | iCal feed auth token | 12 |
+
+# Permission Patterns Reference
+
+## Decorators and Helpers (app/permissions.py)
+
+| Function | Usage | Day |
+|----------|-------|-----|
+| `require_admin` | Decorator: redirects non-admin users | 5 |
+| `require_skipper` | Decorator: redirects non-skipper/non-admin users | 5 |
+| `can_manage_regatta(user, regatta)` | Returns True if user can edit/delete | 5 |
+| `can_rsvp_to_regatta(user, regatta)` | Returns True if user can RSVP | 5 |
+
+## Permission Matrix
+
+| Action | Admin | Skipper | Crew |
+|--------|-------|---------|------|
+| View all schedules | Yes | Yes | Yes |
+| Create/edit/delete own events | Yes | Yes | No |
+| Create/edit/delete any event | Yes | No | No |
+| RSVP to events | Yes | Yes | Yes |
+| Manage crew | Yes | Own crew | No |
+| Send notifications | Yes | Own crew | No |
+| Import schedules | Yes | Own events | No |
+| Admin settings | Yes | No | No |
+| Impersonate users | Yes | No | No |
+
+# Notification Types Reference
+
+| Type | Trigger | Recipient | Day |
+|------|---------|-----------|-----|
+| `notify_crew` | Skipper clicks "Notify Crew" | Selected crew members | 11 |
+| `rsvp_notification` | Crew RSVPs (per_rsvp mode) | Event's skipper | 11 |
+| `rsvp_digest` | Daily cron (digest mode) | Skipper with digest pref | 11 |
+| `crew_joined` | Crew completes registration | Inviting skipper | 11 |
+| `rsvp_reminder` | 14 days before event | Crew who haven't RSVPed | 11 |
+| `coming_up_reminder` | 3 days before event | Crew who RSVPed yes/maybe | 11 |
+
+# SiteSetting Keys Reference
+
+| Key | Used By | Default | Day |
+|-----|---------|---------|-----|
+| `ga_measurement_id` | Google Analytics injection | "" (disabled) | 15 |
+| `ses_sender` | SES sender email address | "" | 10 |
+| `ses_sender_to` | Default test email recipient | "" | 15 |
+| `ses_region` | SES AWS region | config["AWS_REGION"] | 10 |
+| `reminder_rsvp_days_before` | RSVP reminder window | "14" | 11 |
+| `reminder_upcoming_days_before` | Coming-up reminder window | "3" | 11 |
+| `reminder_api_token` | Reminder API auth token | "" | 15 |
+
+# Template Filters Reference
+
+| Filter | Usage | Purpose | Day |
+|--------|-------|---------|-----|
+| `avatar_svg` | `{{ user\|avatar_svg(20) }}` | Render Multiavatar SVG | 14 |
+| `user_icon` | `{{ user\|user_icon(28) }}` | Photo with SVG fallback | 14 |
+| `sort_rsvps` | `{{ rsvps\|sort_rsvps }}` | Sort: yes → no → maybe | 14 |
+| `regatta_days` | `{{ start\|regatta_days(end) }}` | "Sat", "Sat & Sun", "Fri thru Sun" | 14 |
+
+# Email Templates
+
+| Template | Used By | Description |
+|----------|---------|-------------|
+| `email/notify_crew.html/.txt` | `notify_crew()` | Crew notification with event list |
+| `email/rsvp_notification.html/.txt` | `notify_rsvp_to_skipper()` | Per-RSVP alert to skipper |
+| `email/rsvp_digest.html/.txt` | `send_rsvp_digests()` | Daily RSVP summary for skipper |
+| `email/rsvp_reminder.html/.txt` | `send_rsvp_reminders()` | "Please RSVP" reminder |
+| `email/coming_up_reminder.html/.txt` | `send_coming_up_reminders()` | "Event in 3 days" reminder |
+| `email/crew_digest.html/.txt` | `send_crew_digests()` | Daily digest for crew |
+| `email/invite_crew.html/.txt` | `invite_crew()` | Crew invitation email |
 
 # Flask Routing Reference
 
@@ -30,45 +134,27 @@ def login():
 ```python
 @app.route("/user/<int:user_id>")
 def user_profile(user_id: int):
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
     return render_template("profile.html", user=user)
 
 @app.route("/search")
 def search():
     query = request.args.get("q", "")  # /search?q=flask
-    return f"Searching for {query}"
 ```
 
 ## Redirects and url_for
 ```python
 from flask import redirect, url_for
 
-@app.route("/old-path")
-def old():
-    return redirect(url_for("new_path"))
-
-@app.route("/new-path")
-def new_path():
-    return "New location"
+return redirect(url_for("auth.profile"))
+return redirect(url_for("regattas.edit", regatta_id=regatta.id))
 ```
 
 ## Flash Messages
 ```python
-from flask import flash
-
-flash("Operation successful!", "success")
-flash("An error occurred.", "error")
-flash("Please note...", "info")
-```
-
-## Decorators
-```python
-from flask_login import login_required
-
-@app.route("/protected")
-@login_required
-def protected():
-    return "Only logged-in users see this"
+flash("Operation successful!", "success")   # green
+flash("An error occurred.", "error")         # red (maps to alert-danger)
+flash("Please note...", "warning")           # yellow
 ```
 
 # SQLAlchemy Query Reference
@@ -78,67 +164,35 @@ def protected():
 # Get all
 users = User.query.all()
 
-# Get one
-user = User.query.first()
-user = User.query.get(1)  # By primary key
-user = User.query.get_or_404(1)  # Or 404 error
+# Get by primary key
+user = db.session.get(User, 1)
 
 # Filter
 users = User.query.filter_by(is_admin=True).all()
 users = User.query.filter(User.email.like("%@example.com")).all()
 
-# Order
-users = User.query.order_by(User.display_name).all()
-users = User.query.order_by(User.created_at.desc()).all()
-
-# Limit
-users = User.query.limit(10).all()
+# Order and limit
+users = User.query.order_by(User.display_name).limit(10).all()
 
 # Count
-count = User.query.count()
+count = User.query.filter_by(is_admin=True).count()
 ```
 
 ## Filtering
 ```python
-# Equals
-User.query.filter_by(email=email)
-User.query.filter(User.email == email)
-
-# Not equals
-User.query.filter(User.email != email)
-
-# Greater than / Less than
-Regatta.query.filter(Regatta.start_date >= today)
-
 # IN list
 User.query.filter(User.id.in_([1, 2, 3]))
 
-# LIKE pattern
-User.query.filter(User.email.like("%@example.com"))
-
-# IS NULL
+# IS NULL / IS NOT NULL
 User.query.filter(User.invite_token.is_(None))
 User.query.filter(User.invite_token.isnot(None))
 
-# AND (multiple filters)
-User.query.filter_by(is_admin=True).filter_by(email=email)
-User.query.filter((User.is_admin == True) & (User.email == email))
+# AND (chain filters)
+User.query.filter_by(is_admin=True).filter_by(is_skipper=True)
 
 # OR
 from sqlalchemy import or_
-User.query.filter(or_(User.is_admin == True, User.email == email))
-```
-
-## Relationships
-```python
-# Access related objects
-user = User.query.first()
-regattas = user.created_regattas  # One-to-many
-rsvps = user.rsvps  # One-to-many
-
-regatta = Regatta.query.first()
-creator = regatta.creator  # Many-to-one (backref)
-documents = regatta.documents  # One-to-many
+User.query.filter(or_(User.is_admin == True, User.is_skipper == True))
 ```
 
 ## Create, Update, Delete
@@ -155,352 +209,157 @@ db.session.commit()
 # Delete
 db.session.delete(user)
 db.session.commit()
-
-# Rollback on error
-try:
-    db.session.commit()
-except:
-    db.session.rollback()
-    raise
 ```
 
-# Jinja2 Template Reference
+# Docker Compose Commands
 
-## Variables
-```html
-{{ variable }}
-{{ user.display_name }}
-{{ regatta.start_date.strftime('%B %d, %Y') }}
-```
-
-## Filters
-```html
-{{ name|upper }}
-{{ text|truncate(100) }}
-{{ price|round(2) }}
-{{ items|length }}
-{{ rsvps|sort_rsvps }}  <!-- Custom filter -->
-```
-
-## Control Flow
-```html
-{% if current_user.is_admin %}
-    <a href="/admin">Admin Panel</a>
-{% elif current_user.is_authenticated %}
-    <p>Welcome, {{ current_user.display_name }}</p>
-{% else %}
-    <a href="/login">Login</a>
-{% endif %}
-
-{% for regatta in regattas %}
-    <li>{{ regatta.name }}</li>
-{% else %}
-    <li>No regattas found.</li>
-{% endfor %}
-```
-
-## Template Inheritance
-```html
-<!-- base.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{% block title %}Default Title{% endblock %}</title>
-</head>
-<body>
-    {% block content %}{% endblock %}
-</body>
-</html>
-
-<!-- page.html -->
-{% extends "base.html" %}
-
-{% block title %}My Page{% endblock %}
-
-{% block content %}
-    <h1>Page Content</h1>
-{% endblock %}
-```
-
-## Include
-```html
-{% include "navbar.html" %}
-```
-
-## Forms
-```html
-<form method="post">
-    {{ csrf_token() }}
-    <input type="text" name="name" value="{{ regatta.name if regatta }}">
-    <button type="submit">Save</button>
-</form>
-```
-
-## URL Generation
-```html
-<a href="{{ url_for('auth.login') }}">Login</a>
-<a href="{{ url_for('regattas.edit', regatta_id=regatta.id) }}">Edit</a>
-<a href="{{ url_for('static', filename='css/style.css') }}">CSS</a>
-```
-
-# Docker Compose Reference
-
-## Basic Commands
 ```bash
 # Start services
-docker compose up
-
-# Start in background
-docker compose up -d
-
-# Rebuild and start
-docker compose up --build
+docker compose up --build          # Build and start
+docker compose up -d               # Start in background
 
 # Stop services
-docker compose down
+docker compose down                # Stop (keep volumes)
+docker compose down -v             # Stop and delete volumes
 
-# Stop and remove volumes
-docker compose down -v
+# Logs
+docker compose logs                # All logs
+docker compose logs -f web         # Follow web logs
 
-# View logs
-docker compose logs
-docker compose logs -f web  # Follow logs for web service
-
-# Restart a service
-docker compose restart web
-
-# Execute command in container
+# Execute in container
 docker compose exec web flask create-admin
+docker compose exec web flask db current
 docker compose exec db mysql -u racecrew -p
 
-# View running containers
-docker compose ps
+# Status
+docker compose ps                  # Running containers
 ```
 
-## Building and Cleaning
+# Flask CLI Commands
+
 ```bash
-# Build images without starting
-docker compose build
+# Custom commands (this app)
+flask init-admin                   # Create admin from env vars
+flask create-admin                 # Interactive admin creation
+flask send-reminders               # Run all scheduled reminders
 
-# Remove all stopped containers
-docker compose down --remove-orphans
-
-# Remove images
-docker compose down --rmi all
-
-# Prune unused Docker resources
-docker system prune
-docker volume prune
+# Migration commands
+flask db upgrade                   # Apply pending migrations
+flask db migrate -m "message"      # Generate migration from model changes
+flask db downgrade -1              # Undo last migration
+flask db current                   # Show current version
+flask db history                   # Show migration history
 ```
 
-# Flask CLI Reference
+# Terraform Commands
 
-## Custom Commands (This App)
 ```bash
-flask create-admin          # Create admin user interactively
-flask init-admin            # Create admin from env vars (INIT_ADMIN_EMAIL/PASSWORD)
+cd terraform/
+
+terraform init                     # Download providers
+terraform fmt -check               # Check formatting
+terraform validate                 # Validate config
+terraform plan                     # Preview changes
+terraform apply                    # Apply changes
+terraform destroy                  # Tear down all resources
 ```
 
-## Migration Commands
-```bash
-flask db init               # Initialize migrations directory
-flask db migrate -m "msg"   # Generate migration
-flask db upgrade            # Apply migrations
-flask db downgrade          # Undo last migration
-flask db current            # Show current version
-flask db history            # Show migration history
-```
+# Trivy Commands
 
-## Flask Development
 ```bash
-flask run                   # Start development server (don't use in production!)
-flask run --host=0.0.0.0    # Listen on all interfaces
-flask run --port=5001       # Custom port
-flask shell                 # Interactive Python shell with app context
+# Scan a local image
+trivy image ghcr.io/chris-edwards-pub/race-crew-network:latest
+
+# Scan with severity filter
+trivy image --severity CRITICAL,HIGH --ignore-unfixed \
+  ghcr.io/chris-edwards-pub/race-crew-network:latest
+
+# Output as SARIF
+trivy image --format sarif --output results.sarif \
+  ghcr.io/chris-edwards-pub/race-crew-network:latest
 ```
 
 # Troubleshooting Guide
 
-## Problem: Can't Connect to Localhost
-**Symptoms**: Browser shows "can't connect" or "connection refused"
+## Can't Connect to Localhost
+1. Check containers: `docker compose ps`
+2. Check logs: `docker compose logs`
+3. Verify port 80 isn't in use: `lsof -i :80`
+4. Restart: `docker compose restart`
 
-**Solutions**:
-1. Check containers are running:
-   ```bash
-   docker compose ps
-   ```
+## Database Connection Errors
+1. Check db health: `docker compose ps` (should show "healthy")
+2. Verify DATABASE_URL in .env matches MySQL credentials
+3. Check db logs: `docker compose logs db`
+4. Fresh start: `docker compose down -v && docker compose up --build`
 
-2. Check logs for errors:
-   ```bash
-   docker compose logs
-   ```
+## Migration Errors
+1. Check current version: `docker compose exec web flask db current`
+2. Check history: `docker compose exec web flask db history`
+3. If stuck, fresh start: `docker compose down -v && docker compose up --build`
 
-3. Verify port 80 isn't already in use:
-   ```bash
-   lsof -i :80  # On Mac/Linux
-   ```
-
-4. Restart containers:
-   ```bash
-   docker compose restart
-   ```
-
-## Problem: Database Connection Errors
-**Symptoms**: "Can't connect to MySQL server" or "Unknown database"
-
-**Solutions**:
-1. Check db container is healthy:
-   ```bash
-   docker compose ps
-   ```
-
-2. Verify DATABASE_URL in .env:
-   ```
-   DATABASE_URL=mysql+pymysql://racecrew:racecrew@db:3306/racecrew
-   ```
-
-3. Check db health check:
-   ```bash
-   docker compose logs db
-   ```
-
-4. Recreate database volume:
-   ```bash
-   docker compose down -v
-   docker compose up --build
-   ```
-
-## Problem: Permission Errors
-**Symptoms**: "Permission denied" when writing files
-
-**Solutions**:
-1. Check upload directory permissions:
-   ```bash
-   docker compose exec web ls -la /app/uploads
-   ```
-
-2. Create directory if missing:
-   ```bash
-   docker compose exec web mkdir -p /app/uploads
-   ```
-
-## Problem: Migration Errors
-**Symptoms**: "Can't locate revision" or "Multiple heads detected"
-
-**Solutions**:
-1. Check migration history:
-   ```bash
-   docker compose exec web flask db current
-   docker compose exec web flask db history
-   ```
-
-2. If database is corrupted, start fresh:
-   ```bash
-   docker compose down -v
-   docker compose up --build
-   ```
-
-## Problem: Static Files Not Loading
-**Symptoms**: CSS not applied, images not showing
-
-**Solutions**:
-1. Check browser console for 404 errors
-2. Verify file paths in templates
-3. Clear browser cache
-4. Check web container logs:
-   ```bash
-   docker compose logs web
-   ```
-
-## Problem: Session Cookie Not Persisting
-**Symptoms**: Logged out after every page refresh
-
-**Solutions**:
+## Session Cookie Not Persisting
 1. Check SECRET_KEY is set in .env
-2. Ensure .env file is being loaded:
-   ```bash
-   docker compose exec web env | grep SECRET
-   ```
-3. Generate new SECRET_KEY if needed
+2. Verify: `docker compose exec web env | grep SECRET`
+3. Generate new key: `python3 -c "import secrets; print(secrets.token_hex(32))"`
+
+## Static Files Not Loading
+1. Check browser console for 404 errors
+2. Verify file paths in templates use `url_for('static', filename=...)`
+3. Clear browser cache
+4. Check container logs for errors
 
 # Security Best Practices
 
 ## Passwords
-- Never hardcode passwords in source code
-- Use environment variables for all secrets
-- Generate strong SECRET_KEY (64+ characters)
-- Use bcrypt for password hashing (already implemented)
-- Enforce minimum password length (6+ characters minimum)
+- Use bcrypt for hashing (implemented)
+- Generate strong SECRET_KEY (64+ hex chars)
+- Never hardcode secrets in source code
+- Use environment variables or GitHub Secrets
 
 ## File Uploads
-- Validate file types before accepting
-- Use UUID filenames (already implemented)
-- Set MAX_CONTENT_LENGTH (already set to 10MB)
-- Store uploads outside web root
-- Use send_from_directory() for serving (already implemented)
+- Validate file extensions before accepting
+- Use UUID filenames to prevent collisions
+- Set MAX_CONTENT_LENGTH (10 MB default)
+- Use path traversal protection (secure_filename)
 
-## Database
-- Use parameterized queries (SQLAlchemy does this)
-- Validate and sanitize all user input
-- Use foreign key constraints
-- Regular backups (see Day 10)
+## Network
+- SSRF protection for all URL fetching (_is_private_ip)
+- CSRF tokens on all forms (@csrf.exempt only for webhooks)
+- HMAC tokens for stateless verification
+- Timing-safe comparison (hmac.compare_digest)
+- Request timeouts on outbound HTTP calls
 
-## Authentication
-- Use CSRF protection (already implemented with Flask-WTF)
-- Implement rate limiting for login attempts (not implemented)
-- Use HTTPS in production (see Day 10)
-- Set secure cookie flags in production
-
-## General
-- Keep dependencies updated:
-  ```bash
-  pip list --outdated
-  pip install --upgrade package-name
-  ```
-
-- Don't expose debug mode in production:
-  ```python
-  # NEVER do this in production:
-  app.run(debug=True)
-  ```
-
-- Review Flask security docs:
-  https://flask.palletsprojects.com/security/
+## Infrastructure
+- Trivy scanning gates deployment (CRITICAL/HIGH = block)
+- Dedicated IAM users with minimal permissions
+- Email authentication: DKIM + SPF + DMARC
+- Secrets in GitHub Secrets, not in code
 
 # Further Reading
 
 ## Flask
 - Official Documentation: https://flask.palletsprojects.com/
 - Flask Mega-Tutorial: https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world
-- Real Python Flask: https://realpython.com/tutorials/flask/
 
 ## SQLAlchemy
 - Official Documentation: https://docs.sqlalchemy.org/
-- SQLAlchemy ORM Tutorial: https://docs.sqlalchemy.org/orm/tutorial.html
+- ORM Tutorial: https://docs.sqlalchemy.org/orm/tutorial.html
 
 ## Docker
 - Official Documentation: https://docs.docker.com/
 - Docker Compose: https://docs.docker.com/compose/
-- Best Practices: https://docs.docker.com/develop/dev-best-practices/
 
-## Python
-- Python Documentation: https://docs.python.org/3/
-- PEP 8 Style Guide: https://peps.python.org/pep-0008/
-
-## Web Development
-- MDN Web Docs: https://developer.mozilla.org/
-- HTTP Status Codes: https://httpstatuses.com/
-- RESTful API Design: https://restfulapi.net/
+## AWS
+- Lightsail Containers: https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-container-services.html
+- SES Developer Guide: https://docs.aws.amazon.com/ses/latest/dg/
 
 ## Security
 - OWASP Top 10: https://owasp.org/www-project-top-ten/
 - Flask Security: https://flask.palletsprojects.com/security/
-- Let's Encrypt: https://letsencrypt.org/
 
 # End of Appendix
 
-You now have a complete reference for Flask development with this application.
-Return to this appendix whenever you need a quick reminder of syntax or
-commands.
-
-Good luck with your Flask journey!
+This appendix covers the complete Race Crew Network v0.61.0 application.
+Return to it whenever you need a quick reference for any topic covered in
+the 18-day curriculum.

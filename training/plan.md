@@ -1,6 +1,6 @@
 # Overview
 
-Create a 10-day training curriculum for an IT professional with Python/Docker experience but no Flask knowledge. The curriculum will explain the Race Crew Network Regatta Schedule Flask application through 12 text files.
+Create an 18-day training curriculum for an IT professional with Python/Docker experience but no Flask knowledge. The curriculum will explain the Race Crew Network v0.61.0 Flask application through 21 text files.
 
 ## User Requirements
 
@@ -16,16 +16,17 @@ Create a 10-day training curriculum for an IT professional with Python/Docker ex
 ### Index File
 
 Path: 00-index.md
-Status: Already created
-Contents: Course overview, prerequisites, roadmap, navigation guide
+Contents: Course overview, prerequisites, 18-day roadmap, navigation guide
 
-### Daily Lesson Files (10 files)
+### Daily Lesson Files (18 files)
 
-Paths: 01-day1.md through 10-day10.md
+Paths: 01-day1.md through 18-day18.md
+
+#### Phase 1: Foundations (Days 1-4)
 
 **Day 1: Introduction & Environment Setup**
-- Application overview and feature tour
-- Docker Compose architecture (3 containers: web, db, nginx)
+- Application overview and feature tour (3 roles, 6 blueprints)
+- Docker Compose architecture (web, db containers)
 - Running the app locally
 - Creating admin account with Flask CLI
 - Basic Flask concepts: routes, templates, blueprints
@@ -34,86 +35,154 @@ Paths: 01-day1.md through 10-day10.md
 - The create_app() factory pattern
 - Extension initialization (SQLAlchemy, Flask-Login, Flask-Migrate, CSRF)
 - Configuration management with environment variables
-- Blueprint registration
-- Application context and lifecycle
+- Blueprint registration (6 blueprints)
+- Context processors and template filters (avatar_svg, user_icon, sort_rsvps, regatta_days)
 
 **Day 3: Database Models & SQLAlchemy ORM**
 - Object-Relational Mapping concepts
-- User model (password hashing with bcrypt)
-- Regatta model (events with dates/locations)
-- Document model (file uploads + external URLs)
-- RSVP model (many-to-many relationships)
-- Database schema design and foreign keys
+- 8 models: User, Regatta, Document, RSVP, ImportCache, TaskResult, NotificationLog, SiteSetting
+- skipper_crew association table (self-referential M2M)
+- User model expansion (avatar_seed, profile_image_key, notification_prefs, email_opt_in)
+- visible_regattas() and permission scoping
 
 **Day 4: Authentication & User Management**
 - Flask-Login integration and UserMixin
 - Login/logout implementation
-- Invite-based registration system with tokens
-- User profile management
-- Admin user administration
-- Authorization patterns (@login_required, role checks)
+- Invite-based registration with tokens
+- Skipper invites and email invites
+- Auto-link crew to inviting skipper
+- Avatar seed generation on registration
+- Admin user administration (edit, delete, impersonate)
 
-**Day 5: Regatta Management (CRUD Operations)**
+#### Phase 2: Core Features (Days 5-9)
+
+**Day 5: Multi-User Role System & Permissions**
+- Three roles: Admin, Skipper, Crew
+- permissions.py: require_admin, require_skipper, can_manage_regatta, can_rsvp_to_regatta
+- Admin impersonation flow (session-based)
+- Role-based navbar and UI visibility
+
+**Day 6: Event Management (CRUD Operations)**
 - RESTful route design in Flask
 - Create, Read, Update, Delete operations
-- Form processing with request.form
-- Date handling in Python
-- Permission checks (admin-only routes)
-- Flash messages for user feedback
+- Updated permissions model (skipper can CRUD own events)
+- Bulk delete with checkbox selection
+- Auto-generated Google Maps links
+- Schedule filters (skipper, RSVP status)
 
-**Day 6: RSVP System & Database Relationships**
-- Many-to-many relationship implementation
-- Upsert pattern (update or insert logic)
-- SQLAlchemy lazy vs eager loading
-- Custom Jinja2 template filters
-- Status display and crew initials
+**Day 7: RSVP System & Schedule View**
+- Schedule switcher (My Schedule / All Schedules)
+- RSVP with filter state preservation
+- PDF schedule generation with WeasyPrint
+- RSVP notification triggers
+- Custom template filters (sort_rsvps, regatta_days)
 
-**Day 7: Document Upload & File Handling**
-- File upload processing in Flask
-- UUID-based secure filename generation
-- Supporting both uploads and external URLs
-- Docker volume management for storage
-- Secure file downloads with send_from_directory
-- File size limits and validation
+**Day 8: Document Upload & Storage**
+- File upload processing with Flask
+- S3/local storage abstraction (app/storage.py)
+- Profile image uploads with validation
+- Path traversal protection
+- Presigned URLs for secure downloads
+- Storage blueprint for local file serving
 
-**Day 8: Calendar Integration (iCal Feeds)**
+**Day 9: Skipper & Crew Management**
+- My Crew page and crew listing
+- Invite crew (new user or existing user)
+- Remove crew member
+- Create/delete schedule (self-service skipper)
+- Leave skipper (crew self-service)
+
+#### Phase 3: Communication & Integration (Days 10-13)
+
+**Day 10: Email Service with AWS SES**
+- AWS SES integration via boto3
+- HMAC-SHA256 unsubscribe tokens
+- RFC 8058 one-click unsubscribe
+- Bounce and complaint webhook handling (SNS)
+- Email opt-in/opt-out model
+- SiteSetting-based email configuration
+
+**Day 11: Notification System**
+- Manual crew notification (skipper selects events + crew)
+- RSVP-to-skipper notifications (per-RSVP and digest modes)
+- Scheduled reminders (RSVP reminder, coming-up reminder)
+- Crew digest emails
+- NotificationLog for deduplication
+- Digest flush on preference switch
+
+**Day 12: Calendar Integration**
 - iCalendar format (RFC 5545)
-- Using the icalendar Python library
 - Token-based feed authentication
-- Generating calendar events
-- All-day event handling
-- Calendar subscription URLs
+- Subscribe page with webcal:// URLs
+- Scoped feeds (only yes/maybe RSVPs)
+- RSVP status in event descriptions
+- Email links to calendar subscribe
 
-**Day 9: Docker & Containerization**
-- Dockerfile structure and best practices
-- Multi-container orchestration with docker-compose
-- Container networking and service discovery
-- Volume persistence for data
-- Health checks for database dependencies
-- Gunicorn production configuration
-- Nginx reverse proxy setup
+**Day 13: AI-Powered Schedule Import**
+- Claude API integration (anthropic SDK)
+- Extraction prompt engineering
+- File import (PDF, DOCX, TXT via file_utils.py)
+- ImportCache for result caching
+- SSE streaming progress
+- SSRF protection (_is_private_ip)
+- Document discovery (level-1 and deep crawl)
 
-**Day 10: Database Migrations & Deployment**
+#### Phase 4: Operations & Advanced Topics (Days 14-18)
+
+**Day 14: User Interface & Responsive Design**
+- Bootstrap 5 responsive grid and breakpoints
+- Navbar (expand-md, collapse, mobile toggler)
+- Avatar system (Multiavatar SVG + profile photos)
+- user_icon template filter (photo with avatar fallback)
+- Impersonation banner
+- Mobile-friendly layout patterns
+
+**Day 15: Site Settings & Admin Configuration**
+- SiteSetting model (key/value store)
+- Google Analytics settings page
+- Email settings page (SES sender, region)
+- Runtime config vs environment variables
+- Context processor for GA injection
+
+**Day 16: Docker & Containerization**
+- Dockerfile structure (Python 3.13-slim base)
+- Docker Compose for local dev
+- GHCR image publishing
+- Entrypoint script (migrations + admin init + Gunicorn)
+- Gunicorn configuration
+- Local storage via storage blueprint
+
+**Day 17: Database Migrations & Testing**
 - Flask-Migrate and Alembic
+- Migration history (16 migrations)
 - Creating and applying migrations
-- Automatic migration on startup
-- Production deployment considerations
-- Environment variables management
-- SSL/HTTPS setup guidance
-- Backup strategies
+- pytest fixtures (session-scoped app, autouse cleanup)
+- Test patterns (admin/skipper/crew clients)
+- Mocking external APIs (Anthropic, SES)
+
+**Day 18: CI/CD, Security & Deployment**
+- GitHub Actions workflows (deploy, vulnerability scan, terraform)
+- Trivy vulnerability scanning (deploy-gate + daily)
+- Terraform infrastructure as code (Lightsail, SES, CloudFront, Route53)
+- AWS Lightsail Container Service deployment
+- Security practices (CSRF, SSRF, path traversal, HMAC)
 
 ### Appendix File
 
 Path: 99-appendix.md
 Contents:
+- Permission patterns reference
+- Notification types and triggers
+- SiteSetting keys reference
+- Template filters reference
+- Email templates listing
+- Terraform resource reference
+- Trivy/security commands
+- Model reference table (all 8 models + skipper_crew)
 - Flask routing quick reference
 - SQLAlchemy query patterns
-- Jinja2 template syntax guide
 - Docker Compose command cheat sheet
-- Flask CLI commands reference
 - Common troubleshooting scenarios
-- Security best practices checklist
-- Further reading resources
 
 ## Content Structure (Each Daily Lesson)
 
@@ -121,7 +190,7 @@ Contents:
 2. Concepts Covered (technical topics list)
 3. File Focus (which files to examine)
 4. Code Walkthrough (detailed explanations)
-   - Key snippets included inline
+   - Key snippets included inline (5-20 lines)
    - Longer code sections referenced by file:line
 5. Architecture Diagrams (ASCII art where helpful)
 6. Key Takeaways (summary and connections)
@@ -148,70 +217,89 @@ Contents:
 Use ASCII art for:
 - Application initialization flow (Day 2)
 - Database ER diagram (Day 3)
-- Request/response cycle (Day 5)
-- Container architecture (Day 9)
+- Request/response cycle (Day 6)
+- Container architecture (Day 16)
 - Authentication flow (Day 4)
+- Notification flow (Day 11)
+- CI/CD pipeline (Day 18)
 
 ### Security Notes
 
 Highlight security patterns when encountered:
 - Password hashing (Day 3)
 - CSRF protection (Day 4)
-- File upload security (Day 7)
-- Token-based authentication (Day 8)
+- HMAC unsubscribe tokens (Day 10)
+- SSRF protection (Day 13)
+- Path traversal protection (Day 8)
+- File upload validation (Day 8)
 
 ## Critical Files to Reference
 
 ### Core Application
 
-- race-crew-network/app/__init__.py - App factory
-- race-crew-network/app/config.py - Configuration
-- race-crew-network/app/models.py - All 4 models
-- race-crew-network/app/commands.py - CLI commands
+- app/__init__.py - App factory, context processors, template filters
+- app/config.py - Configuration
+- app/models.py - 8 models + skipper_crew table
+- app/permissions.py - Role-based permission helpers
+- app/commands.py - CLI commands
+- app/storage.py - S3/local storage abstraction
 
 ### Blueprints (Routes)
 
-- race-crew-network/app/auth/routes.py - Authentication
-- race-crew-network/app/regattas/routes.py - CRUD operations
-- race-crew-network/app/calendar/routes.py - iCal feeds
+- app/auth/routes.py - Authentication, user management, crew management
+- app/regattas/routes.py - Event CRUD, RSVP, documents, notifications
+- app/admin/routes.py - Import, settings, document discovery
+- app/calendar/routes.py - iCal feeds, subscribe page
+- app/email/routes.py - Unsubscribe, SES webhooks
+- app/storage_routes.py - Local file serving
+
+### Services
+
+- app/admin/email_service.py - AWS SES email sending
+- app/admin/ai_service.py - Claude API integration
+- app/admin/file_utils.py - File text extraction
+- app/notifications/service.py - Notification logic
 
 ### Templates
 
-- race-crew-network/app/templates/base.html - Base template
-- race-crew-network/app/templates/index.html - Main page
-- race-crew-network/app/templates/regatta_form.html - Form example
+- app/templates/base.html - Base template with navbar
+- app/templates/index.html - Main schedule page
+- app/templates/email/*.html - Email templates
 
 ### Deployment
 
-- race-crew-network/Dockerfile - Container build
-- race-crew-network/docker-compose.yml - Orchestration
-- race-crew-network/nginx.conf - Reverse proxy
-- race-crew-network/gunicorn.conf.py - WSGI config
-- race-crew-network/entrypoint.sh - Startup script
-- race-crew-network/requirements.txt - Dependencies
+- Dockerfile - Container build
+- docker-compose.yml - Local orchestration
+- gunicorn.conf.py - WSGI config
+- entrypoint.sh - Startup script
+- .github/workflows/deploy.yml - CI/CD pipeline
+- .github/workflows/vulnerability-scan.yml - Security scanning
+- .github/workflows/terraform.yml - Infrastructure automation
+- terraform/main.tf - AWS infrastructure
 
-### Database
+### Tests
 
-- race-crew-network/migrations/versions/*.py - Migration examples
+- tests/conftest.py - Test fixtures
+- tests/test_*.py - Test modules
 
 ## Implementation Steps
 
-1. Day 1-3: Foundation (App structure, models, database)
-2. Day 4-6: Core features (Auth, CRUD, relationships)
-3. Day 7-8: Advanced features (Files, calendar)
-4. Day 9-10: Deployment (Docker, production)
-5. Appendix: Quick reference materials
+1. Phase 1: Foundation (Days 1-4) — App structure, models, auth
+2. Phase 2: Core features (Days 5-9) — Roles, CRUD, RSVP, storage, crew
+3. Phase 3: Communication (Days 10-13) — Email, notifications, calendar, AI
+4. Phase 4: Operations (Days 14-18) — UI, settings, Docker, testing, CI/CD
+5. Appendix: Comprehensive reference materials
 
 ## Verification After Creation
 
-1. Index file exists and provides clear navigation
-2. All 10 daily lesson files created (01-10)
-3. Appendix file created (99)
-4. Each lesson follows the structure template
-5. File paths referenced are accurate
-6. ASCII diagrams render correctly in plain text
-7. Lesson progression is logical and builds on previous days
-8. Total word count per lesson is ~1500-2500 words
+1. All 21 files present (00-index, 01-18, 99-appendix, plan)
+2. No old numbered files remain
+3. Each lesson follows the structure template
+4. File paths and line numbers reference actual source code
+5. Cross-references between lessons are consistent
+6. Lesson progression is logical and builds on previous days
+7. Total word count per lesson is ~1500-2500 words
+8. Version metadata updated to v0.61.0 / Training v3.0
 
 ## Success Criteria
 
@@ -219,6 +307,6 @@ The training materials succeed if:
 - Each lesson can be read in 30-60 minutes
 - Code explanations reference actual application files
 - Flask patterns are clearly explained (not just Python)
-- A developer with Python/Docker knowledge can understand the full Flask application architecture after 10 days
+- A developer with Python/Docker knowledge can understand the full application after 18 days
 - Materials are self-contained in text files (no external dependencies)
 - Lessons build progressively from basics to advanced topics
