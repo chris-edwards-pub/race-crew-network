@@ -29,6 +29,16 @@ logger = logging.getLogger(__name__)
 MAX_CONTENT_LENGTH = 20_000
 
 
+def _safe_sse_generate(gen):
+    """Wrap an SSE generator so unhandled exceptions emit error+failed events."""
+    try:
+        yield from gen
+    except Exception:
+        logger.exception("SSE generator failed")
+        yield f'data: {json.dumps({"type": "error", "message": "An unexpected error occurred."})}\n\n'
+        yield f'data: {json.dumps({"type": "failed"})}\n\n'
+
+
 def _store_task_result(task_id: str, result_type: str, data: dict) -> None:
     """Store task result in DB (replaces in-memory dict write)."""
     row = TaskResult(id=task_id, result_type=result_type, data_json=json.dumps(data))
@@ -743,7 +753,7 @@ def import_schedule_extract():
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(_safe_sse_generate(generate())),
         content_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -938,7 +948,7 @@ def import_schedule_extract_file():
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(_safe_sse_generate(generate())),
         content_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -1089,7 +1099,7 @@ def import_schedule_extract_single():
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(_safe_sse_generate(generate())),
         content_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -1458,7 +1468,7 @@ def import_schedule_discover():
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(_safe_sse_generate(generate())),
         content_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -1625,7 +1635,7 @@ def discover_documents_for_regatta(regatta_id: int):
         yield _sse({"type": "done", "task_id": task_id, "summary": summary})
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(_safe_sse_generate(generate())),
         content_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

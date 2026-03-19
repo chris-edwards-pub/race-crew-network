@@ -40,6 +40,7 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 - All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes
 - Merge to `master` via PR when complete and tested
 - Commit messages: imperative mood, concise ("Add regatta CRUD routes")
+- **After tests pass**, prompt the user to: commit, push, create PR, merge, tag, and clean up branches — do not proceed without confirmation at each step
 
 ## Testing
 - Framework: pytest
@@ -59,6 +60,7 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
   - `test_ai_service.py` — AI extraction/discovery with mocked Anthropic API
 - **Patterns**: use `unittest.mock.patch` for external APIs (Anthropic, requests); all fixtures are function-scoped
 - **All new features and bug fixes MUST include tests** — write and run tests for every code change before considering it complete
+- **Always ask the user before running tests** — never run `pytest` without prompting first
 - **Run the full test suite (`pytest`) after every change** to ensure nothing is broken
 
 ## Docker

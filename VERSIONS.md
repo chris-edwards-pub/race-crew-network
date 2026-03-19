@@ -1,5 +1,13 @@
 # Version History
 
+## 0.62.1
+- Fix SSE streaming hangs in AI import (~50% of the time in production)
+- Fix client-side buffer bug where TCP chunk splits caused lost SSE events
+- Add stream-end detection with "Connection lost" message and Start Over button
+- Add 9600-baud typewriter effect and blinking block cursor to terminal modal
+- Increase Gunicorn timeout from 30s to 120s for long AI extraction requests
+- Wrap server-side SSE generators in try/except to emit error events on failure
+
 ## 0.62.0
 - Add 18-day training curriculum covering Flask app development through the Race Crew Network codebase
 - Four phases: Foundations (Days 1-4), Core Features (Days 5-9), Communication & Integration (Days 10-13), Operations & Advanced (Days 14-18)

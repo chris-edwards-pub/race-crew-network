@@ -113,9 +113,10 @@ document.getElementById('import-url-form').addEventListener('submit', function(e
         headers: {'X-CSRFToken': csrfToken},
         body: formData
     }).then(function(response) {
-        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+        var handlers = handleSSEEvents(ctx.output, ctx.modal, function(event) {
             return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
-        }, ctx.startOverBtn));
+        }, ctx.startOverBtn);
+        readSSE(response, ctx.output, handlers.onEvent, handlers.onStreamEnd);
     }).catch(function(err) { handleError(ctx, err); });
 });
 
@@ -134,9 +135,10 @@ document.getElementById('import-file-form').addEventListener('submit', function(
         headers: {'X-CSRFToken': csrfToken},
         body: formData
     }).then(function(response) {
-        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+        var handlers = handleSSEEvents(ctx.output, ctx.modal, function(event) {
             return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
-        }, ctx.startOverBtn));
+        }, ctx.startOverBtn);
+        readSSE(response, ctx.output, handlers.onEvent, handlers.onStreamEnd);
     }).catch(function(err) { handleError(ctx, err); });
 });
 
@@ -155,9 +157,10 @@ document.getElementById('import-paste-form').addEventListener('submit', function
         headers: {'X-CSRFToken': csrfToken},
         body: formData
     }).then(function(response) {
-        readSSE(response, ctx.output, handleSSEEvents(ctx.output, ctx.modal, function(event) {
+        var handlers = handleSSEEvents(ctx.output, ctx.modal, function(event) {
             return "{{ url_for('admin.import_schedule_preview') }}?task_id=" + event.task_id;
-        }, ctx.startOverBtn));
+        }, ctx.startOverBtn);
+        readSSE(response, ctx.output, handlers.onEvent, handlers.onStreamEnd);
     }).catch(function(err) { handleError(ctx, err); });
 });
 </script>
