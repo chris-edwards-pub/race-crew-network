@@ -1,5 +1,10 @@
 # Version History
 
+## 0.62.0
+- Add 18-day training curriculum covering Flask app development through the Race Crew Network codebase
+- Four phases: Foundations (Days 1-4), Core Features (Days 5-9), Communication & Integration (Days 10-13), Operations & Advanced (Days 14-18)
+- Includes course index, daily lesson plans with code walkthroughs, and quick-reference appendix
+
 ## 0.61.0
 - Add admin "Assume Identity" feature to impersonate another user for troubleshooting
 - Persistent warning banner shown while impersonating with one-click exit
