@@ -142,7 +142,8 @@
             var redirectUrl = function(event) {
                 return '{{ url_for("admin.review_documents_for_regatta", regatta_id=regatta.id) }}' + '?task_id=' + event.task_id;
             };
-            readSSE(response, output, handleSSEEvents(output, modal, redirectUrl, startOverBtn));
+            var handlers = handleSSEEvents(output, modal, redirectUrl, startOverBtn);
+            readSSE(response, output, handlers.onEvent, handlers.onStreamEnd);
         });
     });
 })();

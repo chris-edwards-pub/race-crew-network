@@ -1,3 +1,33 @@
+<style>
+.terminal-cursor {
+    color: #569cd6;
+    display: inline;
+    font-size: inherit;
+    line-height: inherit;
+}
+.terminal-cursor .cursor-block,
+.terminal-cursor .cursor-under {
+    position: absolute;
+    color: #569cd6;
+}
+.terminal-cursor .cursor-under {
+    opacity: 0;
+}
+.terminal-cursor.blinking .cursor-block {
+    animation: block-blink 1s step-start infinite;
+}
+.terminal-cursor.blinking .cursor-under {
+    animation: under-blink 1s step-start infinite;
+}
+@keyframes block-blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+}
+@keyframes under-blink {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+}
+</style>
 <div class="modal fade" id="terminalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content bg-dark">

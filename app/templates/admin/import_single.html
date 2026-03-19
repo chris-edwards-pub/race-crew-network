@@ -54,9 +54,10 @@ document.getElementById('import-form').addEventListener('submit', function(e) {
         headers: {'X-CSRFToken': csrfToken},
         body: formData
     }).then(function(response) {
-        readSSE(response, output, handleSSEEvents(output, modal, function(event) {
+        var handlers = handleSSEEvents(output, modal, function(event) {
             return "{{ url_for('admin.import_single_preview') }}?task_id=" + event.task_id;
-        }, startOverBtn));
+        }, startOverBtn);
+        readSSE(response, output, handlers.onEvent, handlers.onStreamEnd);
     }).catch(function(err) {
         terminalAppend(output, '\u2717', 'Connection error: ' + err.message, '#f44747');
         startOverBtn.style.display = 'inline-block';
