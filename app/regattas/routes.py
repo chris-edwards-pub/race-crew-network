@@ -116,8 +116,7 @@ def pdf():
 
     # Determine title and whether to show skipper column
     show_skipper = skipper_id == 0 or (
-        skipper_id is None
-        and not current_user.is_skipper
+        skipper_id is None and not current_user.is_skipper
     )
     if skipper_id and skipper_id != 0:
         skipper = db.session.get(User, skipper_id)
@@ -283,14 +282,34 @@ def notify_crew_action():
 @login_required
 def rsvp(regatta_id: int):
     status = request.form.get("status", "").lower()
+
+    # Build redirect args early — used by all exit paths
+    redirect_args = {}
+    redirect_skipper = request.form.get("redirect_skipper")
+    if redirect_skipper is not None and redirect_skipper != "":
+        redirect_args["skipper"] = redirect_skipper
+    redirect_rsvp = request.form.getlist("redirect_rsvp")
+    if redirect_rsvp:
+        redirect_args["rsvp"] = redirect_rsvp
+
+    if not status:
+        # User selected "-" — clear their RSVP
+        existing = RSVP.query.filter_by(
+            regatta_id=regatta_id, user_id=current_user.id
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+        return redirect(url_for("regattas.index", **redirect_args))
+
     if status not in ("yes", "no", "maybe"):
         flash("Invalid RSVP status.", "error")
-        return redirect(url_for("regattas.index"))
+        return redirect(url_for("regattas.index", **redirect_args))
 
     regatta = db.session.get(Regatta, regatta_id)
     if not regatta or not can_rsvp_to_regatta(current_user, regatta):
         flash("Access denied.", "error")
-        return redirect(url_for("regattas.index"))
+        return redirect(url_for("regattas.index", **redirect_args))
 
     existing = RSVP.query.filter_by(
         regatta_id=regatta_id, user_id=current_user.id
@@ -310,14 +329,6 @@ def rsvp(regatta_id: int):
     except Exception:
         logger.exception("Failed to send RSVP notification for regatta %s", regatta.id)
 
-    # Preserve filter state in redirect
-    redirect_args = {}
-    redirect_skipper = request.form.get("redirect_skipper")
-    if redirect_skipper is not None and redirect_skipper != "":
-        redirect_args["skipper"] = redirect_skipper
-    redirect_rsvp = request.form.getlist("redirect_rsvp")
-    if redirect_rsvp:
-        redirect_args["rsvp"] = redirect_rsvp
     return redirect(url_for("regattas.index", **redirect_args))
 
 

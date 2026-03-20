@@ -387,6 +387,61 @@ class TestRSVPFilterStatePreservation:
         assert "rsvp=yes" in location
 
 
+class TestRSVPReset:
+    """Submitting empty status (the '-' option) deletes the RSVP record."""
+
+    def test_empty_status_deletes_existing_rsvp(
+        self, app, db, logged_in_client, admin_user
+    ):
+        r = _create_regatta(db, "Test Regatta", admin_user.id)
+        db.session.add(RSVP(regatta_id=r.id, user_id=admin_user.id, status="yes"))
+        db.session.commit()
+
+        assert RSVP.query.filter_by(regatta_id=r.id, user_id=admin_user.id).first()
+
+        resp = logged_in_client.post(
+            f"/regattas/{r.id}/rsvp",
+            data={"status": ""},
+        )
+        assert resp.status_code == 302
+        assert (
+            RSVP.query.filter_by(regatta_id=r.id, user_id=admin_user.id).first() is None
+        )
+
+    def test_empty_status_no_existing_rsvp_does_not_error(
+        self, app, db, logged_in_client, admin_user
+    ):
+        r = _create_regatta(db, "Test Regatta", admin_user.id)
+
+        resp = logged_in_client.post(
+            f"/regattas/{r.id}/rsvp",
+            data={"status": ""},
+        )
+        assert resp.status_code == 302
+        assert (
+            RSVP.query.filter_by(regatta_id=r.id, user_id=admin_user.id).first() is None
+        )
+
+    def test_empty_status_preserves_filter_params(
+        self, app, db, logged_in_client, admin_user
+    ):
+        r = _create_regatta(db, "Test Regatta", admin_user.id)
+
+        resp = logged_in_client.post(
+            f"/regattas/{r.id}/rsvp",
+            data={
+                "status": "",
+                "redirect_skipper": str(admin_user.id),
+                "redirect_rsvp": ["yes", "maybe"],
+            },
+        )
+        assert resp.status_code == 302
+        location = resp.headers["Location"]
+        assert f"skipper={admin_user.id}" in location
+        assert "rsvp=yes" in location
+        assert "rsvp=maybe" in location
+
+
 class TestMonthDividerLabels:
     """Month divider labels render once per month group per view."""
 
