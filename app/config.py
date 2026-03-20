@@ -8,6 +8,7 @@ class Config:
         "mysql+pymysql://racecrew:racecrew@localhost:3306/racecrew",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    PREFERRED_URL_SCHEME = os.environ.get("PREFERRED_URL_SCHEME", "https")
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max upload
     PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")

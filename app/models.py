@@ -148,6 +148,7 @@ class Regatta(db.Model):
     name = db.Column(db.String(200), nullable=False)
     boat_class = db.Column(db.String(100), nullable=False, default="")
     location = db.Column(db.String(200), nullable=False)
+    city_state = db.Column(db.String(100), nullable=True)
     location_url = db.Column(db.String(500), nullable=True)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
@@ -173,6 +174,12 @@ class Regatta(db.Model):
     creator = db.relationship(
         "User", backref="created_regattas", foreign_keys=[created_by]
     )
+
+    @property
+    def full_location(self) -> str:
+        if self.city_state:
+            return f"{self.location}, {self.city_state}"
+        return self.location
 
 
 class Document(db.Model):

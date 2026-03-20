@@ -39,6 +39,10 @@
             <div class="mb-3">
                 <label for="location_0" class="form-label">Location</label>
                 <input type="text" class="form-control" id="location_0" name="location_0" value="{{ regatta.location or '' }}">
+            </div>
+            <div class="mb-3">
+                <label for="city_state_0" class="form-label">City, State</label>
+                <input type="text" class="form-control" id="city_state_0" name="city_state_0" value="{{ regatta.city_state or '' }}" placeholder="e.g. Eustis, FL">
                 <input type="hidden" name="location_url_0" value="{{ regatta.location_url or '' }}">
             </div>
             <div class="mb-3">
@@ -108,7 +112,7 @@ document.getElementById('btn-no-docs').addEventListener('click', function() {
 
     confirmForm.innerHTML = '<input type="hidden" name="csrf_token" value="' + importForm.querySelector('[name=csrf_token]').value + '">';
 
-    var fields = ['selected', 'name_0', 'boat_class_0', 'start_date_0', 'end_date_0', 'location_0', 'location_url_0', 'notes_0', 'detail_url_0'];
+    var fields = ['selected', 'name_0', 'boat_class_0', 'start_date_0', 'end_date_0', 'location_0', 'city_state_0', 'location_url_0', 'notes_0', 'detail_url_0'];
     fields.forEach(function(name) {
         var input = importForm.querySelector('[name="' + name + '"]');
         if (input) {

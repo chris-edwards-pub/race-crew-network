@@ -414,6 +414,7 @@ def _save_regatta(regatta: Regatta | None):
     name = request.form.get("name", "").strip()
     boat_class = request.form.get("boat_class", "").strip()
     location = request.form.get("location", "").strip()
+    city_state = request.form.get("city_state", "").strip()
     location_url = request.form.get("location_url", "").strip()
     start_date_str = request.form.get("start_date", "")
     end_date_str = request.form.get("end_date", "")
@@ -438,12 +439,14 @@ def _save_regatta(regatta: Regatta | None):
     regatta.name = name
     regatta.boat_class = boat_class
     regatta.location = location
+    regatta.city_state = city_state or None
     if location_url:
         regatta.location_url = location_url
     else:
-        # Auto-generate Google Maps search link from location text
+        # Auto-generate Google Maps search link from full location text
+        maps_query = f"{location}, {city_state}" if city_state else location
         regatta.location_url = (
-            f"https://www.google.com/maps/search/{quote_plus(location)}"
+            f"https://www.google.com/maps/search/{quote_plus(maps_query)}"
         )
     regatta.start_date = start_date
     regatta.end_date = end_date

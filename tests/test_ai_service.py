@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 import anthropic
 import pytest
 
-from app.admin.ai_service import (_parse_json_response, discover_documents,
+from app.admin.ai_service import (EXTRACTION_PROMPT, _parse_json_response,
+                                  discover_documents,
                                   discover_documents_deep, extract_regattas)
 
 # --- _parse_json_response ---
@@ -107,6 +108,15 @@ class TestExtractRegattas:
             extract_regattas("content", 2026)
             _, kwargs = mock_client.messages.create.call_args
             assert kwargs["timeout"] == 30.0
+
+
+class TestExtractionPrompt:
+    def test_prompt_includes_city_state_field(self):
+        assert '"city_state"' in EXTRACTION_PROMPT
+
+    def test_prompt_city_state_is_separate_from_location(self):
+        assert '"location"' in EXTRACTION_PROMPT
+        assert '"city_state"' in EXTRACTION_PROMPT
 
 
 # --- discover_documents ---

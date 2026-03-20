@@ -3,10 +3,10 @@ Hi {{ crew_name }},
 Here's what's happening with your schedule:
 
 {% if rsvp_needed %}RSVP Needed:
-{% for regatta in rsvp_needed %}  - {{ regatta.name }} ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }}) — please RSVP
+{% for regatta in rsvp_needed %}  - {{ regatta.name }} ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.full_location }}) — please RSVP
 {% endfor %}
 {% endif %}{% if coming_up %}Coming Up:
-{% for regatta in coming_up %}  - {{ regatta.name }} ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }})
+{% for regatta in coming_up %}  - {{ regatta.name }} ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.full_location }})
 {% endfor %}
 {% endif %}
 View your schedule: {{ schedule_url }}

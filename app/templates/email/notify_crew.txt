@@ -5,7 +5,7 @@ Hi {{ crew_name }},
 {% endif %}{{ skipper_name }} wants you to know about the following event(s):
 
 {% for r in regattas %}
-- {{ r.start_date.strftime('%b %d') }}{% if r.end_date %} – {{ r.end_date.strftime('%b %d') }}{% endif %}, {{ r.start_date.strftime('%Y') }} | {{ r.boat_class }} | {{ r.name }} | {{ r.location }}
+- {{ r.start_date.strftime('%b %d') }}{% if r.end_date %} – {{ r.end_date.strftime('%b %d') }}{% endif %}, {{ r.start_date.strftime('%Y') }} | {{ r.boat_class }} | {{ r.name }} | {{ r.full_location }}
 {% endfor %}
 
 View your schedule and RSVP: {{ schedule_url }}

@@ -141,7 +141,7 @@ def notify_rsvp_to_skipper(rsvp) -> None:
         regatta_name=rsvp.regatta.name,
         regatta_date=rsvp.regatta.start_date,
         regatta_end_date=rsvp.regatta.end_date,
-        regatta_location=rsvp.regatta.location,
+        regatta_location=rsvp.regatta.full_location,
         schedule_url=schedule_url,
         profile_url=profile_url,
     )
@@ -152,7 +152,7 @@ def notify_rsvp_to_skipper(rsvp) -> None:
         regatta_name=rsvp.regatta.name,
         regatta_date=rsvp.regatta.start_date,
         regatta_end_date=rsvp.regatta.end_date,
-        regatta_location=rsvp.regatta.location,
+        regatta_location=rsvp.regatta.full_location,
         schedule_url=schedule_url,
         profile_url=profile_url,
     )

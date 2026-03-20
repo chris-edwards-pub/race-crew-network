@@ -16,7 +16,11 @@
             </div>
             <div class="mb-3">
                 <label for="location" class="form-label">Location</label>
-                <input type="text" class="form-control" id="location" name="location" required value="{{ regatta.location if regatta else '' }}" placeholder="e.g. Lake Eustis, FL">
+                <input type="text" class="form-control" id="location" name="location" required value="{{ regatta.location if regatta else '' }}" placeholder="e.g. Eustis Sailing Club">
+            </div>
+            <div class="mb-3">
+                <label for="city_state" class="form-label">City, State (optional)</label>
+                <input type="text" class="form-control" id="city_state" name="city_state" value="{{ regatta.city_state if regatta and regatta.city_state else '' }}" placeholder="e.g. Eustis, FL">
             </div>
             <div class="mb-3">
                 <label for="location_url" class="form-label">Google Maps Link (optional — auto-generated from location if blank)</label>

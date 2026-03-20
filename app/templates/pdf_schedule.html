@@ -96,7 +96,7 @@
             <br><span class="notes">{{ regatta.notes }}</span>
             {% endif %}
         </td>
-        <td>{{ regatta.location }}</td>
+        <td>{{ regatta.location }}{% if regatta.city_state %}<br><span class="notes">{{ regatta.city_state }}</span>{% endif %}</td>
         <td>
             {% for doc in regatta.documents %}
             <span class="doc-badge">{{ doc.doc_type }}</span>

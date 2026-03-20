@@ -60,7 +60,7 @@ def ical_feed(token: str):
         # End date is exclusive in iCal, so add 1 day
         end = (regatta.end_date or regatta.start_date) + timedelta(days=1)
         event.add("dtend", end)
-        event.add("location", regatta.location)
+        event.add("location", regatta.full_location)
 
         if regatta.location_url:
             event.add("url", regatta.location_url)
