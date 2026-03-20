@@ -131,6 +131,17 @@ class TestIcalFeedFiltering:
         assert resp.status_code == 200
         assert "text/calendar" in resp.content_type
 
+    def test_events_include_alarm_at_start(self, db, logged_in_client, admin_user):
+        r = _create_regatta(db, admin_user)
+        _rsvp(db, admin_user, r, "yes")
+        _subscribe(logged_in_client)
+        db.session.refresh(admin_user)
+
+        resp = logged_in_client.get(f"/calendar/{admin_user.calendar_token}.ics")
+        assert resp.status_code == 200
+        assert b"VALARM" in resp.data
+        assert b"TRIGGER" in resp.data
+
     def test_invalid_token_returns_404(self, client):
         resp = client.get("/calendar/invalid-token-12345.ics")
         assert resp.status_code == 404
@@ -172,6 +183,14 @@ class TestSubscribePage:
         assert b"webcal://" in resp.data
         assert admin_user.calendar_token.encode() in resp.data
 
+    def test_shows_webcal_url_copyable(self, db, logged_in_client, admin_user):
+        resp = logged_in_client.get("/calendar/subscribe")
+        db.session.refresh(admin_user)
+        html = resp.data.decode()
+        assert 'id="webcal-url"' in html
+        assert f"webcal://" in html
+        assert 'id="copy-webcal-url"' in html
+
     def test_shows_apple_instructions(self, db, logged_in_client):
         resp = logged_in_client.get("/calendar/subscribe")
         assert b"Apple Calendar (iPhone / iPad)" in resp.data
@@ -184,7 +203,9 @@ class TestSubscribePage:
 
     def test_shows_outlook_instructions(self, db, logged_in_client):
         resp = logged_in_client.get("/calendar/subscribe")
-        assert b"Outlook" in resp.data
+        assert b"Outlook on the Web" in resp.data
+        assert b"Outlook Desktop (Windows)" in resp.data
+        assert b"Outlook Desktop (Mac)" in resp.data
         assert b"outlook.live.com" in resp.data
 
     def test_preserves_existing_token(self, db, logged_in_client, admin_user):

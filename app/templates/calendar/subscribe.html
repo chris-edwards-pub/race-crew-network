@@ -8,26 +8,36 @@
         <div class="col-md-8">
             <h2>Calendar Subscription</h2>
             <p>Subscribe to keep your calendar in sync with your race schedule. Events you've RSVP'd <strong>Yes</strong> or <strong>Maybe</strong> to will appear automatically, and updates sync whenever your calendar app refreshes.</p>
+            <div class="alert alert-info small mb-4">
+                <strong>Subscribe vs. Import:</strong> All methods on this page create a <strong>live subscription</strong> that stays in sync with your race schedule. If you simply download and open an .ics file, it will only import a one-time snapshot that won't update.
+            </div>
 
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Quick Subscribe</h5>
-                    <p class="card-text">If you use <strong>Apple Calendar</strong> or <strong>Outlook</strong>, click the button below to subscribe instantly. Your calendar app will open and ask you to confirm the subscription.</p>
+                    <p class="card-text">If you use <strong>Apple Calendar</strong>, click the button below to subscribe instantly.</p>
                     <a href="{{ webcal_url }}" class="btn btn-primary" id="webcal-subscribe">Open in Calendar App</a>
-                    <div class="form-text mt-2">Works with Apple Calendar (iPhone, iPad, Mac) and Outlook (desktop and mobile). For Google Calendar, follow the manual steps below.</div>
+                    <div class="form-text mt-2">Works with Apple Calendar (iPhone, iPad, Mac). Creates a live subscription that stays in sync. For Outlook or Google Calendar, copy the URL below and follow the instructions for your app.</div>
                 </div>
             </div>
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h5 class="card-title">Subscription URL</h5>
-                    <p class="card-text">If the button above doesn't work for your calendar app, copy this URL and add it manually using the instructions below.</p>
+                    <h5 class="card-title">Subscription URLs</h5>
+                    <p class="card-text">Copy the appropriate URL for your calendar app and follow the instructions below.</p>
+                    <label class="form-label fw-semibold" for="webcal-url">Calendar URL <span class="text-muted fw-normal">(Apple Calendar, Outlook)</span></label>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="webcal-url" readonly value="{{ webcal_url }}">
+                        <button class="btn btn-outline-secondary" type="button" id="copy-webcal-url"
+                                onclick="navigator.clipboard.writeText(document.getElementById('webcal-url').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000);">Copy</button>
+                    </div>
+                    <label class="form-label fw-semibold" for="ical-url">HTTPS URL <span class="text-muted fw-normal">(Google Calendar)</span></label>
                     <div class="input-group">
                         <input type="text" class="form-control" id="ical-url" readonly value="{{ feed_url }}">
                         <button class="btn btn-outline-secondary" type="button" id="copy-ical-url"
                                 onclick="navigator.clipboard.writeText(document.getElementById('ical-url').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000);">Copy</button>
                     </div>
-                    <div class="form-text mt-2">This URL is private to you. Don't share it with others.</div>
+                    <div class="form-text mt-2">These URLs are private to you. Don't share them with others.</div>
                 </div>
             </div>
 
@@ -45,7 +55,7 @@
                             <hr>
                             <p><strong>Manual setup:</strong></p>
                             <ol>
-                                <li>Tap the <strong>Copy</strong> button above to copy the subscription URL.</li>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
                                 <li>Open the <strong>Settings</strong> app on your iPhone or iPad.</li>
                                 <li>Scroll down and tap <strong>Calendar</strong> (or <strong>Mail</strong> on older iOS versions).</li>
                                 <li>Tap <strong>Accounts</strong> &gt; <strong>Add Account</strong> &gt; <strong>Other</strong>.</li>
@@ -53,7 +63,7 @@
                                 <li>Paste the URL into the <strong>Server</strong> field and tap <strong>Next</strong>.</li>
                                 <li>Review the settings and tap <strong>Save</strong>.</li>
                             </ol>
-                            <p class="text-muted small mb-0">Your subscribed calendar will appear in the Calendar app. iOS typically refreshes subscribed calendars every few hours.</p>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. iOS typically refreshes every few hours.</p>
                         </div>
                     </div>
                 </div>
@@ -69,14 +79,14 @@
                             <hr>
                             <p><strong>Manual setup:</strong></p>
                             <ol>
-                                <li>Click the <strong>Copy</strong> button above to copy the subscription URL.</li>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
                                 <li>Open the <strong>Calendar</strong> app on your Mac.</li>
                                 <li>From the menu bar, click <strong>File</strong> &gt; <strong>New Calendar Subscription...</strong></li>
                                 <li>Paste the URL into the <strong>Calendar URL</strong> field and click <strong>Subscribe</strong>.</li>
                                 <li>Choose a name, color, and how often to auto-refresh (every hour is recommended).</li>
                                 <li>Click <strong>OK</strong>.</li>
                             </ol>
-                            <p class="text-muted small mb-0">If you use iCloud, the subscription will sync to all your Apple devices automatically.</p>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. If you use iCloud, it will sync to all your Apple devices automatically.</p>
                         </div>
                     </div>
                 </div>
@@ -88,47 +98,85 @@
                     </h2>
                     <div id="googleInstructions" class="accordion-collapse collapse" data-bs-parent="#calendarInstructions">
                         <div class="accordion-body">
-                            <p class="text-muted">Google Calendar does not support the subscribe button — you'll need to add the URL manually. This must be done from a computer, not the mobile app.</p>
+                            <p class="text-muted">Google Calendar requires the HTTPS URL. This must be done from a computer, not the mobile app.</p>
                             <ol>
-                                <li>Click the <strong>Copy</strong> button above to copy the subscription URL.</li>
+                                <li>Copy the <strong>HTTPS URL</strong> above.</li>
                                 <li>Open <a href="https://calendar.google.com" target="_blank" rel="noopener">Google Calendar</a> in a web browser on your computer.</li>
                                 <li>In the left sidebar, find <strong>"Other calendars"</strong> and click the <strong>+</strong> icon next to it.</li>
                                 <li>Select <strong>From URL</strong>.</li>
                                 <li>Paste the subscription URL into the <strong>URL of calendar</strong> field.</li>
                                 <li>Click <strong>Add calendar</strong>.</li>
                             </ol>
-                            <p class="text-muted small mb-0">Google Calendar typically refreshes subscribed calendars once every 12–24 hours. There is no way to force a manual refresh.</p>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. Google Calendar typically refreshes once every 12–24 hours.</p>
                         </div>
                     </div>
                 </div>
                 <div class="accordion-item">
                     <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#outlookInstructions">
-                            Outlook
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#outlookWebInstructions">
+                            Outlook on the Web (Recommended for Outlook Users)
                         </button>
                     </h2>
-                    <div id="outlookInstructions" class="accordion-collapse collapse" data-bs-parent="#calendarInstructions">
+                    <div id="outlookWebInstructions" class="accordion-collapse collapse" data-bs-parent="#calendarInstructions">
                         <div class="accordion-body">
-                            <p><strong>Easiest way:</strong> Click the <strong>"Open in Calendar App"</strong> button above. Outlook will open and ask you to confirm the subscription.</p>
-                            <hr>
-                            <p><strong>Outlook on the web (outlook.com):</strong></p>
+                            <p class="text-muted">This is the easiest way to subscribe with Outlook. The calendar will sync to all your Outlook apps (desktop, mobile, and web) automatically.</p>
                             <ol>
-                                <li>Click the <strong>Copy</strong> button above to copy the subscription URL.</li>
-                                <li>Open <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener">Outlook Calendar</a> in your browser.</li>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
+                                <li>Open <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener">Outlook Calendar</a> in your browser (or <a href="https://outlook.office.com/calendar" target="_blank" rel="noopener">Office 365 Calendar</a> if you use a work account).</li>
+                                <li>Click <strong>Add calendar</strong> in the left sidebar.</li>
+                                <li>Select <strong>Subscribe from web</strong>.</li>
+                                <li>Paste the URL, give the calendar a name, and click <strong>Import</strong>.</li>
+                            </ol>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. Outlook typically refreshes every 3 hours. The subscription will appear on all your devices signed into the same Microsoft account.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#outlookWindowsInstructions">
+                            Outlook Desktop (Windows)
+                        </button>
+                    </h2>
+                    <div id="outlookWindowsInstructions" class="accordion-collapse collapse" data-bs-parent="#calendarInstructions">
+                        <div class="accordion-body">
+                            <p><strong>New Outlook:</strong></p>
+                            <ol>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
+                                <li>Open Outlook and switch to the <strong>Calendar</strong> view.</li>
                                 <li>Click <strong>Add calendar</strong> in the left sidebar.</li>
                                 <li>Select <strong>Subscribe from web</strong>.</li>
                                 <li>Paste the URL, give the calendar a name, and click <strong>Import</strong>.</li>
                             </ol>
                             <hr>
-                            <p><strong>Outlook desktop app (Windows/Mac):</strong></p>
+                            <p><strong>Classic Outlook:</strong></p>
                             <ol>
-                                <li>Click the <strong>Copy</strong> button above to copy the subscription URL.</li>
-                                <li>Open Outlook and switch to the <strong>Calendar</strong> view.</li>
-                                <li>Click <strong>Add calendar</strong> (or <strong>Open Calendar</strong> on older versions).</li>
-                                <li>Select <strong>From Internet...</strong> or <strong>Subscribe from web</strong>.</li>
-                                <li>Paste the URL and click <strong>OK</strong>.</li>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
+                                <li>Go to <strong>File</strong> &gt; <strong>Account Settings</strong> &gt; <strong>Account Settings</strong>.</li>
+                                <li>Click the <strong>Internet Calendars</strong> tab.</li>
+                                <li>Click <strong>New...</strong> and paste the URL.</li>
+                                <li>Click <strong>Add</strong>, optionally rename the calendar, then click <strong>OK</strong>.</li>
                             </ol>
-                            <p class="text-muted small mb-0">Outlook typically refreshes subscribed calendars every 3 hours.</p>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. Outlook typically refreshes every 3 hours.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#outlookMacInstructions">
+                            Outlook Desktop (Mac)
+                        </button>
+                    </h2>
+                    <div id="outlookMacInstructions" class="accordion-collapse collapse" data-bs-parent="#calendarInstructions">
+                        <div class="accordion-body">
+                            <p class="text-muted">Outlook for Mac does not support calendar subscriptions directly. Use <strong>Outlook on the Web</strong> instead — the subscription will sync to your Mac automatically.</p>
+                            <ol>
+                                <li>Copy the <strong>Calendar URL</strong> above.</li>
+                                <li>Open <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener">Outlook Calendar</a> in your browser (or <a href="https://outlook.office.com/calendar" target="_blank" rel="noopener">Office 365 Calendar</a> for work accounts).</li>
+                                <li>Click <strong>Add calendar</strong> in the left sidebar.</li>
+                                <li>Select <strong>Subscribe from web</strong>.</li>
+                                <li>Paste the URL, give the calendar a name, and click <strong>Import</strong>.</li>
+                            </ol>
+                            <p class="text-muted small mb-0">Creates a live subscription that stays in sync. The subscription will appear in your Outlook for Mac app once it syncs with your Microsoft account.</p>
                         </div>
                     </div>
                 </div>
