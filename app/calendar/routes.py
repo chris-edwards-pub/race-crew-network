@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from flask import Response, render_template, url_for
 from flask_login import current_user, login_required
-from icalendar import Calendar, Event
+from icalendar import Alarm, Calendar, Event
 
 from app import db
 from app.calendar import bp
@@ -86,6 +86,13 @@ def ical_feed(token: str):
 
         if lines:
             event.add("description", "\n\n".join(lines))
+
+        # Reminder at event start
+        alarm = Alarm()
+        alarm.add("action", "DISPLAY")
+        alarm.add("description", "Race day")
+        alarm.add("trigger", timedelta(0))
+        event.add_component(alarm)
 
         cal.add_component(event)
 

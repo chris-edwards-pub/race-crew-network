@@ -1,5 +1,9 @@
 # Version History
 
+## 0.65.0
+- Update calendar subscription instructions with accurate per-app guidance for Apple Calendar, Google Calendar, and Outlook (web, Windows, Mac)
+- Add "at event start" reminder/notification to all calendar subscription events
+
 ## 0.64.1
 - Fix RSVP reset: selecting "-" (no response) now deletes the RSVP record instead of showing "Invalid RSVP status" error
 
