@@ -1,5 +1,8 @@
 # Version History
 
+## 0.63.1
+- Fix calendar and email URLs generating http:// instead of https:// behind reverse proxy (add ProxyFix middleware)
+
 ## 0.63.0
 - Add system-wide email rate limiting (default 50/hour, admin-configurable)
 - Emails exceeding rate limit are queued, not dropped — no emails lost
