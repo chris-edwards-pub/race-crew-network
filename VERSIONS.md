@@ -1,5 +1,13 @@
 # Version History
 
+## 0.64.0
+- Add City, State field to regattas for displaying venue location details (e.g. "Eustis, FL")
+- City/State input on create/edit event form and AI import preview
+- AI extraction prompt updated to extract city_state as a separate field
+- City/State displayed below location on schedule (desktop and mobile), PDF, iCal, and all email templates
+- Google Maps auto-generated links include city/state for more accurate results
+- Fix calendar subscription URL generating http:// instead of https:// (set PREFERRED_URL_SCHEME default to https)
+
 ## 0.63.1
 - Fix calendar and email URLs generating http:// instead of https:// behind reverse proxy (add ProxyFix middleware)
 

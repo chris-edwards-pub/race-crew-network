@@ -135,6 +135,9 @@
                     {% else %}
                     {{ regatta.location }}
                     {% endif %}
+                    {% if regatta.city_state %}
+                    <br><small class="text-muted">{{ regatta.city_state }}</small>
+                    {% endif %}
                 </td>
                 <td class="text-nowrap">
                     {% for doc in regatta.documents|sort(attribute='doc_type') %}
@@ -225,6 +228,7 @@
                 {% else %}
                 {{ regatta.location }}
                 {% endif %}
+                {% if regatta.city_state %}, {{ regatta.city_state }}{% endif %}
                 {% endif %}
             </small>
             {% if regatta.notes %}

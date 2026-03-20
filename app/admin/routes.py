@@ -1273,6 +1273,7 @@ def import_schedule_confirm():
         name = request.form.get(f"name_{idx}", "").strip()
         boat_class = request.form.get(f"boat_class_{idx}", "").strip()
         location = request.form.get(f"location_{idx}", "").strip()
+        city_state = request.form.get(f"city_state_{idx}", "").strip()
         location_url = request.form.get(f"location_url_{idx}", "").strip()
         start_date_str = request.form.get(f"start_date_{idx}", "").strip()
         end_date_str = request.form.get(f"end_date_{idx}", "").strip()
@@ -1301,7 +1302,8 @@ def import_schedule_confirm():
 
         # Auto-generate Google Maps link if no location_url
         if not location_url and location:
-            location_url = f"https://www.google.com/maps/search/{quote_plus(location)}"
+            maps_query = f"{location}, {city_state}" if city_state else location
+            location_url = f"https://www.google.com/maps/search/{quote_plus(maps_query)}"
 
         detail_url = request.form.get(f"detail_url_{idx}", "").strip()
 
@@ -1309,6 +1311,7 @@ def import_schedule_confirm():
             name=name,
             boat_class=boat_class,
             location=location or "TBD",
+            city_state=city_state or None,
             location_url=location_url or None,
             start_date=start_date,
             end_date=end_date,
@@ -1376,6 +1379,7 @@ def import_schedule_discover():
                 "name": request.form.get(f"name_{idx}", "").strip(),
                 "boat_class": request.form.get(f"boat_class_{idx}", "").strip(),
                 "location": request.form.get(f"location_{idx}", "").strip(),
+                "city_state": request.form.get(f"city_state_{idx}", "").strip(),
                 "location_url": request.form.get(f"location_url_{idx}", "").strip(),
                 "start_date": request.form.get(f"start_date_{idx}", "").strip(),
                 "end_date": request.form.get(f"end_date_{idx}", "").strip(),

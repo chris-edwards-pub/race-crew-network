@@ -1,6 +1,6 @@
 <h2>RSVP Reminder</h2>
 <p>Hi {{ crew_name }},</p>
-<p><strong>{{ regatta.name }}</strong> is coming up on {{ regatta.start_date.strftime('%b %d, %Y') }} at {{ regatta.location }}.</p>
+<p><strong>{{ regatta.name }}</strong> is coming up on {{ regatta.start_date.strftime('%b %d, %Y') }} at {{ regatta.full_location }}.</p>
 <p>{{ skipper_name }} would like to know if you can make it.</p>
 <p><a href="{{ schedule_url }}" style="display:inline-block;padding:10px 20px;background-color:#0d6efd;color:#fff;text-decoration:none;border-radius:4px;">RSVP Now</a></p>
 <p style="font-size:13px;color:#666;"><a href="{{ subscribe_url }}">Add races to your calendar</a> | Manage your notification preferences: <a href="{{ profile_url }}">{{ profile_url }}</a></p>

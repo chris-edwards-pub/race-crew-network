@@ -19,7 +19,7 @@
             <td style="border:1px solid #dee2e6;white-space:nowrap;">{{ r.start_date.strftime('%b %d') }}{% if r.end_date %} – {{ r.end_date.strftime('%b %d') }}{% endif %}, {{ r.start_date.strftime('%Y') }}</td>
             <td style="border:1px solid #dee2e6;">{{ r.boat_class }}</td>
             <td style="border:1px solid #dee2e6;">{{ r.name }}</td>
-            <td style="border:1px solid #dee2e6;">{{ r.location }}</td>
+            <td style="border:1px solid #dee2e6;">{{ r.full_location }}</td>
         </tr>
         {% endfor %}
     </tbody>

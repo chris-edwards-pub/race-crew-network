@@ -5,7 +5,7 @@
 <h3>RSVP Needed</h3>
 <ul>
 {% for regatta in rsvp_needed %}
-    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }}) — please RSVP</li>
+    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.full_location }}) — please RSVP</li>
 {% endfor %}
 </ul>
 {% endif %}
@@ -13,7 +13,7 @@
 <h3>Coming Up</h3>
 <ul>
 {% for regatta in coming_up %}
-    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.location }})</li>
+    <li><strong>{{ regatta.name }}</strong> ({{ regatta.start_date.strftime('%b %d') }}{% if regatta.end_date %} – {{ regatta.end_date.strftime('%b %d') }}{% endif %}, {{ regatta.start_date.strftime('%Y') }}, {{ regatta.full_location }})</li>
 {% endfor %}
 </ul>
 {% endif %}

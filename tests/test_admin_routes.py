@@ -737,6 +737,77 @@ class TestImportConfirmSourceUrl:
         assert regatta.source_url is None
 
 
+class TestImportConfirmCityState:
+    """Tests that city_state is persisted during import confirm."""
+
+    def test_imports_regatta_with_city_state(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "City State Regatta",
+                "location_0": "Eustis Sailing Club",
+                "city_state_0": "Eustis, FL",
+                "start_date_0": "2026-09-20",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 event" in resp.data
+
+        regatta = Regatta.query.filter_by(name="City State Regatta").first()
+        assert regatta is not None
+        assert regatta.city_state == "Eustis, FL"
+        assert regatta.full_location == "Eustis Sailing Club, Eustis, FL"
+
+    def test_imports_regatta_without_city_state(self, app, logged_in_client, db):
+        resp = logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "No City Regatta",
+                "location_0": "Test YC",
+                "start_date_0": "2026-09-21",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        assert b"Successfully imported 1 event" in resp.data
+
+        regatta = Regatta.query.filter_by(name="No City Regatta").first()
+        assert regatta is not None
+        assert regatta.city_state is None
+        assert regatta.full_location == "Test YC"
+
+    def test_city_state_included_in_auto_maps_url(self, app, logged_in_client, db):
+        logged_in_client.post(
+            "/admin/import-schedule/confirm",
+            data={
+                "selected": "0",
+                "name_0": "Maps URL Regatta",
+                "location_0": "Eustis Sailing Club",
+                "city_state_0": "Eustis, FL",
+                "start_date_0": "2026-09-22",
+                "end_date_0": "",
+                "notes_0": "",
+                "location_url_0": "",
+                "doc_count_0": "0",
+            },
+            follow_redirects=True,
+        )
+        regatta = Regatta.query.filter_by(name="Maps URL Regatta").first()
+        assert regatta is not None
+        assert "Eustis+Sailing+Club" in regatta.location_url
+        assert "Eustis" in regatta.location_url
+        assert "FL" in regatta.location_url
+
+
 class TestDiscoverDocumentsForRegatta:
     """Tests for the discover-documents SSE endpoint."""
 

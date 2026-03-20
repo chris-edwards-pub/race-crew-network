@@ -14,7 +14,8 @@ Each object in the array must have these fields:
 - "name": string (event name)
 - "boat_class": string or null (the one-design or racing class, \
 e.g. "Thistle", "J/24")
-- "location": string (city, yacht club, or venue)
+- "location": string (venue or yacht club name, e.g. "Eustis Sailing Club")
+- "city_state": string or null (city and state of the venue, e.g. "Eustis, FL")
 - "location_url": string or null (URL for the venue if mentioned)
 - "start_date": string in "YYYY-MM-DD" format
 - "end_date": string in "YYYY-MM-DD" format or null (if single-day event)

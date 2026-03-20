@@ -39,6 +39,7 @@
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm" name="location_{{ loop.index0 }}" value="{{ r.location or '' }}">
+                        <input type="text" class="form-control form-control-sm mt-1" name="city_state_{{ loop.index0 }}" value="{{ r.city_state or '' }}" placeholder="City, State">
                         <input type="hidden" name="location_url_{{ loop.index0 }}" value="{{ r.location_url or '' }}">
                     </td>
                     <td>

@@ -192,6 +192,56 @@ class TestRegattaModel:
 
         assert regatta.source_url == "https://example.com/regatta/123"
 
+    def test_city_state_nullable(self, app, db, admin_user):
+        regatta = Regatta(
+            name="No City State",
+            location="Test YC",
+            start_date=date(2026, 6, 24),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.city_state is None
+
+    def test_city_state_explicit_value(self, app, db, admin_user):
+        regatta = Regatta(
+            name="With City State",
+            location="Eustis Sailing Club",
+            city_state="Eustis, FL",
+            start_date=date(2026, 6, 25),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.city_state == "Eustis, FL"
+
+    def test_full_location_with_city_state(self, app, db, admin_user):
+        regatta = Regatta(
+            name="Full Location Test",
+            location="Eustis Sailing Club",
+            city_state="Eustis, FL",
+            start_date=date(2026, 6, 26),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.full_location == "Eustis Sailing Club, Eustis, FL"
+
+    def test_full_location_without_city_state(self, app, db, admin_user):
+        regatta = Regatta(
+            name="No City State Location",
+            location="Some Yacht Club",
+            start_date=date(2026, 6, 27),
+            created_by=admin_user.id,
+        )
+        db.session.add(regatta)
+        db.session.commit()
+
+        assert regatta.full_location == "Some Yacht Club"
+
     def test_regatta_cascade_delete_documents(self, app, db, admin_user):
         regatta = Regatta(
             name="Cascade Test",
