@@ -83,24 +83,20 @@ def generate_unsubscribe_url(email: str) -> str:
     return url_for("email.unsubscribe", email=email, token=token, _external=True)
 
 
-def send_email(
+def _send_via_ses(
     to: str,
     subject: str,
     body_text: str,
     body_html: str | None = None,
 ) -> None:
-    """Send an email via AWS SES with unsubscribe headers.
+    """Build MIME message and send via AWS SES.
+
+    This is the low-level send function. It does NOT check opt-in status
+    or rate limits. Use send_email() for normal sending.
 
     Raises ValueError if email is not configured.
     Raises botocore.exceptions.ClientError on SES failures.
-    Skips sending if the recipient has opted out.
     """
-    # Check opt-in status
-    user = User.query.filter_by(email=to).first()
-    if user and not user.email_opt_in:
-        logger.info("Skipping email to %s: user has opted out", to)
-        return
-
     settings = load_email_settings()
     sender = settings["ses_sender"]
     if not sender:
@@ -139,3 +135,34 @@ def send_email(
         Destinations=[to],
         RawMessage={"Data": msg.as_string()},
     )
+
+
+def send_email(
+    to: str,
+    subject: str,
+    body_text: str,
+    body_html: str | None = None,
+) -> None:
+    """Send an email via AWS SES with rate limiting and unsubscribe headers.
+
+    Emails that exceed the hourly rate limit are queued, not dropped.
+    Raises ValueError if email is not configured.
+    Raises botocore.exceptions.ClientError on SES failures.
+    Skips sending if the recipient has opted out.
+    """
+    # Check opt-in status
+    user = User.query.filter_by(email=to).first()
+    if user and not user.email_opt_in:
+        logger.info("Skipping email to %s: user has opted out", to)
+        return
+
+    from app.notifications.rate_limits import (is_within_email_rate_limit,
+                                               queue_email,
+                                               send_rate_limit_alert)
+
+    if not is_within_email_rate_limit():
+        queue_email(to, subject, body_text, body_html)
+        send_rate_limit_alert()
+        return
+
+    _send_via_ses(to, subject, body_text, body_html)

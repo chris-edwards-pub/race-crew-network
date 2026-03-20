@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Email Statistics — Race Crew Network{% endblock %}
+{% block content %}
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Email Statistics</h2>
+        <a href="{{ url_for('admin.email_settings') }}" class="btn btn-outline-secondary btn-sm">Email Settings</a>
+    </div>
+
+    <div class="row g-3">
+        <!-- Rate Limit Status -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Rate Limit Status</h5>
+                    {% set pct = ((app_stats.sent_this_hour / app_stats.rate_limit * 100) | round) if app_stats.rate_limit > 0 else 0 %}
+                    {% if pct >= 90 %}
+                        {% set bar_color = "bg-danger" %}
+                    {% elif pct >= 70 %}
+                        {% set bar_color = "bg-warning" %}
+                    {% else %}
+                        {% set bar_color = "bg-success" %}
+                    {% endif %}
+                    <p class="mb-1"><strong>{{ app_stats.sent_this_hour }}</strong> / {{ app_stats.rate_limit }} this hour</p>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar {{ bar_color }}" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">{{ pct | int }}%</div>
+                    </div>
+                    <p class="text-muted mb-0">{{ app_stats.rate_remaining }} remaining</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SES Account -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">SES Account</h5>
+                    {% if ses_quota %}
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>24hr limit:</strong> {{ ses_quota.max_24hr_send | int }}</li>
+                        <li><strong>Sent (24hr):</strong> {{ ses_quota.sent_last_24hrs | int }}</li>
+                        <li><strong>Max rate:</strong> {{ ses_quota.max_send_rate | int }}/sec</li>
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">Unable to fetch SES quota. Check email configuration.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- AWS Costs -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">AWS Costs</h5>
+                    {% if ses_cost %}
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>This month:</strong> {{ ses_cost.current_month }}</li>
+                        <li><strong>Last month:</strong> {{ ses_cost.last_month }}</li>
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        Grant <code>ce:GetCostAndUsage</code> permission to the SES IAM user for billing data.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Send History -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Send History</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Today:</strong> {{ app_stats.today }}</li>
+                        <li><strong>This week:</strong> {{ app_stats.this_week }}</li>
+                        <li><strong>This month:</strong> {{ app_stats.this_month }}</li>
+                        <li><strong>All time:</strong> {{ app_stats.all_time }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Health -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Delivery Health</h5>
+                    {% if delivery_health %}
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Attempts (2 wk):</strong> {{ delivery_health.total_attempts }}</li>
+                        <li><strong>Bounces:</strong> {{ delivery_health.bounces }} ({{ delivery_health.bounce_rate }}%)</li>
+                        <li><strong>Complaints:</strong> {{ delivery_health.complaints }} ({{ delivery_health.complaint_rate }}%)</li>
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No SES delivery data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Status -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Queue Status</h5>
+                    <ul class="list-unstyled mb-2">
+                        <li><strong>Pending:</strong> {{ app_stats.queue_pending }}</li>
+                        <li><strong>Sent:</strong> {{ app_stats.queue_sent }}</li>
+                        <li><strong>Failed:</strong> {{ app_stats.queue_failed }}</li>
+                    </ul>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-process-queue" {% if app_stats.queue_pending == 0 %}disabled{% endif %}>Process Queue Now</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="btn-clear-queue" {% if app_stats.queue_pending == 0 %}disabled{% endif %} data-bs-toggle="modal" data-bs-target="#clearQueueModal">Clear Queue</button>
+                    </div>
+                    <div id="queue-result" class="mt-2" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Queue Confirmation Modal -->
+<div class="modal fade" id="clearQueueModal" tabindex="-1" aria-labelledby="clearQueueModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clearQueueModalLabel">Clear Email Queue</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>This will permanently delete all <strong>{{ app_stats.queue_pending }}</strong> pending email(s) from the queue. Sent and failed records will be preserved.</p>
+                <p>Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin.clear_email_queue') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Clear Queue</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('btn-process-queue').addEventListener('click', function() {
+    var btn = this;
+    var resultDiv = document.getElementById('queue-result');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    resultDiv.style.display = 'none';
+
+    fetch('{{ url_for("admin.email_stats") }}')
+    .then(function() {
+        // Use a simple reload approach since we need a token
+        // The process endpoint requires the reminder API token
+        btn.textContent = 'Process Queue Now';
+        btn.disabled = false;
+        resultDiv.className = 'mt-2 alert alert-info';
+        resultDiv.textContent = 'Use the CLI command "flask process-email-queue" or the API endpoint with your token to process the queue.';
+        resultDiv.style.display = 'block';
+    });
+});
+</script>
+{% endblock %}

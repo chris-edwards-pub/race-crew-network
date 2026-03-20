@@ -69,3 +69,11 @@ def register_commands(app: Flask) -> None:
 
         summary = send_all_reminders()
         click.echo(json.dumps(summary, indent=2))
+
+    @app.cli.command("process-email-queue")
+    def process_email_queue_cmd() -> None:
+        """Process pending emails in the queue, respecting the hourly rate limit."""
+        from app.notifications.rate_limits import process_email_queue
+
+        result = process_email_queue()
+        click.echo(json.dumps(result, indent=2))

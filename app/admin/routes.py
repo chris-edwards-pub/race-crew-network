@@ -21,6 +21,8 @@ from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
 from app.admin.email_service import (is_email_configured, load_email_settings,
                                      send_email)
+from app.admin.email_stats import (get_app_email_stats, get_ses_cost,
+                                   get_ses_quota, get_ses_statistics)
 from app.admin.file_utils import extract_text_from_file
 from app.models import Document, ImportCache, Regatta, SiteSetting, TaskResult
 
@@ -501,6 +503,15 @@ def email_settings():
             _upsert_site_setting("reminder_upcoming_days_before", upcoming_days)
         _upsert_site_setting("reminder_api_token", api_token)
 
+        # Rate limit setting
+        rate_limit = request.form.get("rate_limit_emails_per_hour", "").strip()
+        if rate_limit:
+            try:
+                rate_val = max(1, min(500, int(rate_limit)))
+                _upsert_site_setting("rate_limit_emails_per_hour", str(rate_val))
+            except (ValueError, TypeError):
+                pass
+
         flash("Email settings updated.", "success")
         return redirect(url_for("admin.email_settings"))
 
@@ -514,6 +525,9 @@ def email_settings():
         key="reminder_upcoming_days_before"
     ).first()
     api_token_setting = SiteSetting.query.filter_by(key="reminder_api_token").first()
+    rate_limit_setting = SiteSetting.query.filter_by(
+        key="rate_limit_emails_per_hour"
+    ).first()
 
     return render_template(
         "admin/email_settings.html",
@@ -526,6 +540,9 @@ def email_settings():
             upcoming_days_setting.value if upcoming_days_setting else "3"
         ),
         reminder_api_token=(api_token_setting.value if api_token_setting else ""),
+        rate_limit_emails_per_hour=(
+            rate_limit_setting.value if rate_limit_setting else "50"
+        ),
     )
 
 
@@ -574,6 +591,74 @@ def send_reminders_api():
 
     summary = send_all_reminders()
     return jsonify(summary)
+
+
+@bp.route("/admin/api/process-email-queue", methods=["GET"])
+@csrf.exempt
+def process_email_queue_api():
+    """Token-authenticated endpoint to process the email queue."""
+    token = request.args.get("token", "")
+    if not token:
+        return jsonify({"error": "Missing token"}), 403
+
+    stored_token = SiteSetting.query.filter_by(key="reminder_api_token").first()
+    if not stored_token or not stored_token.value or stored_token.value != token:
+        return jsonify({"error": "Invalid token"}), 403
+
+    from app.notifications.rate_limits import process_email_queue
+
+    result = process_email_queue()
+    return jsonify(result)
+
+
+@bp.route("/admin/email-queue/clear", methods=["POST"])
+@login_required
+def clear_email_queue():
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    from app.notifications.rate_limits import clear_email_queue as do_clear
+
+    count = do_clear()
+    flash(f"Cleared {count} pending email(s) from queue.", "success")
+    return redirect(url_for("admin.email_stats"))
+
+
+@bp.route("/admin/email-stats")
+@login_required
+def email_stats():
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    ses_quota = get_ses_quota()
+    ses_stats = get_ses_statistics()
+    ses_cost = get_ses_cost()
+    app_stats = get_app_email_stats()
+
+    # Compute delivery health from SES statistics
+    delivery_health = None
+    if ses_stats:
+        total_attempts = sum(p["delivery_attempts"] for p in ses_stats)
+        total_bounces = sum(p["bounces"] for p in ses_stats)
+        total_complaints = sum(p["complaints"] for p in ses_stats)
+        if total_attempts > 0:
+            delivery_health = {
+                "total_attempts": total_attempts,
+                "bounces": total_bounces,
+                "complaints": total_complaints,
+                "bounce_rate": round(total_bounces / total_attempts * 100, 2),
+                "complaint_rate": round(total_complaints / total_attempts * 100, 2),
+            }
+
+    return render_template(
+        "admin/email_stats.html",
+        ses_quota=ses_quota,
+        ses_cost=ses_cost,
+        app_stats=app_stats,
+        delivery_health=delivery_health,
+    )
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])
@@ -808,9 +893,7 @@ def import_schedule_extract_file():
 
         from werkzeug.datastructures import FileStorage
 
-        file_obj = FileStorage(
-            stream=BytesIO(raw_bytes), filename=filename
-        )
+        file_obj = FileStorage(stream=BytesIO(raw_bytes), filename=filename)
 
         try:
             content = extract_text_from_file(file_obj, filename)
@@ -1143,7 +1226,9 @@ def import_schedule_preview():
         return redirect(url_for("admin.import_regattas"))
 
     # Determine start_over_url from source (default to import page)
-    start_over_url = request.args.get("start_over_url", url_for("admin.import_regattas"))
+    start_over_url = request.args.get(
+        "start_over_url", url_for("admin.import_regattas")
+    )
 
     # Build cache info for the template
     from_cache = data.get("from_cache", False)
@@ -1490,7 +1575,9 @@ def import_schedule_documents():
         flash("Document discovery results not found or expired.", "error")
         return redirect(url_for("admin.import_regattas"))
 
-    start_over_url = request.args.get("start_over_url", url_for("admin.import_regattas"))
+    start_over_url = request.args.get(
+        "start_over_url", url_for("admin.import_regattas")
+    )
 
     return render_template(
         "admin/import_schedule_documents.html",

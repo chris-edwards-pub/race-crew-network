@@ -102,6 +102,24 @@
                 </div>
                 <div class="form-text">Token for the <code>/admin/api/send-reminders?token=...</code> endpoint. Leave empty to disable.</div>
             </div>
+            <hr>
+            <h4 class="mt-3">Rate Limiting</h4>
+            <p class="text-muted">
+                Protect against spam and control email costs.
+            </p>
+            <div class="mb-3">
+                <label for="rate_limit_emails_per_hour" class="form-label">Max emails per hour</label>
+                <input
+                    type="number"
+                    class="form-control"
+                    id="rate_limit_emails_per_hour"
+                    name="rate_limit_emails_per_hour"
+                    value="{{ rate_limit_emails_per_hour }}"
+                    min="1"
+                    max="500"
+                >
+                <div class="form-text">System-wide cap. Excess emails are queued, not dropped. Admin alerts bypass this limit.</div>
+            </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-primary">Save Settings</button>
                 <button type="button" class="btn btn-outline-success" id="btn-test-email" {% if not email_configured %}disabled{% endif %}>Send Test Email</button>
