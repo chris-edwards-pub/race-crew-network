@@ -257,6 +257,22 @@ class NotificationLog(db.Model):
     )
 
 
+class EmailQueue(db.Model):
+    __tablename__ = "email_queue"
+
+    id = db.Column(db.Integer, primary_key=True)
+    to_email = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(500), nullable=False)
+    body_text = db.Column(db.Text, nullable=False)
+    body_html = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default="pending", nullable=False)
+    queued_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    sent_at = db.Column(db.DateTime, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+
 class SiteSetting(db.Model):
     __tablename__ = "site_settings"
 

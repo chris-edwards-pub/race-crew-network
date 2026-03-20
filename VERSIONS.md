@@ -1,5 +1,15 @@
 # Version History
 
+## 0.63.0
+- Add system-wide email rate limiting (default 50/hour, admin-configurable)
+- Emails exceeding rate limit are queued, not dropped — no emails lost
+- New EmailQueue model and database migration for persistent queue storage
+- Admin alerted when rate limit is hit (alert bypasses rate limit, deduped to 1/hour)
+- New Email Statistics admin page with SES quota, Cost Explorer billing, delivery health, and queue status
+- Admin can clear pending queue or process it via CLI (`flask process-email-queue`) or API
+- Token-authenticated `/admin/api/process-email-queue` endpoint for scheduled queue processing
+- Rate Limiting section added to Email Settings page
+
 ## 0.62.1
 - Fix SSE streaming hangs in AI import (~50% of the time in production)
 - Fix client-side buffer bug where TCP chunk splits caused lost SSE events
