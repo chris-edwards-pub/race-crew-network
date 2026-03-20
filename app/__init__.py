@@ -6,8 +6,9 @@ from flask_wtf.csrf import CSRFProtect
 from markupsafe import Markup, escape
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = "0.63.0"
+__version__ = "0.63.1"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -40,6 +41,7 @@ def create_app(test_config=None):
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     from app.admin import bp as admin_bp
     from app.auth import bp as auth_bp

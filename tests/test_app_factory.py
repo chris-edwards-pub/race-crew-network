@@ -90,6 +90,12 @@ class TestAppFactory:
         assert b"/admin/users" in resp.data
         assert b"/admin/settings/analytics" in resp.data
 
+    def test_proxy_fix_applied(self, app):
+        """ProxyFix middleware wraps the WSGI app for reverse proxy support."""
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        assert isinstance(app.wsgi_app, ProxyFix)
+
     def test_regatta_days_filter_single_day(self, app):
         with app.app_context():
             fn = app.jinja_env.filters["regatta_days"]
