@@ -1,5 +1,8 @@
 # Version History
 
+## 0.64.1
+- Fix RSVP reset: selecting "-" (no response) now deletes the RSVP record instead of showing "Invalid RSVP status" error
+
 ## 0.64.0
 - Add City, State field to regattas for displaying venue location details (e.g. "Eustis, FL")
 - City/State input on create/edit event form and AI import preview
