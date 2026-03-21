@@ -1,5 +1,9 @@
 # Version History
 
+## 0.67.1
+- Fix Email Statistics 500 error when Cost Explorer client creation fails (unbound `client` variable in except handler)
+- Fix Cost Explorer query failing on the 1st of the month when Start and End dates are equal
+
 ## 0.67.0
 - Add public Help & Documentation page with usage guides for all user roles
 - Add contact form with honeypot and timestamp spam protection
