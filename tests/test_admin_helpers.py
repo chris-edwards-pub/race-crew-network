@@ -1,10 +1,12 @@
 """Tests for helper functions in app.admin.routes."""
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from bs4 import BeautifulSoup
 
-from app.admin.routes import (_extract_data_attributes, _extract_jsonld_events,
+from app.admin.routes import (_cleanup_stale_import_cache,
+                              _extract_data_attributes, _extract_jsonld_events,
                               _fetch_clubspot_documents, _is_private_ip,
                               _parse_clubspot_regatta_id)
 
@@ -292,3 +294,53 @@ class TestFetchClubspotDocuments:
         call_kwargs = mock_get.call_args
         headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
         assert headers["X-Parse-Application-Id"] == "myclubspot2017"
+
+
+# --- _cleanup_stale_import_cache ---
+
+
+class TestCleanupStaleImportCache:
+    def test_deletes_entries_older_than_30_days(self, app, db):
+        from app.models import ImportCache
+
+        old_entry = ImportCache(
+            url="https://example.com/old",
+            year=2025,
+            results_json="[]",
+            regatta_count=0,
+            extracted_at=datetime.now(timezone.utc) - timedelta(days=31),
+        )
+        db.session.add(old_entry)
+        db.session.commit()
+
+        with app.app_context():
+            _cleanup_stale_import_cache()
+
+        assert (
+            ImportCache.query.filter_by(url="https://example.com/old").first() is None
+        )
+
+    def test_preserves_entries_newer_than_30_days(self, app, db):
+        from app.models import ImportCache
+
+        recent_entry = ImportCache(
+            url="https://example.com/recent",
+            year=2025,
+            results_json="[]",
+            regatta_count=0,
+            extracted_at=datetime.now(timezone.utc) - timedelta(days=29),
+        )
+        db.session.add(recent_entry)
+        db.session.commit()
+
+        with app.app_context():
+            _cleanup_stale_import_cache()
+
+        assert (
+            ImportCache.query.filter_by(url="https://example.com/recent").first()
+            is not None
+        )
+
+    def test_no_entries_does_not_error(self, app, db):
+        with app.app_context():
+            _cleanup_stale_import_cache()

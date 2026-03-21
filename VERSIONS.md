@@ -1,5 +1,8 @@
 # Version History
 
+## 0.65.1
+- Auto-delete ImportCache entries older than 30 days to prevent stale data accumulation
+
 ## 0.65.0
 - Update calendar subscription instructions with accurate per-app guidance for Apple Calendar, Google Calendar, and Outlook (web, Windows, Mac)
 - Add "at event start" reminder/notification to all calendar subscription events

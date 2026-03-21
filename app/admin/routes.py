@@ -66,6 +66,13 @@ def _cleanup_stale_task_results() -> None:
     db.session.commit()
 
 
+def _cleanup_stale_import_cache(max_age_days: int = 30) -> None:
+    """Delete ImportCache entries older than max_age_days."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    ImportCache.query.filter(ImportCache.extracted_at < cutoff).delete()
+    db.session.commit()
+
+
 def _require_admin():
     """Return a redirect response if the user is not an admin, else None."""
     if not current_user.is_admin:
@@ -682,6 +689,7 @@ def import_schedule_extract():
 
     def generate():
         _cleanup_stale_task_results()
+        _cleanup_stale_import_cache()
         content = schedule_text
         from_cache = False
 
@@ -876,6 +884,7 @@ def import_schedule_extract_file():
 
     def generate():
         _cleanup_stale_task_results()
+        _cleanup_stale_import_cache()
         if file_bytes is None or not file_name:
             yield _sse({"type": "error", "message": "No file uploaded."})
             yield _sse({"type": "failed"})
@@ -1060,6 +1069,7 @@ def import_schedule_extract_single():
 
     def generate():
         _cleanup_stale_task_results()
+        _cleanup_stale_import_cache()
         if not schedule_url:
             yield _sse({"type": "error", "message": "Provide a regatta URL."})
             yield _sse({"type": "failed"})
@@ -1303,7 +1313,9 @@ def import_schedule_confirm():
         # Auto-generate Google Maps link if no location_url
         if not location_url and location:
             maps_query = f"{location}, {city_state}" if city_state else location
-            location_url = f"https://www.google.com/maps/search/{quote_plus(maps_query)}"
+            location_url = (
+                f"https://www.google.com/maps/search/{quote_plus(maps_query)}"
+            )
 
         detail_url = request.form.get(f"detail_url_{idx}", "").strip()
 
@@ -1405,6 +1417,7 @@ def import_schedule_discover():
 
     def generate():
         _cleanup_stale_task_results()
+        _cleanup_stale_import_cache()
         total_docs = 0
 
         if not has_detail_urls:
@@ -1615,6 +1628,7 @@ def discover_documents_for_regatta(regatta_id: int):
 
     def generate():
         _cleanup_stale_task_results()
+        _cleanup_stale_import_cache()
         total_docs = 0
         documents = []
 
