@@ -1,5 +1,8 @@
 # Version History
 
+## 0.69.1
+- Remove Calendar Subscription section from Profile Settings page
+
 ## 0.69.0
 - Add email-based forgot password / reset password flow with 1-hour token expiry
 - Upgrade password requirements to 8+ characters with uppercase, lowercase, and number
