@@ -105,6 +105,9 @@ def _send_via_ses(
     region = settings["ses_region"]
     client = _get_ses_client(region)
 
+    # Wrap subject with sailboat emoji
+    subject = f"⛵ {subject} ⛵"
+
     # Build MIME message for custom headers
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -119,15 +122,26 @@ def _send_via_ses(
     # Attach text part
     msg.attach(MIMEText(body_text, "plain", "utf-8"))
 
-    # Attach HTML part with unsubscribe footer
+    # Attach HTML part with logo header and unsubscribe footer
     if body_html:
+        logo_url = url_for(
+            "static",
+            filename="img/race-crew-network-1536x1024.png",
+            _external=True,
+        )
+        header = (
+            '<div style="text-align:center;margin-bottom:20px;">'
+            f'<img src="{logo_url}" alt="Race Crew Network" '
+            'style="max-width:350px;width:100%;height:auto;" />'
+            "</div>"
+        )
         footer = (
             '<hr style="margin-top:20px;border:none;border-top:1px solid #ddd;">'
             '<p style="font-size:12px;color:#888;">'
             f'<a href="{unsubscribe_url}">Unsubscribe</a> from Race Crew Network emails.'
             "</p>"
         )
-        body_html_with_footer = body_html + footer
+        body_html_with_footer = header + body_html + footer
         msg.attach(MIMEText(body_html_with_footer, "html", "utf-8"))
 
     client.send_raw_email(

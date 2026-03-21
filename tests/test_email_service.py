@@ -1,5 +1,7 @@
 """Tests for email service (SES integration)."""
 
+from email import message_from_string
+from email.header import decode_header
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +12,26 @@ from app.admin.email_service import (generate_unsubscribe_token,
                                      is_email_configured, load_email_settings,
                                      send_email, verify_unsubscribe_token)
 from app.models import SiteSetting, User
+
+
+def _decode_subject(raw_data: str) -> str:
+    """Parse a raw MIME message and return the decoded Subject string."""
+    msg = message_from_string(raw_data)
+    parts = decode_header(msg["Subject"])
+    return "".join(
+        part.decode(enc or "utf-8") if isinstance(part, bytes) else part
+        for part, enc in parts
+    )
+
+
+def _decode_html_body(raw_data: str) -> str:
+    """Extract and decode the HTML part from a raw MIME message."""
+    msg = message_from_string(raw_data)
+    for part in msg.walk():
+        if part.get_content_type() == "text/html":
+            payload = part.get_payload(decode=True)
+            return payload.decode("utf-8")
+    return ""
 
 
 class TestLoadEmailSettings:
@@ -102,12 +124,11 @@ class TestSendEmail:
         raw_data = call_kwargs["RawMessage"]["Data"]
         assert "List-Unsubscribe:" in raw_data
         assert "List-Unsubscribe-Post:" in raw_data
-        assert "Test Subject" in raw_data
+        decoded_subject = _decode_subject(raw_data)
+        assert "Test Subject" in decoded_subject
 
     @patch("app.admin.email_service._get_ses_client")
     def test_sends_html_with_footer(self, mock_get_client, app, db):
-        import base64
-
         db.session.add(SiteSetting(key="ses_sender", value="from@example.com"))
         db.session.commit()
 
@@ -119,12 +140,7 @@ class TestSendEmail:
         call_kwargs = mock_client.send_raw_email.call_args[1]
         assert call_kwargs["Source"] == "Race Crew Network <from@example.com>"
         raw_data = call_kwargs["RawMessage"]["Data"]
-        # HTML body is base64-encoded in the MIME message; decode to verify
-        assert "text/html" in raw_data
-        # Extract and decode the base64 HTML part
-        parts = raw_data.split("text/html")
-        b64_content = parts[1].split("\n\n", 1)[1].split("\n--")[0].strip()
-        decoded_html = base64.b64decode(b64_content).decode("utf-8")
+        decoded_html = _decode_html_body(raw_data)
         assert "<p>HTML</p>" in decoded_html
         assert "Unsubscribe" in decoded_html
 
@@ -197,3 +213,65 @@ class TestSendEmail:
         send_email("optin@example.com", "Subject", "Body")
 
         mock_client.send_raw_email.assert_called_once()
+
+
+class TestEmailBranding:
+    @patch("app.admin.email_service._get_ses_client")
+    def test_subject_wrapped_with_sailboat_emoji(self, mock_get_client, app, db):
+        db.session.add(SiteSetting(key="ses_sender", value="from@example.com"))
+        db.session.commit()
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        send_email("to@example.com", "Test Subject", "Body")
+
+        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        decoded_subject = _decode_subject(raw_data)
+        assert decoded_subject == "⛵ Test Subject ⛵"
+
+    @patch("app.admin.email_service._get_ses_client")
+    def test_html_email_includes_logo(self, mock_get_client, app, db):
+        db.session.add(SiteSetting(key="ses_sender", value="from@example.com"))
+        db.session.commit()
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        send_email("to@example.com", "Subject", "Text", body_html="<p>HTML</p>")
+
+        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        decoded_html = _decode_html_body(raw_data)
+        assert "race-crew-network-1536x1024.png" in decoded_html
+        assert 'alt="Race Crew Network"' in decoded_html
+        assert "max-width:350px" in decoded_html
+
+    @patch("app.admin.email_service._get_ses_client")
+    def test_logo_before_body_before_footer(self, mock_get_client, app, db):
+        db.session.add(SiteSetting(key="ses_sender", value="from@example.com"))
+        db.session.commit()
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        send_email("to@example.com", "Subject", "Text", body_html="<p>Body</p>")
+
+        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        decoded_html = _decode_html_body(raw_data)
+        logo_pos = decoded_html.index("race-crew-network-1536x1024.png")
+        body_pos = decoded_html.index("<p>Body</p>")
+        footer_pos = decoded_html.index("Unsubscribe")
+        assert logo_pos < body_pos < footer_pos
+
+    @patch("app.admin.email_service._get_ses_client")
+    def test_text_only_email_no_logo(self, mock_get_client, app, db):
+        db.session.add(SiteSetting(key="ses_sender", value="from@example.com"))
+        db.session.commit()
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        send_email("to@example.com", "Subject", "Text only body")
+
+        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        assert "race-crew-network-1536x1024.png" not in raw_data

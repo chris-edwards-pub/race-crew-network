@@ -1,5 +1,10 @@
 # Version History
 
+## 0.66.0
+- Add Race Crew Network logo header to all HTML emails
+- Wrap all email subject lines with sailboat emoji (⛵)
+- Branding applied centrally in `_send_via_ses()` so all current and future emails are covered
+
 ## 0.65.1
 - Auto-delete ImportCache entries older than 30 days to prevent stale data accumulation
 
