@@ -243,6 +243,20 @@ class TestRsvpNotification:
             # Should not raise
             notify_rsvp_to_skipper(rsvp)
 
+    @patch("app.notifications.service.send_email")
+    @patch("app.notifications.service.is_email_configured", return_value=True)
+    def test_rsvp_skips_when_skipper_rsvps_own_regatta(
+        self, mock_configured, mock_send, app, db, skipper_user
+    ):
+        from app.notifications.service import notify_rsvp_to_skipper
+
+        rsvp = self._create_rsvp(db, skipper_user, skipper_user)
+
+        with app.test_request_context():
+            notify_rsvp_to_skipper(rsvp)
+
+        mock_send.assert_not_called()
+
 
 class TestNotifyCrewRoute:
     """Tests for the POST /regattas/notify-crew route."""
