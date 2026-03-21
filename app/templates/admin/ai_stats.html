@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}AI Statistics — Race Crew Network{% endblock %}
+{% block content %}
+<div class="container mt-3">
+    <h2 class="mb-3">AI Statistics</h2>
+
+    <div class="row g-3">
+        <!-- Monthly Budget -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Budget</h5>
+                    {% set pct = stats.budget_pct | round %}
+                    {% if pct >= 90 %}
+                        {% set bar_color = "bg-danger" %}
+                    {% elif pct >= 70 %}
+                        {% set bar_color = "bg-warning" %}
+                    {% else %}
+                        {% set bar_color = "bg-success" %}
+                    {% endif %}
+                    <p class="mb-1"><strong>${{ "%.2f" | format(stats.month_cost) }}</strong> / ${{ "%.2f" | format(stats.budget_limit) }}</p>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar {{ bar_color }}" role="progressbar" style="width: {{ [pct, 100] | min }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">{{ pct | int }}%</div>
+                    </div>
+                    <form method="POST" class="d-flex align-items-center gap-2 mt-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label for="cost_limit" class="form-label mb-0 text-nowrap">Limit $</label>
+                        <input type="number" step="0.01" min="0" name="cost_limit" id="cost_limit" class="form-control form-control-sm" style="max-width: 100px;" value="{{ "%.2f" | format(stats.budget_limit) }}">
+                        <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Summary -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Cost Summary</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Today:</strong> ${{ "%.4f" | format(stats.today_cost) }}</li>
+                        <li><strong>This month:</strong> ${{ "%.4f" | format(stats.month_cost) }}</li>
+                        <li><strong>Last month:</strong> ${{ "%.4f" | format(stats.last_month_cost) }}</li>
+                        <li><strong>All time:</strong> ${{ "%.4f" | format(stats.all_time_cost) }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Calls -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">API Calls</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Today:</strong> {{ stats.today_calls }}</li>
+                        <li><strong>This month:</strong> {{ stats.month_calls }}</li>
+                        <li><strong>All time:</strong> {{ stats.all_time_calls }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Usage -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Token Usage (This Month)</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Input tokens:</strong> {{ "{:,}".format(stats.month_input_tokens) }}</li>
+                        <li><strong>Output tokens:</strong> {{ "{:,}".format(stats.month_output_tokens) }}</li>
+                        <li><strong>Total tokens:</strong> {{ "{:,}".format(stats.month_input_tokens + stats.month_output_tokens) }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage by Function -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Usage by Function (This Month)</h5>
+                    {% if stats.by_function %}
+                    <ul class="list-unstyled mb-0">
+                        {% for fn in stats.by_function %}
+                        <li><strong>{{ fn.name }}:</strong> {{ fn.calls }} calls — ${{ "%.4f" | format(fn.cost) }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No API calls this month.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing Info -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Pricing Info</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Model:</strong> Claude Sonnet 4</li>
+                        <li><strong>Input:</strong> $3.00 / 1M tokens</li>
+                        <li><strong>Output:</strong> $15.00 / 1M tokens</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

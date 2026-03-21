@@ -16,6 +16,7 @@ A simple web app for organizing sailing events. Track dates, locations, NOR/SI d
 - Admin: manage all users, site settings, invite skippers
 - Skipper: add/edit/delete own events, upload documents, invite crew, import schedules
 - Crew: view skipper's schedule, download docs, set RSVP
+- AI usage tracking with cost statistics dashboard, monthly budget cap, and automatic 80% budget alert
 - Email rate limiting with queueing, admin alerts, and statistics dashboard
 - Invite-based registration (no public sign-up)
 

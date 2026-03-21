@@ -19,6 +19,7 @@ from app import csrf, db
 from app.admin import bp
 from app.admin.ai_service import (discover_documents, discover_documents_deep,
                                   extract_regattas)
+from app.admin.ai_stats import get_ai_usage_stats
 from app.admin.email_service import (is_email_configured, load_email_settings,
                                      send_email)
 from app.admin.email_stats import (get_app_email_stats, get_ses_cost,
@@ -666,6 +667,37 @@ def email_stats():
         app_stats=app_stats,
         delivery_health=delivery_health,
     )
+
+
+@bp.route("/admin/ai-stats", methods=["GET", "POST"])
+@login_required
+def ai_stats():
+    denied = _require_admin()
+    if denied:
+        return denied
+
+    if request.method == "POST":
+        new_limit = request.form.get("cost_limit", "").strip()
+        try:
+            limit_val = float(new_limit)
+            if limit_val < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            flash("Invalid cost limit value.", "error")
+            return redirect(url_for("admin.ai_stats"))
+
+        setting = SiteSetting.query.filter_by(key="ai_monthly_cost_limit").first()
+        if setting:
+            setting.value = str(limit_val)
+        else:
+            setting = SiteSetting(key="ai_monthly_cost_limit", value=str(limit_val))
+            db.session.add(setting)
+        db.session.commit()
+        flash(f"Monthly AI budget updated to ${limit_val:.2f}.", "success")
+        return redirect(url_for("admin.ai_stats"))
+
+    stats = get_ai_usage_stats()
+    return render_template("admin/ai_stats.html", stats=stats)
 
 
 @bp.route("/admin/import-schedule/extract", methods=["POST"])
