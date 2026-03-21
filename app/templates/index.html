@@ -422,6 +422,13 @@ function openNotifyModal(tableId) {
 <script>
 function saveScrollAndSubmit(form) {
     sessionStorage.setItem('rsvpScrollY', window.scrollY);
+    var checked = [];
+    document.querySelectorAll('input[name="selected"]:checked').forEach(function(cb) {
+        checked.push(cb.value);
+    });
+    if (checked.length) {
+        sessionStorage.setItem('rsvpChecked', JSON.stringify(checked));
+    }
     form.submit();
 }
 
@@ -430,6 +437,14 @@ function saveScrollAndSubmit(form) {
     if (scrollY !== null) {
         sessionStorage.removeItem('rsvpScrollY');
         window.scrollTo(0, parseInt(scrollY, 10));
+    }
+    var checked = sessionStorage.getItem('rsvpChecked');
+    if (checked !== null) {
+        sessionStorage.removeItem('rsvpChecked');
+        JSON.parse(checked).forEach(function(val) {
+            var cb = document.querySelector('input[name="selected"][value="' + val + '"]');
+            if (cb) cb.checked = true;
+        });
     }
 })();
 </script>
