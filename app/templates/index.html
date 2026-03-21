@@ -156,7 +156,7 @@
                         {% if selected_skipper is not none %}<input type="hidden" name="redirect_skipper" value="{{ selected_skipper }}">{% endif %}
                         {% for rf in rsvp_filters %}<input type="hidden" name="redirect_rsvp" value="{{ rf }}">{% endfor %}
                         {% set my_rsvp = regatta.rsvps.filter_by(user_id=current_user.id).first() %}
-                        <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                        <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="saveScrollAndSubmit(this.form)">
                             <option value="" {% if not my_rsvp %}selected{% endif %}>—</option>
                             <option value="yes" {% if my_rsvp and my_rsvp.status == 'yes' %}selected{% endif %}>Yes</option>
                             <option value="no" {% if my_rsvp and my_rsvp.status == 'no' %}selected{% endif %}>No</option>
@@ -249,7 +249,7 @@
                     {% if selected_skipper is not none %}<input type="hidden" name="redirect_skipper" value="{{ selected_skipper }}">{% endif %}
                     {% for rf in rsvp_filters %}<input type="hidden" name="redirect_rsvp" value="{{ rf }}">{% endfor %}
                     {% set my_rsvp = regatta.rsvps.filter_by(user_id=current_user.id).first() %}
-                    <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                    <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="saveScrollAndSubmit(this.form)">
                         <option value="" {% if not my_rsvp %}selected{% endif %}>—</option>
                         <option value="yes" {% if my_rsvp and my_rsvp.status == 'yes' %}selected{% endif %}>Yes</option>
                         <option value="no" {% if my_rsvp and my_rsvp.status == 'no' %}selected{% endif %}>No</option>
@@ -418,4 +418,19 @@ function openNotifyModal(tableId) {
 })();
 </script>
 {% endif %}
+
+<script>
+function saveScrollAndSubmit(form) {
+    sessionStorage.setItem('rsvpScrollY', window.scrollY);
+    form.submit();
+}
+
+(function() {
+    var scrollY = sessionStorage.getItem('rsvpScrollY');
+    if (scrollY !== null) {
+        sessionStorage.removeItem('rsvpScrollY');
+        window.scrollTo(0, parseInt(scrollY, 10));
+    }
+})();
+</script>
 {% endblock %}

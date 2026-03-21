@@ -118,6 +118,9 @@ def notify_rsvp_to_skipper(rsvp) -> None:
     if not skipper:
         return
 
+    if rsvp.user_id == skipper.id:
+        return
+
     if not skipper.email_opt_in:
         return
 

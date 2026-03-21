@@ -1,5 +1,8 @@
 # Version History
 
+## 0.69.4
+- Preserve scroll position on RSVP status change so the page doesn't jump to the top after submitting
+
 ## 0.69.3
 - Fix Email Statistics 500 error caused by referencing non-existent `BillingViewNotFoundException` exception in botocore
 
