@@ -1,5 +1,10 @@
 # Version History
 
+## 0.67.0
+- Add public Help & Documentation page with usage guides for all user roles
+- Add contact form with honeypot and timestamp spam protection
+- Help link visible in navbar for all users, including anonymous visitors
+
 ## 0.66.0
 - Add Race Crew Network logo header to all HTML emails
 - Wrap all email subject lines with sailboat emoji (⛵)

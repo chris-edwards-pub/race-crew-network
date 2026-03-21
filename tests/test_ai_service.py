@@ -6,8 +6,8 @@ import anthropic
 import pytest
 
 from app.admin.ai_service import (EXTRACTION_PROMPT, _parse_json_response,
-                                  discover_documents,
-                                  discover_documents_deep, extract_regattas)
+                                  discover_documents, discover_documents_deep,
+                                  extract_regattas)
 
 # --- _parse_json_response ---
 

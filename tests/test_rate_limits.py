@@ -65,7 +65,8 @@ class TestEmailRateLimit:
         _set_rate_limit(db, 50)
 
         with app.app_context():
-            from app.notifications.rate_limits import is_within_email_rate_limit
+            from app.notifications.rate_limits import \
+                is_within_email_rate_limit
 
             assert is_within_email_rate_limit() is True
 
@@ -77,9 +78,7 @@ class TestEmailRateLimit:
 
         with app.app_context():
             from app.notifications.rate_limits import (
-                is_within_email_rate_limit,
-                queue_email,
-            )
+                is_within_email_rate_limit, queue_email)
 
             assert is_within_email_rate_limit() is False
 
@@ -128,9 +127,7 @@ class TestEmailRateLimit:
 
         with app.app_context():
             from app.notifications.rate_limits import (
-                is_within_email_rate_limit,
-                send_rate_limit_alert,
-            )
+                is_within_email_rate_limit, send_rate_limit_alert)
 
             assert is_within_email_rate_limit() is False
             send_rate_limit_alert()
@@ -189,7 +186,8 @@ class TestEmailQueue:
         _create_admin(db)
 
         with app.app_context():
-            from app.notifications.rate_limits import process_email_queue, queue_email
+            from app.notifications.rate_limits import (process_email_queue,
+                                                       queue_email)
 
             queue_email("a@test.com", "Sub A", "Body A")
             queue_email("b@test.com", "Sub B", "Body B")
@@ -209,7 +207,8 @@ class TestEmailQueue:
         _create_notification_logs(db, admin.id, 1)
 
         with app.app_context():
-            from app.notifications.rate_limits import process_email_queue, queue_email
+            from app.notifications.rate_limits import (process_email_queue,
+                                                       queue_email)
 
             queue_email("a@test.com", "Sub A", "Body A")
             queue_email("b@test.com", "Sub B", "Body B")
@@ -227,7 +226,8 @@ class TestEmailQueue:
         mock_send.side_effect = Exception("SES error")
 
         with app.app_context():
-            from app.notifications.rate_limits import process_email_queue, queue_email
+            from app.notifications.rate_limits import (process_email_queue,
+                                                       queue_email)
 
             queue_email("fail@test.com", "Sub", "Body")
             result = process_email_queue()

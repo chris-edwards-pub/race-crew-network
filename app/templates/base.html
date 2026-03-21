@@ -26,17 +26,20 @@
             <a class="navbar-brand" href="{{ url_for('regattas.index') }}">
                 <img src="{{ url_for('static', filename='img/race-crew-network-1536x1024.png') }}" alt="Race Crew Network" class="navbar-logo">
             </a>
-            {% if current_user.is_authenticated %}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navMenu">
                 <div class="navbar-nav ms-auto align-items-center gap-2">
+                    {% if current_user.is_authenticated %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('regattas.index') }}">Home</a>
                     <a class="nav-link nav-pill-link" href="{{ url_for('calendar.subscribe') }}">Calendar</a>
                     {% if current_user.is_admin or current_user.is_skipper %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('auth.my_crew') }}">My Crew</a>
                     {% endif %}
+                    {% endif %}
+                    <a class="nav-link nav-pill-link" href="{{ url_for('help.index') }}">Help</a>
+                    {% if current_user.is_authenticated %}
                     {% if current_user.is_admin %}
                     <li class="nav-item dropdown">
                         <a class="nav-link nav-pill-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
@@ -64,9 +67,9 @@
                             <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
                         </ul>
                     </li>
+                    {% endif %}
                 </div>
             </div>
-            {% endif %}
         </div>
     </nav>
 

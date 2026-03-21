@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Help — Race Crew Network{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Help &amp; Documentation</h2>
+
+    <div class="row">
+        {# -- Mobile TOC (collapsible, visible below md) -- #}
+        <div class="col-12 d-md-none mb-3">
+            <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#tocMobile" aria-expanded="false" aria-controls="tocMobile">
+                Table of Contents
+            </button>
+            <div class="collapse mt-2" id="tocMobile">
+                <div class="list-group list-group-flush">
+                    <a href="#getting-started" class="list-group-item list-group-item-action">Getting Started</a>
+                    <a href="#request-access" class="list-group-item list-group-item-action">How to Request Access</a>
+                    <a href="#schedule-rsvps" class="list-group-item list-group-item-action">Viewing the Schedule &amp; RSVPs</a>
+                    <a href="#calendar" class="list-group-item list-group-item-action">Calendar Subscription</a>
+                    <a href="#documents" class="list-group-item list-group-item-action">Documents</a>
+                    <a href="#profile-notifications" class="list-group-item list-group-item-action">Profile &amp; Notifications</a>
+                    <a href="#skippers" class="list-group-item list-group-item-action">For Skippers: Crew &amp; Events</a>
+                    <a href="#developers" class="list-group-item list-group-item-action">For Developers</a>
+                    <a href="#contact" class="list-group-item list-group-item-action">Contact Support</a>
+                </div>
+            </div>
+        </div>
+
+        {# -- Desktop TOC sidebar (sticky, visible md+) -- #}
+        <div class="col-md-3 d-none d-md-block">
+            <div class="position-sticky" style="top: 80px;">
+                <h6 class="text-muted text-uppercase small mb-3">Contents</h6>
+                <nav class="nav flex-column">
+                    <a class="nav-link px-0 py-1" href="#getting-started">Getting Started</a>
+                    <a class="nav-link px-0 py-1" href="#request-access">How to Request Access</a>
+                    <a class="nav-link px-0 py-1" href="#schedule-rsvps">Schedule &amp; RSVPs</a>
+                    <a class="nav-link px-0 py-1" href="#calendar">Calendar Subscription</a>
+                    <a class="nav-link px-0 py-1" href="#documents">Documents</a>
+                    <a class="nav-link px-0 py-1" href="#profile-notifications">Profile &amp; Notifications</a>
+                    <a class="nav-link px-0 py-1" href="#skippers">For Skippers</a>
+                    <a class="nav-link px-0 py-1" href="#developers">For Developers</a>
+                    <a class="nav-link px-0 py-1" href="#contact">Contact Support</a>
+                </nav>
+            </div>
+        </div>
+
+        {# -- Main content -- #}
+        <div class="col-md-9">
+
+            {# 1. Getting Started #}
+            <section id="getting-started" class="mb-5">
+                <h3>Getting Started</h3>
+                <p>Race Crew Network (RCN) is a private scheduling and communication tool for sailing race crews. It helps skippers organize their race calendar and crew members stay on top of upcoming events.</p>
+                <p>After your first login, set up your profile by navigating to <strong>Profile Settings</strong> from the avatar dropdown in the top-right corner. From there you can:</p>
+                <ul>
+                    <li>Set your <strong>display name</strong> and <strong>initials</strong></li>
+                    <li>Upload a <strong>profile picture</strong> or use the auto-generated avatar</li>
+                    <li>Update your email address and password</li>
+                </ul>
+            </section>
+
+            {# 2. How to Request Access #}
+            <section id="request-access" class="mb-5">
+                <h3>How to Request Access</h3>
+                <p>RCN is <strong>invite-only</strong>. To get access:</p>
+                <ol>
+                    <li>Ask your skipper or team admin if they have a Race Crew Network account</li>
+                    <li>They can invite you by sharing a <strong>registration link</strong> or sending you an email invitation from the <strong>My Crew</strong> page</li>
+                    <li>Click the link, create your account, and you'll automatically be connected to your skipper's crew</li>
+                </ol>
+                <p>If you're a skipper looking to set up your own crew, contact us using the form below.</p>
+            </section>
+
+            {# 3. Viewing the Schedule & RSVPs #}
+            <section id="schedule-rsvps" class="mb-5">
+                <h3>Viewing the Schedule &amp; RSVPs</h3>
+                <p>The <strong>Home</strong> page shows your upcoming race schedule. Events are listed chronologically with key details like date, location, and event type.</p>
+                <ul>
+                    <li><strong>RSVP</strong> to each event with <strong>Yes</strong>, <strong>No</strong>, or <strong>Maybe</strong> so your skipper knows who's available</li>
+                    <li>On <strong>desktop</strong>, you'll see a full table view with crew RSVP status at a glance</li>
+                    <li>On <strong>mobile</strong>, events are shown as cards optimized for smaller screens</li>
+                    <li>Use the tabs to switch between <strong>Upcoming</strong> and <strong>Past</strong> events</li>
+                </ul>
+            </section>
+
+            {# 4. Calendar Subscription #}
+            <section id="calendar" class="mb-5">
+                <h3>Calendar Subscription</h3>
+                <p>Subscribe to your race schedule so events automatically appear in your personal calendar. Events you've RSVP'd <strong>Yes</strong> or <strong>Maybe</strong> to will sync automatically.</p>
+                <p>Click <strong>Calendar</strong> in the navbar to get your subscription URL, then add it to your preferred app:</p>
+                <ul>
+                    <li><strong>Apple Calendar</strong> — Click the "Open in Calendar App" button for instant setup</li>
+                    <li><strong>Google Calendar</strong> — Copy the HTTPS URL and add it under "Other calendars &rarr; From URL"</li>
+                    <li><strong>Outlook</strong> — Copy the calendar URL and subscribe via "Add calendar &rarr; From internet"</li>
+                </ul>
+                <p class="text-muted small">Your subscription URL is private. Don't share it with others.</p>
+            </section>
+
+            {# 5. Documents #}
+            <section id="documents" class="mb-5">
+                <h3>Documents</h3>
+                <p>Skippers and admins can attach documents to events — typically <strong>Notice of Race (NOR)</strong>, <strong>Sailing Instructions (SI)</strong>, and other race documents.</p>
+                <ul>
+                    <li>View attached documents from the event detail page</li>
+                    <li>Documents open in a new tab for easy reading</li>
+                    <li>Supported formats include PDF and common document types</li>
+                </ul>
+            </section>
+
+            {# 6. Profile & Notifications #}
+            <section id="profile-notifications" class="mb-5">
+                <h3>Profile &amp; Notifications</h3>
+                <p>Manage your account from <strong>Profile Settings</strong> (avatar dropdown &rarr; Profile Settings):</p>
+                <ul>
+                    <li><strong>Display name &amp; initials</strong> — How you appear to your crew</li>
+                    <li><strong>Email</strong> — Used for login and notifications</li>
+                    <li><strong>Password</strong> — Change your password at any time</li>
+                    <li><strong>Profile picture</strong> — Upload a photo or keep the auto-generated avatar</li>
+                    <li><strong>Email preferences</strong> — Choose to receive email notifications or opt out entirely. You can also choose between <strong>immediate</strong> delivery or a <strong>digest</strong> summary</li>
+                </ul>
+            </section>
+
+            {# 7. For Skippers: Crew & Events #}
+            <section id="skippers" class="mb-5">
+                <h3>For Skippers: Crew &amp; Events</h3>
+                <p>As a skipper, you have additional tools to manage your crew and race schedule.</p>
+
+                <h5 class="mt-3">Inviting Crew</h5>
+                <ul>
+                    <li>Go to <strong>My Crew</strong> to see your current crew roster</li>
+                    <li>Share the <strong>registration link</strong> or send <strong>email invitations</strong> directly</li>
+                    <li>New members are automatically linked to your crew when they register</li>
+                </ul>
+
+                <h5 class="mt-3">Managing Events</h5>
+                <ul>
+                    <li><strong>Add</strong> events manually with date, location, and details</li>
+                    <li><strong>Edit</strong> or <strong>delete</strong> events from the event detail page</li>
+                    <li><strong>Import schedules</strong> — paste a URL, upload a file, or paste text from a regatta schedule. The AI-powered importer will extract event details automatically</li>
+                </ul>
+
+                <h5 class="mt-3">Notifying Crew</h5>
+                <ul>
+                    <li>After adding or updating events, use <strong>Notify Crew</strong> to send email updates to your team</li>
+                    <li>Notifications respect each crew member's email preferences</li>
+                </ul>
+            </section>
+
+            {# 8. For Developers #}
+            <section id="developers" class="mb-5">
+                <h3>For Developers</h3>
+                <p>Race Crew Network is open source and built with Flask, SQLAlchemy, and Bootstrap. If you're interested in contributing or learning how it's built:</p>
+                <ul>
+                    <li>Check out the <a href="https://github.com/chris-edwards-pub/race-crew-network/tree/master/training" target="_blank" rel="noopener">training directory</a> — an 18-day Flask curriculum that walks through building a web app from scratch</li>
+                    <li>The full source code is available on <a href="https://github.com/chris-edwards-pub/race-crew-network" target="_blank" rel="noopener">GitHub</a></li>
+                </ul>
+            </section>
+
+            {# 9. Contact Support #}
+            <section id="contact" class="mb-5">
+                <h3>Contact Support</h3>
+                <p>Have a question, found a bug, or need help? Send us a message and we'll get back to you.</p>
+
+                {% if contact_status == "sent" %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    Your message has been sent. We'll get back to you soon!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% elif contact_status == "missing" %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    Please fill in all required fields.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% elif contact_status == "error" %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    Sorry, we couldn't send your message right now. Please try again later.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('help.contact') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="form_timestamp" value="{{ form_timestamp }}">
+
+                            {# Honeypot field — hidden from humans, bots auto-fill it #}
+                            <div style="display:none;" aria-hidden="true">
+                                <label for="website">Website</label>
+                                <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contact-name" class="form-label">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="contact-name" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contact-email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="contact-email" name="email" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contact-message" class="form-label">Message <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="contact-message" name="message" rows="5" required></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Send Message</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -88,6 +88,7 @@ def _send_via_ses(
     subject: str,
     body_text: str,
     body_html: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Build MIME message and send via AWS SES.
 
@@ -113,6 +114,9 @@ def _send_via_ses(
     msg["Subject"] = subject
     msg["From"] = f"Race Crew Network <{sender}>"
     msg["To"] = to
+
+    if reply_to:
+        msg["Reply-To"] = reply_to
 
     # Add unsubscribe headers (RFC 8058)
     unsubscribe_url = generate_unsubscribe_url(to)
