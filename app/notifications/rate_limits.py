@@ -26,7 +26,7 @@ def get_hourly_email_limit() -> int:
 
 def get_emails_sent_this_hour() -> int:
     """Count emails sent in the last hour (NotificationLog + sent queue entries)."""
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None)
     log_count = NotificationLog.query.filter(
         NotificationLog.sent_at >= one_hour_ago
     ).count()
@@ -68,7 +68,7 @@ def send_rate_limit_alert() -> None:
     Bypasses the rate limit by calling _send_via_ses() directly.
     Deduped to at most one alert per hour via NotificationLog.
     """
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None)
     recent_alert = NotificationLog.query.filter(
         NotificationLog.notification_type == "rate_limit_alert",
         NotificationLog.sent_at >= one_hour_ago,
@@ -133,7 +133,7 @@ def process_email_queue() -> dict:
                 entry.to_email, entry.subject, entry.body_text, entry.body_html
             )
             entry.status = "sent"
-            entry.sent_at = datetime.now(timezone.utc)
+            entry.sent_at = datetime.now(timezone.utc).replace(tzinfo=None)
         except Exception as exc:
             entry.status = "failed"
             entry.error_message = str(exc)[:500]

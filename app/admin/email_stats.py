@@ -168,7 +168,7 @@ def get_ses_cost(months: int = 1) -> dict | None:
 
 def get_app_email_stats() -> dict:
     """Query NotificationLog and EmailQueue for app-level statistics."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=today_start.weekday())
     month_start = today_start.replace(day=1)
