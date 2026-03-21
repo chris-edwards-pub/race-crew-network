@@ -119,6 +119,11 @@ to the 16th.
 - If the text contains a link to an individual regatta's event page or \
 information page, include it as detail_url. This is NOT the venue/location URL.
 - Return ONLY the JSON array, no markdown fences, no explanation.
+- IMPORTANT: Always extract city_state when present. Schedules often list \
+city and state on a separate line from the venue name, e.g. \
+"Lake Lanier - Flowery Branch, GA" or "Jordan Lake - Apex, NC". \
+Extract the "City, ST" portion as city_state (e.g. "Flowery Branch, GA", \
+"Apex, NC"). Do NOT put the city/state in the location field.
 - If city_state is not explicitly mentioned in the text but you can infer it \
 from the location name (e.g. you know "Muscle Shoals Sailing Club" is in \
 Muscle Shoals, AL), provide your best inference. Most yacht clubs and sailing \

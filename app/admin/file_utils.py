@@ -1,6 +1,7 @@
-"""Utilities for extracting plain text from uploaded files (PDF, DOCX, TXT)."""
+"""Utilities for extracting plain text from uploaded files (PDF, DOCX, XLSX, TXT)."""
 
 from docx import Document as DocxDocument
+from openpyxl import load_workbook
 from pypdf import PdfReader
 from werkzeug.datastructures import FileStorage
 
@@ -35,6 +36,19 @@ def extract_text_from_docx(file_storage: FileStorage) -> str:
     return "\n".join(parts)
 
 
+def extract_text_from_excel(file_storage: FileStorage) -> str:
+    """Extract text from all sheets of an Excel (.xlsx) file."""
+    wb = load_workbook(file_storage.stream, read_only=True, data_only=True)
+    parts = []
+    for sheet in wb.worksheets:
+        for row in sheet.iter_rows(values_only=True):
+            cells = [str(c).strip() for c in row if c is not None and str(c).strip()]
+            if cells:
+                parts.append(" | ".join(cells))
+    wb.close()
+    return "\n".join(parts)
+
+
 def extract_text_from_file(file_storage: FileStorage, filename: str) -> str:
     """Dispatch to the correct extractor based on file extension.
 
@@ -46,6 +60,8 @@ def extract_text_from_file(file_storage: FileStorage, filename: str) -> str:
         text = extract_text_from_pdf(file_storage)
     elif ext == "docx":
         text = extract_text_from_docx(file_storage)
+    elif ext in ("xlsx", "xls"):
+        text = extract_text_from_excel(file_storage)
     elif ext == "txt":
         text = file_storage.stream.read().decode("utf-8", errors="replace")
     else:

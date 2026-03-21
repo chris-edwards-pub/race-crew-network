@@ -32,8 +32,8 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="schedule_file" class="form-label">Schedule File</label>
-                <input type="file" class="form-control" id="schedule_file" name="schedule_file" accept=".pdf,.docx,.txt" required>
-                <div class="form-text">Supported formats: PDF, DOCX, TXT</div>
+                <input type="file" class="form-control" id="schedule_file" name="schedule_file" accept=".pdf,.docx,.xlsx,.xls,.txt" required>
+                <div class="form-text">Supported formats: PDF, Word (DOCX), Excel (XLSX), TXT</div>
             </div>
             <div class="mb-3">
                 <label for="year" class="form-label">Year</label>
