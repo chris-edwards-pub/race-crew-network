@@ -155,11 +155,12 @@ def get_ses_cost(months: int = 1) -> dict | None:
             result["last_month"] = "$0.00"
 
         return result
-    except client.exceptions.BillingViewNotFoundException:
-        logger.info("Cost Explorer billing view not found")
-        return None
     except Exception as exc:
-        if "AccessDenied" in str(type(exc).__name__) or "AccessDenied" in str(exc):
+        exc_str = str(exc)
+        if "BillingView" in exc_str:
+            logger.info("Cost Explorer billing view not found")
+            return None
+        if "AccessDenied" in str(type(exc).__name__) or "AccessDenied" in exc_str:
             logger.info("Cost Explorer access denied — ce:GetCostAndUsage not granted")
             return None
         logger.exception("Failed to fetch SES cost data")

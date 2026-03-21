@@ -1,5 +1,8 @@
 # Version History
 
+## 0.69.3
+- Fix Email Statistics 500 error caused by referencing non-existent `BillingViewNotFoundException` exception in botocore
+
 ## 0.69.2
 - Fix Email Statistics and rate limit queries failing on MySQL due to timezone-aware datetime comparisons against naive DATETIME columns
 
