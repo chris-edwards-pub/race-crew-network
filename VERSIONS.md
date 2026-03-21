@@ -6,6 +6,7 @@
 - Improve AI extraction prompt to reliably extract city/state from schedule imports (file and paste)
 - Add Excel (.xlsx) file import support for schedule imports
 - Preserve bulk-select checkbox state across RSVP status changes
+- Replace bulk delete confirm dialog with type-to-confirm modal matching schedule delete
 
 ## 0.69.3
 - Fix Email Statistics 500 error caused by referencing non-existent `BillingViewNotFoundException` exception in botocore

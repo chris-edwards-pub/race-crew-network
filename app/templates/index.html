@@ -77,7 +77,7 @@
 {% set show_skipper = (selected_skipper == 0) or (selected_skipper is none and schedules|length > 1) %}
 {% macro regatta_table(regattas, is_past, table_id, show_skipper) %}
 {% if can_manage_any %}
-<form method="POST" action="{{ url_for('regattas.bulk_delete') }}" id="{{ table_id }}-form" onsubmit="return confirmBulkDelete(this)">
+<form method="POST" action="{{ url_for('regattas.bulk_delete') }}" id="{{ table_id }}-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endif %}
@@ -188,7 +188,7 @@
     {% if current_user.is_skipper and crew_list %}
     <button type="button" class="btn btn-sm btn-outline-primary" onclick="openNotifyModal('{{ table_id }}')">Notify Crew via Email</button>
     {% endif %}
-    <button type="submit" form="{{ table_id }}-form" class="btn btn-sm btn-outline-danger">Delete Selected</button>
+    <button type="button" class="btn btn-sm btn-outline-danger" onclick="openBulkDeleteModal('{{ table_id }}')">Delete Selected</button>
 </div>
 {% endif %}
 
@@ -327,6 +327,28 @@
 {% endif %}
 
 {% if can_manage_any %}
+<!-- Bulk Delete Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkDeleteModalLabel">Delete Selected Events</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger fw-bold">This will permanently delete the following events:</p>
+                <ul id="bulk-delete-list" class="list-unstyled mb-3"></ul>
+                <p>Type <strong>delete</strong> below to confirm:</p>
+                <input type="text" class="form-control" id="bulkDeleteConfirmInput" autocomplete="off" placeholder="Type delete to confirm">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="bulkDeleteBtn" disabled>Delete Events</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.querySelectorAll('.select-all').forEach(function(cb) {
     cb.addEventListener('change', function() {
@@ -337,14 +359,41 @@ document.querySelectorAll('.select-all').forEach(function(cb) {
     });
 });
 
-function confirmBulkDelete(form) {
-    var formId = form.id;
-    var count = document.querySelectorAll('input[name="selected"][form="' + formId + '"]:checked').length;
-    if (count === 0) {
+(function() {
+    var input = document.getElementById('bulkDeleteConfirmInput');
+    var btn = document.getElementById('bulkDeleteBtn');
+    input.addEventListener('input', function() {
+        btn.disabled = input.value.trim().toLowerCase() !== 'delete';
+    });
+    document.getElementById('bulkDeleteModal').addEventListener('hidden.bs.modal', function() {
+        input.value = '';
+        btn.disabled = true;
+    });
+})();
+
+function openBulkDeleteModal(tableId) {
+    var formId = tableId + '-form';
+    var checked = document.querySelectorAll('input[name="selected"][form="' + formId + '"]:checked');
+    if (checked.length === 0) {
         alert('No events selected.');
-        return false;
+        return;
     }
-    return confirm('Delete ' + count + ' selected event(s)?');
+    var listEl = document.getElementById('bulk-delete-list');
+    listEl.innerHTML = '';
+    checked.forEach(function(cb) {
+        var row = cb.closest('tr');
+        var nameCell = row ? row.querySelector('td strong') : null;
+        var name = nameCell ? nameCell.textContent.trim() : 'Event #' + cb.value;
+        var li = document.createElement('li');
+        li.textContent = '• ' + name;
+        listEl.appendChild(li);
+    });
+    var btn = document.getElementById('bulkDeleteBtn');
+    btn.onclick = function() {
+        document.getElementById(formId).submit();
+    };
+    var modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+    modal.show();
 }
 
 function openNotifyModal(tableId) {
