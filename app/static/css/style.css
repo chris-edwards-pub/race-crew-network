@@ -94,6 +94,11 @@
     border-bottom: 0 !important;
 }
 
+.table-hover .month-divider-row:hover > td {
+    --bs-table-hover-bg: transparent;
+    background-color: transparent !important;
+}
+
 .month-divider-row + tr td {
     border-top: 0 !important;
 }
