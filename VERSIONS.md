@@ -1,5 +1,8 @@
 # Version History
 
+## 0.69.2
+- Fix Email Statistics and rate limit queries failing on MySQL due to timezone-aware datetime comparisons against naive DATETIME columns
+
 ## 0.69.1
 - Remove Calendar Subscription section from Profile Settings page
 
