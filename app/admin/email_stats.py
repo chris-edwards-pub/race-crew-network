@@ -85,12 +85,18 @@ def get_ses_cost(months: int = 1) -> dict | None:
     """
     try:
         client = _get_ce_client()
+    except Exception:
+        logger.exception("Failed to create Cost Explorer client")
+        return None
+
+    try:
         today = date.today()
-        current_start = today.replace(day=1).isoformat()
-        current_end = today.isoformat()
+        current_start = today.replace(day=1)
+        # Cost Explorer requires Start < End; on the 1st, use tomorrow
+        current_end = today if today > current_start else today + timedelta(days=1)
 
         # Last month
-        last_month_end = today.replace(day=1)
+        last_month_end = current_start
         if last_month_end.month == 1:
             last_month_start = last_month_end.replace(
                 year=last_month_end.year - 1, month=12
@@ -102,7 +108,10 @@ def get_ses_cost(months: int = 1) -> dict | None:
 
         # Current month
         resp = client.get_cost_and_usage(
-            TimePeriod={"Start": current_start, "End": current_end},
+            TimePeriod={
+                "Start": current_start.isoformat(),
+                "End": current_end.isoformat(),
+            },
             Granularity="MONTHLY",
             Metrics=["UnblendedCost"],
             Filter={
