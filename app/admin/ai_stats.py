@@ -26,7 +26,8 @@ def get_monthly_cost_limit() -> float:
 
 def get_ai_usage_stats() -> dict:
     """Query AIUsageLog for usage statistics."""
-    now = datetime.now(timezone.utc)
+    # Use naive UTC datetimes for MySQL DATETIME column compatibility
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = today_start.replace(day=1)
 
@@ -115,8 +116,11 @@ def get_ai_usage_stats() -> dict:
 
 def check_cost_threshold() -> bool:
     """Return True if monthly cost >= 80% of limit AND alert not yet sent this month."""
+    # Use naive UTC datetimes for MySQL DATETIME column compatibility
     now = datetime.now(timezone.utc)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).replace(
+        tzinfo=None
+    )
 
     month_cost = (
         db.session.query(func.coalesce(func.sum(AIUsageLog.cost_usd), 0.0))

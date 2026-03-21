@@ -18,6 +18,7 @@ A simple web app for organizing sailing events. Track dates, locations, NOR/SI d
 - Crew: view skipper's schedule, download docs, set RSVP
 - AI usage tracking with cost statistics dashboard, monthly budget cap, and automatic 80% budget alert
 - Email rate limiting with queueing, admin alerts, and statistics dashboard
+- Email-based password reset with secure token expiry
 - Invite-based registration (no public sign-up)
 
 ## Tech Stack

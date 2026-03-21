@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from flask import (current_app, flash, redirect, render_template, request,
                    session, url_for)
@@ -10,13 +11,27 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from app import db, storage
-from app.admin.email_service import is_email_configured, send_email
+from app.admin.email_service import (_send_via_ses, is_email_configured,
+                                     send_email)
 from app.auth import bp
 from app.models import RSVP, Document, Regatta, User, skipper_crew
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_PROFILE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _validate_password_strength(password: str) -> str | None:
+    """Return error message if password is weak, or None if OK."""
+    if len(password) < 8:
+        return "Password must be at least 8 characters."
+    if not any(c.isupper() for c in password):
+        return "Password must contain at least one uppercase letter."
+    if not any(c.islower() for c in password):
+        return "Password must contain at least one lowercase letter."
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one number."
+    return None
 
 
 def _profile_image_limit_bytes() -> int:
@@ -102,6 +117,89 @@ def login():
     return render_template("login.html")
 
 
+def _send_reset_email(email: str, reset_url: str) -> None:
+    """Send a password reset email via SES (bypasses opt-in and rate limits)."""
+    subject = "Reset your Race Crew Network password"
+    body_text = (
+        "We received a request to reset your password.\n\n"
+        f"Click the link below to set a new password:\n{reset_url}\n\n"
+        "This link will expire in 1 hour.\n\n"
+        "If you didn't request this, you can safely ignore this email."
+    )
+    body_html = (
+        "<h2>Password Reset</h2>"
+        "<p>We received a request to reset your password. "
+        "Click the link below to set a new password:</p>"
+        f'<p><a href="{reset_url}">Reset Password</a></p>'
+        "<p>This link will expire in 1 hour.</p>"
+        "<p>If you didn't request this, you can safely ignore this email.</p>"
+    )
+    _send_via_ses(email, subject, body_text, body_html)
+
+
+@bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for("regattas.index"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        user = User.query.filter_by(email=email).first()
+
+        # Only send reset for registered users (no invite_token)
+        if user and user.invite_token is None:
+            token = secrets.token_urlsafe(32)
+            user.reset_token = token
+            user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(
+                hours=1
+            )
+            db.session.commit()
+
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
+            try:
+                _send_reset_email(email, reset_url)
+            except Exception:
+                logger.exception("Failed to send password reset email to %s", email)
+
+        # Always show generic message to prevent email enumeration
+        flash(
+            "If an account with that email exists, we've sent a password reset link.",
+            "info",
+        )
+        return redirect(url_for("auth.forgot_password"))
+
+    return render_template("forgot_password.html")
+
+
+@bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token: str):
+    user = User.query.filter_by(reset_token=token).first_or_404()
+
+    expires = user.reset_token_expires_at.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
+        flash("This reset link has expired. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+
+        strength_error = _validate_password_strength(password)
+        if strength_error:
+            flash(strength_error, "error")
+        elif password != password2:
+            flash("Passwords do not match.", "error")
+        else:
+            user.set_password(password)
+            user.reset_token = None
+            user.reset_token_expires_at = None
+            db.session.commit()
+            flash("Your password has been reset. Please log in.", "success")
+            return redirect(url_for("auth.login"))
+
+    return render_template("reset_password.html", token=token)
+
+
 @bp.route("/logout")
 @login_required
 def logout():
@@ -123,8 +221,8 @@ def register(token: str):
             flash("Name and initials are required.", "error")
         elif len(initials) < 2 or len(initials) > 3 or not initials.isalnum():
             flash("Initials must be 2-3 letters or numbers.", "error")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters.", "error")
+        elif _validate_password_strength(password):
+            flash(_validate_password_strength(password), "error")
         elif password != password2:
             flash("Passwords do not match.", "error")
         else:
@@ -182,8 +280,8 @@ def profile():
             flash("Initials must be 2-3 letters or numbers.", "error")
         elif email != current_user.email and User.query.filter_by(email=email).first():
             flash("That email is already in use.", "error")
-        elif password and len(password) < 6:
-            flash("Password must be at least 6 characters.", "error")
+        elif password and _validate_password_strength(password):
+            flash(_validate_password_strength(password), "error")
         elif password and password != password2:
             flash("Passwords do not match.", "error")
         else:
@@ -422,8 +520,8 @@ def edit_user(user_id: int):
             flash("Initials must be 2-3 letters or numbers.", "error")
         elif email != user.email and User.query.filter_by(email=email).first():
             flash("That email is already in use.", "error")
-        elif password and len(password) < 6:
-            flash("Password must be at least 6 characters.", "error")
+        elif password and _validate_password_strength(password):
+            flash(_validate_password_strength(password), "error")
         elif registration_complete and not password:
             flash(
                 "A password is required when marking registration complete.",

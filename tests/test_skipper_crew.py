@@ -314,7 +314,7 @@ class TestRegistrationComplete:
                 "display_name": "Now Active",
                 "initials": "NA",
                 "email": "pending@test.com",
-                "password": "newpass123",
+                "password": "Newpass123",
                 "registration_complete": "on",
             },
             follow_redirects=True,
@@ -322,7 +322,7 @@ class TestRegistrationComplete:
         assert b"updated" in resp.data
         db.session.refresh(user)
         assert user.invite_token is None
-        assert user.check_password("newpass123")
+        assert user.check_password("Newpass123")
 
     def test_activation_requires_password(self, app, logged_in_client, db):
         user = User(
@@ -375,8 +375,8 @@ class TestRegistrationAutoLink:
             data={
                 "display_name": "New Crew",
                 "initials": "NC",
-                "password": "password123",
-                "password2": "password123",
+                "password": "Password123",
+                "password2": "Password123",
             },
             follow_redirects=True,
         )

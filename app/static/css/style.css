@@ -154,6 +154,25 @@
     .event-cards-mobile { display: none !important; }
 }
 
+/* Password strength meter */
+.password-strength-bar {
+    height: 4px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.password-strength-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+.password-strength-label {
+    font-weight: 600;
+}
+
 /* Print styles */
 @media print {
     .no-print,
