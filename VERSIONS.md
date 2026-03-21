@@ -1,5 +1,9 @@
 # Version History
 
+## 0.67.2
+- Fix month divider rows highlighting grey on hover in schedule table
+- Update AI extraction prompt to infer city/state from venue name when not explicitly stated (#115)
+
 ## 0.67.1
 - Fix Email Statistics 500 error when Cost Explorer client creation fails (unbound `client` variable in except handler)
 - Fix Cost Explorer query failing on the 1st of the month when Start and End dates are equal
