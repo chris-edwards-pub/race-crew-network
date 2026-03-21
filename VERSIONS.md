@@ -1,5 +1,13 @@
 # Version History
 
+## 0.69.0
+- Add email-based forgot password / reset password flow with 1-hour token expiry
+- Upgrade password requirements to 8+ characters with uppercase, lowercase, and number
+- Client-side password strength meter on register, profile, and reset pages
+- Default Skipper checkbox checked on admin invite form
+- Reset emails bypass opt-in and rate limits (critical security email via `_send_via_ses`)
+- Generic "if account exists" messaging to prevent email enumeration
+
 ## 0.68.0
 - Add AI Statistics admin page with usage tracking, cost breakdown, and per-function stats
 - Log all Anthropic API calls (tokens, cost) to new `ai_usage_log` table

@@ -40,6 +40,9 @@ class User(UserMixin, db.Model):
     invite_token = db.Column(db.String(64), unique=True, nullable=True)
     # Token for iCal subscription feed (generated on first request)
     calendar_token = db.Column(db.String(64), unique=True, nullable=True)
+    # Password reset token and expiry
+    reset_token = db.Column(db.String(64), unique=True, nullable=True)
+    reset_token_expires_at = db.Column(db.DateTime, nullable=True)
     phone = db.Column(db.String(20), nullable=True)
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     profile_image_key = db.Column(db.String(255), nullable=True)

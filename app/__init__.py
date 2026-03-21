@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = "0.68.0"
+__version__ = "0.69.0"
 
 db = SQLAlchemy()
 migrate = Migrate()

@@ -411,8 +411,8 @@ class TestCrewJoinedNotification:
             data={
                 "display_name": "New Crew",
                 "initials": "NC",
-                "password": "newpass123",
-                "password2": "newpass123",
+                "password": "Newpass123",
+                "password2": "Newpass123",
             },
             follow_redirects=True,
         )

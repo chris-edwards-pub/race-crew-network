@@ -21,14 +21,19 @@
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                <div id="password-strength-meter" class="mt-1"></div>
+                <div class="form-text">Must be 8+ characters with uppercase, lowercase, and a number.</div>
             </div>
             <div class="mb-3">
                 <label for="password2" class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" id="password2" name="password2" required minlength="6">
+                <input type="password" class="form-control" id="password2" name="password2" required minlength="8">
             </div>
             <button type="submit" class="btn btn-primary w-100">Create Account</button>
         </form>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/password-strength.js') }}"></script>
 {% endblock %}

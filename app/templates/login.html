@@ -32,6 +32,9 @@
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Login</button>
+                    <div class="text-center mt-2">
+                        <a href="{{ url_for('auth.forgot_password') }}" class="text-muted small">Forgot your password?</a>
+                    </div>
                 </form>
             </div>
         </div>

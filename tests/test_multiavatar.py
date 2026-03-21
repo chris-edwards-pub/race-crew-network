@@ -232,8 +232,8 @@ class TestAutoAvatarSeedOnRegister:
             data={
                 "display_name": "Legacy User",
                 "initials": "LU",
-                "password": "password123",
-                "password2": "password123",
+                "password": "Password123",
+                "password2": "Password123",
             },
             follow_redirects=True,
         )
@@ -261,8 +261,8 @@ class TestAutoAvatarSeedOnRegister:
             data={
                 "display_name": "Seeded User",
                 "initials": "SU",
-                "password": "password123",
-                "password2": "password123",
+                "password": "Password123",
+                "password2": "Password123",
             },
             follow_redirects=True,
         )
