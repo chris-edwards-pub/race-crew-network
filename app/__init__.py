@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = "0.66.0"
+__version__ = "0.67.0"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -47,6 +47,7 @@ def create_app(test_config=None):
     from app.auth import bp as auth_bp
     from app.calendar import bp as calendar_bp
     from app.email import bp as email_bp
+    from app.help import bp as help_bp
     from app.regattas import bp as regattas_bp
     from app.storage_routes import bp as storage_bp
 
@@ -54,6 +55,7 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(email_bp)
+    app.register_blueprint(help_bp)
     app.register_blueprint(regattas_bp)
     app.register_blueprint(storage_bp)
 
