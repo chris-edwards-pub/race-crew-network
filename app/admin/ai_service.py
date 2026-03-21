@@ -1,10 +1,96 @@
 import json
 import logging
+from datetime import datetime, timezone
 
 import anthropic
 from flask import current_app
 
+from app import db
+
 logger = logging.getLogger(__name__)
+
+# Claude Sonnet 4 pricing (per token)
+INPUT_PRICE_PER_TOKEN = 3.00 / 1_000_000
+OUTPUT_PRICE_PER_TOKEN = 15.00 / 1_000_000
+
+
+def _log_ai_usage(function_name: str, model: str, message) -> None:
+    """Log AI API usage to the database. Failures are swallowed to never break AI ops."""
+    try:
+        from app.models import AIUsageLog
+
+        input_tokens = message.usage.input_tokens
+        output_tokens = message.usage.output_tokens
+        cost = (input_tokens * INPUT_PRICE_PER_TOKEN) + (
+            output_tokens * OUTPUT_PRICE_PER_TOKEN
+        )
+
+        entry = AIUsageLog(
+            function_name=function_name,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost,
+        )
+        db.session.add(entry)
+        db.session.commit()
+
+        _check_and_send_cost_alert()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to log AI usage for %s", function_name)
+
+
+def _check_and_send_cost_alert() -> None:
+    """Send an email alert if monthly AI cost reaches 80% of budget."""
+    try:
+        from app.admin.ai_stats import (check_cost_threshold,
+                                        get_monthly_cost_limit)
+        from app.admin.email_service import _send_via_ses, load_email_settings
+        from app.models import SiteSetting
+
+        if not check_cost_threshold():
+            return
+
+        # Get current month cost for the alert body
+        from app.admin.ai_stats import get_ai_usage_stats
+
+        stats = get_ai_usage_stats()
+        limit = get_monthly_cost_limit()
+
+        settings = load_email_settings()
+        admin_email = settings.get("ses_sender", "")
+        if not admin_email:
+            logger.warning("No SES sender configured; cannot send AI cost alert")
+            return
+
+        subject = "AI Cost Alert — 80% of Monthly Budget Reached"
+        body_text = (
+            f"AI spending has reached ${stats['month_cost']:.2f} "
+            f"of your ${limit:.2f} monthly budget "
+            f"({stats['budget_pct']:.0f}%).\n\n"
+            f"API calls this month: {stats['month_calls']}\n"
+            f"Review usage at your AI Statistics admin page."
+        )
+
+        _send_via_ses(to=admin_email, subject=subject, body_text=body_text)
+
+        # Mark alert as sent for this month
+        now = datetime.now(timezone.utc)
+        month_key = now.strftime("%Y-%m")
+        setting = SiteSetting.query.filter_by(key="ai_cost_alert_sent_month").first()
+        if setting:
+            setting.value = month_key
+        else:
+            setting = SiteSetting(key="ai_cost_alert_sent_month", value=month_key)
+            db.session.add(setting)
+        db.session.commit()
+
+        logger.info("AI cost alert sent for %s", month_key)
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to send AI cost alert")
+
 
 EXTRACTION_PROMPT = """\
 You are a data extraction assistant. Extract regatta/sailing event information \
@@ -132,6 +218,8 @@ def extract_regattas(content: str, year: int) -> list[dict]:
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
 
+    _log_ai_usage("extract_regattas", "claude-sonnet-4-20250514", message)
+
     raw = message.content[0].text.strip()
 
     # Strip markdown code fences if present
@@ -207,6 +295,8 @@ def discover_documents(content: str, regatta_name: str, source_url: str) -> list
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
 
+    _log_ai_usage("discover_documents", "claude-sonnet-4-20250514", message)
+
     raw = message.content[0].text.strip()
     return _parse_json_response(raw)
 
@@ -242,6 +332,8 @@ def discover_documents_deep(
         raise ConnectionError("Claude API rate limit exceeded. Try again shortly.")
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
+
+    _log_ai_usage("discover_documents_deep", "claude-sonnet-4-20250514", message)
 
     raw = message.content[0].text.strip()
     return _parse_json_response(raw)

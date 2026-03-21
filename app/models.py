@@ -280,6 +280,22 @@ class EmailQueue(db.Model):
     error_message = db.Column(db.Text, nullable=True)
 
 
+class AIUsageLog(db.Model):
+    __tablename__ = "ai_usage_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    function_name = db.Column(db.String(50), nullable=False)
+    model = db.Column(db.String(100), nullable=False)
+    input_tokens = db.Column(db.Integer, nullable=False)
+    output_tokens = db.Column(db.Integer, nullable=False)
+    cost_usd = db.Column(db.Float, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class SiteSetting(db.Model):
     __tablename__ = "site_settings"
 

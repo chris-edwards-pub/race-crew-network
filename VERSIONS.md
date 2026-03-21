@@ -1,5 +1,11 @@
 # Version History
 
+## 0.68.0
+- Add AI Statistics admin page with usage tracking, cost breakdown, and per-function stats
+- Log all Anthropic API calls (tokens, cost) to new `ai_usage_log` table
+- Configurable monthly AI budget cap with progress bar (default $20)
+- Automatic email alert when AI spending reaches 80% of monthly budget
+
 ## 0.67.2
 - Fix month divider rows highlighting grey on hover in schedule table
 - Update AI extraction prompt to infer city/state from venue name when not explicitly stated (#115)
