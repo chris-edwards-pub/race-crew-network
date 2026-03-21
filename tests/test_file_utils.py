@@ -100,6 +100,63 @@ class TestExtractTextFromFile:
         assert "Midwinters" in result
         assert "March 15" in result
 
+    def test_xlsx_extraction(self):
+        """Test Excel extraction with a minimal valid XLSX."""
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Event", "Date", "Location"])
+        ws.append(["Midwinters", "March 15", "Eustis Sailing Club"])
+        ws.append(["Spring Regatta", "April 10", "Lake Lanier SC"])
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        fs = FileStorage(stream=buf, filename="schedule.xlsx")
+        result = extract_text_from_file(fs, "schedule.xlsx")
+        assert "Midwinters" in result
+        assert "Eustis Sailing Club" in result
+        assert "Spring Regatta" in result
+
+    def test_xlsx_skips_empty_rows(self):
+        """Test Excel extraction skips rows with no data."""
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Event 1"])
+        ws.append([None, None])
+        ws.append(["Event 2"])
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        fs = FileStorage(stream=buf, filename="schedule.xlsx")
+        result = extract_text_from_file(fs, "schedule.xlsx")
+        assert "Event 1" in result
+        assert "Event 2" in result
+        lines = [ln for ln in result.split("\n") if ln.strip()]
+        assert len(lines) == 2
+
+    def test_xlsx_empty_raises(self):
+        """An empty Excel file raises ValueError."""
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append([None])
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        fs = FileStorage(stream=buf, filename="empty.xlsx")
+        with pytest.raises(ValueError, match="empty"):
+            extract_text_from_file(fs, "empty.xlsx")
+
     def test_no_extension_raises(self):
         fs = FileStorage(stream=io.BytesIO(b"data"), filename="noext")
         with pytest.raises(ValueError, match="Unsupported file type"):
