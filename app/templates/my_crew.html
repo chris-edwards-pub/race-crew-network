@@ -42,21 +42,31 @@
         <tbody>
             {% for member in crew %}
             <tr>
-                <td>{{ member.display_name }}</td>
-                <td class="d-none d-sm-table-cell">{{ member|user_icon(20) }} <span class="badge bg-secondary">{{ member.initials }}</span></td>
-                <td class="d-none d-md-table-cell">{{ member.email }}</td>
                 <td>
                     {% if member.invite_token %}
+                    {{ member.display_name }}
+                    {% else %}
+                    <a href="{{ url_for('auth.view_profile', user_id=member.id) }}" class="location-link">{{ member.display_name }}</a>
+                    {% endif %}
+                </td>
+                <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ member.initials }}</span> {{ member|user_icon(20) }}</td>
+                <td class="d-none d-md-table-cell">{{ member.email }}</td>
+                <td>
+                    {% if member.id == current_user.id %}
+                    <span class="badge bg-primary">Skipper</span>
+                    {% elif member.invite_token %}
                     <span class="badge bg-warning">Pending</span>
                     {% else %}
                     <span class="badge bg-success">Active</span>
                     {% endif %}
                 </td>
                 <td>
+                    {% if member.id != current_user.id %}
                     <form method="POST" action="{{ url_for('auth.remove_crew', user_id=member.id) }}" class="d-inline" onsubmit="return confirm('Remove {{ member.display_name }} from your crew?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
                     </form>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

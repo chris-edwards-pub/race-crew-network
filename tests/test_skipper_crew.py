@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from app.models import RSVP, Document, Regatta, User, skipper_crew
+from app.models import Regatta, User, skipper_crew
 
 
 class TestCrewManagementPage:
@@ -244,6 +244,133 @@ class TestCrewRegattaAccess:
             follow_redirects=True,
         )
         assert b"Access denied" in resp.data
+
+
+class TestCrewView:
+    def test_crew_view_requires_login(self, client, skipper_user):
+        resp = client.get(f"/crew-view/{skipper_user.id}")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+    def test_crew_view_accessible_for_crew(
+        self, app, logged_in_crew, db, skipper_user, crew_user
+    ):
+        resp = logged_in_crew.get(f"/crew-view/{skipper_user.id}")
+        assert resp.status_code == 200
+        assert b"Skipper&#39;s Crew" in resp.data or b"Skipper's Crew" in resp.data
+        assert crew_user.display_name.encode() in resp.data
+
+    def test_crew_view_denied_for_non_member(self, app, logged_in_crew, db):
+        other_skipper = User(
+            email="other_skip@test.com",
+            display_name="Other Skip",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.commit()
+
+        resp = logged_in_crew.get(
+            f"/crew-view/{other_skipper.id}", follow_redirects=True
+        )
+        assert b"Access denied" in resp.data
+
+    def test_crew_view_no_invite_form(
+        self, app, logged_in_crew, db, skipper_user, crew_user
+    ):
+        resp = logged_in_crew.get(f"/crew-view/{skipper_user.id}")
+        assert b"Invite Crew Member" not in resp.data
+
+    def test_crew_view_no_remove_button(
+        self, app, logged_in_crew, db, skipper_user, crew_user
+    ):
+        resp = logged_in_crew.get(f"/crew-view/{skipper_user.id}")
+        assert b"Remove" not in resp.data
+
+    def test_crew_view_has_profile_links(
+        self, app, logged_in_crew, db, skipper_user, crew_user
+    ):
+        resp = logged_in_crew.get(f"/crew-view/{skipper_user.id}")
+        assert f"/crew/{crew_user.id}".encode() in resp.data
+        assert b"location-link" in resp.data
+
+    def test_my_crew_has_profile_links(
+        self, app, logged_in_skipper, db, skipper_user, crew_user
+    ):
+        resp = logged_in_skipper.get("/my-crew")
+        assert f"/crew/{crew_user.id}".encode() in resp.data
+        assert b"location-link" in resp.data
+
+    def test_crew_nav_shows_for_single_skipper(
+        self, app, logged_in_crew, db, skipper_user, crew_user
+    ):
+        """Crew with one skipper always sees the crew nav link."""
+        resp = logged_in_crew.get("/")
+        assert b"Skipper&#39;s Crew" in resp.data or b"Skipper's Crew" in resp.data
+        assert f"/crew-view/{skipper_user.id}".encode() in resp.data
+
+    def test_crew_nav_contextual_for_multi_skipper(self, app, db, skipper_user):
+        """Crew with 2+ skippers sees crew link only when viewing a specific schedule."""
+        crew = User(
+            email="multicrew@test.com",
+            display_name="Multi Crew",
+            initials="MC",
+            is_skipper=False,
+        )
+        crew.set_password("password")
+        db.session.add(crew)
+        db.session.flush()
+        skipper_user.crew_members.append(crew)
+
+        other_skipper = User(
+            email="skip2@test.com",
+            display_name="Other Skipper",
+            initials="OS",
+            is_skipper=True,
+        )
+        other_skipper.set_password("password")
+        db.session.add(other_skipper)
+        db.session.flush()
+        other_skipper.crew_members.append(crew)
+        db.session.commit()
+
+        client = app.test_client()
+        client.post(
+            "/login",
+            data={"email": "multicrew@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        # Combined view — no crew link
+        resp = client.get("/?skipper=0")
+        assert b"/crew-view/" not in resp.data
+
+        # Viewing specific skipper — shows that skipper's crew link
+        resp = client.get(f"/?skipper={skipper_user.id}")
+        assert f"/crew-view/{skipper_user.id}".encode() in resp.data
+
+        resp = client.get(f"/?skipper={other_skipper.id}")
+        assert f"/crew-view/{other_skipper.id}".encode() in resp.data
+
+    def test_pending_members_not_linked(self, app, logged_in_skipper, db, skipper_user):
+        """Pending crew members should not have profile links."""
+        pending = User(
+            email="pending@test.com",
+            password_hash="pending",
+            display_name="Pending User",
+            initials="PU",
+            invite_token="some-token",
+            invited_by=skipper_user.id,
+        )
+        db.session.add(pending)
+        db.session.flush()
+        skipper_user.crew_members.append(pending)
+        db.session.commit()
+
+        resp = logged_in_skipper.get("/my-crew")
+        assert b"Pending User" in resp.data
+        assert f"/crew/{pending.id}".encode() not in resp.data
 
 
 class TestAdminInviteWithSkipperFlag:

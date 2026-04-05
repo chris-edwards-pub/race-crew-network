@@ -1,5 +1,15 @@
 # Version History
 
+## 0.70.1
+- Add optional Yacht Club and About Me fields to user profiles
+- Display new fields on view profile page (hidden when empty)
+- Editable from Profile Settings and admin Edit User pages
+
+## 0.70.0
+- Add crew view for crew members: contextual nav tab shows "<Skipper>'s Crew" with read-only crew list
+- Make crew member names clickable profile links in both skipper and crew views
+- Nav link is contextual to the schedule being viewed (single skipper always shows; multi-skipper shows when viewing a specific schedule)
+
 ## 0.69.4
 - Preserve scroll position on RSVP status change so the page doesn't jump to the top after submitting
 - Skip sending RSVP notification email when a skipper changes their own RSVP status

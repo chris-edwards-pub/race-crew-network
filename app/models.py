@@ -44,6 +44,8 @@ class User(UserMixin, db.Model):
     reset_token = db.Column(db.String(64), unique=True, nullable=True)
     reset_token_expires_at = db.Column(db.DateTime, nullable=True)
     phone = db.Column(db.String(20), nullable=True)
+    yacht_club = db.Column(db.String(100), nullable=True)
+    bio = db.Column(db.Text, nullable=True)
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     profile_image_key = db.Column(db.String(255), nullable=True)
     avatar_seed = db.Column(db.String(100), nullable=True)

@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = "0.69.4"
+__version__ = "0.70.1"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -106,6 +106,25 @@ def create_app(test_config=None):
             "ga_measurement_id": ga_measurement_id,
             "is_dev_or_test": is_dev_or_test,
         }
+
+    @app.context_processor
+    def inject_crew_nav():
+        from flask_login import current_user as cu
+
+        if not cu.is_authenticated or not cu.is_crew:
+            return {"nav_crew_skipper": None}
+
+        skippers = list(cu.skippers)
+        if len(skippers) == 1:
+            return {"nav_crew_skipper": skippers[0]}
+
+        skipper_id = request.args.get("skipper", type=int)
+        if skipper_id and skipper_id != 0:
+            for s in skippers:
+                if s.id == skipper_id:
+                    return {"nav_crew_skipper": s}
+
+        return {"nav_crew_skipper": None}
 
     @app.template_filter("avatar_svg")
     def avatar_svg_filter(user, size=20):

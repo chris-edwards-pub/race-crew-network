@@ -298,6 +298,10 @@ def profile():
                 current_user.initials = initials
                 current_user.email = email
                 current_user.phone = request.form.get("phone", "").strip() or None
+                current_user.yacht_club = (
+                    request.form.get("yacht_club", "").strip() or None
+                )
+                current_user.bio = request.form.get("bio", "").strip() or None
                 current_user.email_opt_in = request.form.get("email_opt_in") == "on"
                 avatar_seed = request.form.get("avatar_seed", "").strip()
                 current_user.avatar_seed = avatar_seed or None
@@ -534,6 +538,8 @@ def edit_user(user_id: int):
             user.is_admin = is_admin
             user.is_skipper = is_skipper
             user.phone = request.form.get("phone", "").strip() or None
+            user.yacht_club = request.form.get("yacht_club", "").strip() or None
+            user.bio = request.form.get("bio", "").strip() or None
             if password:
                 user.set_password(password)
             if registration_complete and user.invite_token:
@@ -682,9 +688,20 @@ def my_crew():
     crew = current_user.crew_members.order_by(User.display_name).all()
     return render_template(
         "my_crew.html",
-        crew=crew,
+        crew=[current_user] + crew,
         email_configured=is_email_configured(),
     )
+
+
+@bp.route("/crew-view/<int:skipper_id>")
+@login_required
+def crew_view(skipper_id: int):
+    skipper = db.session.get(User, skipper_id)
+    if not skipper or skipper not in current_user.skippers:
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+    crew = skipper.crew_members.order_by(User.display_name).all()
+    return render_template("crew_view.html", skipper=skipper, crew=[skipper] + crew)
 
 
 @bp.route("/leave-skipper/<int:skipper_id>", methods=["POST"])
