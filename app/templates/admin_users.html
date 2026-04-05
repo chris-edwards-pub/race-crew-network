@@ -35,75 +35,78 @@
 
 {% set pending_users = users | selectattr('invite_token') | list %}
 
+{% if email_configured and pending_users %}
+<form id="resendForm" method="POST" action="{{ url_for('auth.resend_invites') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+{% endif %}
+
 <div class="table-responsive">
-    <form id="resendForm" method="POST" action="{{ url_for('auth.resend_invites') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <table class="table">
-            <thead>
-                <tr>
-                    {% if email_configured and pending_users %}
-                    <th class="text-center" style="width: 40px;">
-                        <input type="checkbox" id="selectAllPending" class="form-check-input">
-                    </th>
+    <table class="table">
+        <thead>
+            <tr>
+                {% if email_configured and pending_users %}
+                <th class="text-center" style="width: 40px;">
+                    <input type="checkbox" id="selectAllPending" class="form-check-input">
+                </th>
+                {% endif %}
+                <th>Name</th>
+                <th class="d-none d-sm-table-cell">Initials</th>
+                <th class="d-none d-md-table-cell">Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                {% if email_configured and pending_users %}
+                <td class="text-center">
+                    {% if user.invite_token %}
+                    <input type="checkbox" name="user_ids" value="{{ user.id }}" class="form-check-input pending-checkbox" form="resendForm">
                     {% endif %}
-                    <th>Name</th>
-                    <th class="d-none d-sm-table-cell">Initials</th>
-                    <th class="d-none d-md-table-cell">Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    {% if email_configured and pending_users %}
-                    <td class="text-center">
-                        {% if user.invite_token %}
-                        <input type="checkbox" name="user_ids" value="{{ user.id }}" class="form-check-input pending-checkbox">
-                        {% endif %}
-                    </td>
+                </td>
+                {% endif %}
+                <td>{{ user.display_name }}</td>
+                <td class="d-none d-sm-table-cell">{{ user|user_icon(20) }} <span class="badge bg-secondary">{{ user.initials }}</span></td>
+                <td class="d-none d-md-table-cell">{{ user.email }}</td>
+                <td>
+                    {% if user.is_admin %}Admin{% endif %}
+                    {% if user.is_skipper and not user.is_admin %}Skipper{% endif %}
+                    {% if not user.is_admin and not user.is_skipper %}Crew{% endif %}
+                </td>
+                <td>
+                    {% if user.invite_token %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% else %}
+                    <span class="badge bg-success">Active</span>
                     {% endif %}
-                    <td>{{ user.display_name }}</td>
-                    <td class="d-none d-sm-table-cell">{{ user|user_icon(20) }} <span class="badge bg-secondary">{{ user.initials }}</span></td>
-                    <td class="d-none d-md-table-cell">{{ user.email }}</td>
-                    <td>
-                        {% if user.is_admin %}Admin{% endif %}
-                        {% if user.is_skipper and not user.is_admin %}Skipper{% endif %}
-                        {% if not user.is_admin and not user.is_skipper %}Crew{% endif %}
-                    </td>
-                    <td>
-                        {% if user.invite_token %}
-                        <span class="badge bg-warning">Pending</span>
-                        {% else %}
-                        <span class="badge bg-success">Active</span>
+                </td>
+                <td>
+                    <div class="d-flex flex-wrap gap-1">
+                        <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        {% if user.id != current_user.id and not user.invite_token %}
+                        <form method="POST" action="{{ url_for('auth.impersonate', user_id=user.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Assume</button>
+                        </form>
                         {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                            {% if user.id != current_user.id and not user.invite_token %}
-                            <form method="POST" action="{{ url_for('auth.impersonate', user_id=user.id) }}" class="d-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-warning">Assume</button>
-                            </form>
-                            {% endif %}
-                            {% if user.id != current_user.id %}
-                            <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% if email_configured and pending_users %}
-        <button type="submit" class="btn btn-outline-primary" id="resendBtn">Resend Invites</button>
-        {% endif %}
-    </form>
+                        {% if user.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ user.display_name }}?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if email_configured and pending_users %}
+    <button type="submit" form="resendForm" class="btn btn-outline-primary" id="resendBtn">Resend Invites</button>
+    {% endif %}
 </div>
 
 {% if email_configured and pending_users %}

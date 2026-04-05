@@ -526,6 +526,78 @@ class TestPasswordStrength:
         )
         assert b"at least 8 characters" in resp.data
 
+    def test_profile_saves_bio_and_yacht_club(self, logged_in_client, db, admin_user):
+        resp = logged_in_client.post(
+            "/profile",
+            data={
+                "display_name": "Admin",
+                "initials": "AD",
+                "email": "admin@test.com",
+                "yacht_club": "Fishing Bay YC",
+                "bio": "Love sailing thistles.",
+            },
+            follow_redirects=True,
+        )
+        assert b"Profile updated" in resp.data
+        db.session.refresh(admin_user)
+        assert admin_user.yacht_club == "Fishing Bay YC"
+        assert admin_user.bio == "Love sailing thistles."
+
+    def test_profile_clears_bio_and_yacht_club(self, logged_in_client, db, admin_user):
+        admin_user.yacht_club = "Old Club"
+        admin_user.bio = "Old bio"
+        db.session.commit()
+
+        resp = logged_in_client.post(
+            "/profile",
+            data={
+                "display_name": "Admin",
+                "initials": "AD",
+                "email": "admin@test.com",
+                "yacht_club": "",
+                "bio": "",
+            },
+            follow_redirects=True,
+        )
+        assert b"Profile updated" in resp.data
+        db.session.refresh(admin_user)
+        assert admin_user.yacht_club is None
+        assert admin_user.bio is None
+
+    def test_view_profile_shows_bio_and_yacht_club(
+        self, logged_in_client, db, admin_user
+    ):
+        other = User(
+            email="sailor@test.com",
+            display_name="Sailor",
+            initials="SL",
+            yacht_club="Hampton YC",
+            bio="Weekend racer",
+        )
+        other.set_password("password")
+        db.session.add(other)
+        db.session.commit()
+
+        resp = logged_in_client.get(f"/crew/{other.id}")
+        assert b"Hampton YC" in resp.data
+        assert b"Weekend racer" in resp.data
+
+    def test_view_profile_hides_empty_bio_and_yacht_club(
+        self, logged_in_client, db, admin_user
+    ):
+        other = User(
+            email="sailor@test.com",
+            display_name="Sailor",
+            initials="SL",
+        )
+        other.set_password("password")
+        db.session.add(other)
+        db.session.commit()
+
+        resp = logged_in_client.get(f"/crew/{other.id}")
+        assert b"Yacht Club" not in resp.data
+        assert b"About" not in resp.data
+
     def test_admin_edit_user_rejects_weak_password(self, logged_in_client, db):
         user = User(
             email="target@test.com",

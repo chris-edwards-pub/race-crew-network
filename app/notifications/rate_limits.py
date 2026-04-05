@@ -26,7 +26,9 @@ def get_hourly_email_limit() -> int:
 
 def get_emails_sent_this_hour() -> int:
     """Count emails sent in the last hour (NotificationLog + sent queue entries)."""
-    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None)
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(
+        tzinfo=None
+    )
     log_count = NotificationLog.query.filter(
         NotificationLog.sent_at >= one_hour_ago
     ).count()
@@ -68,7 +70,9 @@ def send_rate_limit_alert() -> None:
     Bypasses the rate limit by calling _send_via_ses() directly.
     Deduped to at most one alert per hour via NotificationLog.
     """
-    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None)
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(
+        tzinfo=None
+    )
     recent_alert = NotificationLog.query.filter(
         NotificationLog.notification_type == "rate_limit_alert",
         NotificationLog.sent_at >= one_hour_ago,

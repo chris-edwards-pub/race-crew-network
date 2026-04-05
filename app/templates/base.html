@@ -37,6 +37,9 @@
                     {% if current_user.is_admin or current_user.is_skipper %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('auth.my_crew') }}">My Crew</a>
                     {% endif %}
+                    {% if nav_crew_skipper %}
+                    <a class="nav-link nav-pill-link" href="{{ url_for('auth.crew_view', skipper_id=nav_crew_skipper.id) }}">{{ nav_crew_skipper.display_name }}'s Crew</a>
+                    {% endif %}
                     {% endif %}
                     <a class="nav-link nav-pill-link" href="{{ url_for('help.index') }}">Help</a>
                     {% if current_user.is_authenticated %}

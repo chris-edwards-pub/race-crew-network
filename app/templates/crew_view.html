@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ skipper.display_name }}'s Crew — Race Crew Network{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ skipper.display_name }}'s Crew</h2>
+
+{% if crew %}
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th class="d-none d-sm-table-cell">Initials</th>
+                <th class="d-none d-md-table-cell">Email</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in crew %}
+            <tr>
+                <td>
+                    {% if member.invite_token %}
+                    {{ member.display_name }}
+                    {% else %}
+                    <a href="{{ url_for('auth.view_profile', user_id=member.id) }}" class="location-link">{{ member.display_name }}</a>
+                    {% endif %}
+                </td>
+                <td class="d-none d-sm-table-cell"><span class="badge bg-secondary">{{ member.initials }}</span> {{ member|user_icon(20) }}</td>
+                <td class="d-none d-md-table-cell">{{ member.email }}</td>
+                <td>
+                    {% if member.id == skipper.id %}
+                    <span class="badge bg-primary">Skipper</span>
+                    {% elif member.invite_token %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% else %}
+                    <span class="badge bg-success">Active</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No crew members yet.</p>
+{% endif %}
+{% endblock %}

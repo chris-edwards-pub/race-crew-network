@@ -40,6 +40,14 @@
                 <label for="phone" class="form-label">Phone Number</label>
                 <input type="tel" class="form-control" id="phone" name="phone" value="{{ current_user.phone or '' }}" placeholder="e.g. 555-123-4567">
             </div>
+            <div class="mb-3">
+                <label for="yacht_club" class="form-label">Yacht Club</label>
+                <input type="text" class="form-control" id="yacht_club" name="yacht_club" value="{{ current_user.yacht_club or '' }}" placeholder="e.g. Fishing Bay Yacht Club">
+            </div>
+            <div class="mb-3">
+                <label for="bio" class="form-label">About Me</label>
+                <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="A little about yourself...">{{ current_user.bio or '' }}</textarea>
+            </div>
             <hr>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="email_opt_in" name="email_opt_in" {% if current_user.email_opt_in %}checked{% endif %}>

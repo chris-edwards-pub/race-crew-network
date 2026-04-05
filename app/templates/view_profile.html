@@ -5,7 +5,9 @@
     <div class="col-md-5">
         <div class="mb-3 text-center">
             {% if user.profile_image_key %}
-            {{ user|user_icon(120) }}
+            <a href="#" data-bs-toggle="modal" data-bs-target="#profileImageModal" style="cursor:pointer;">
+                {{ user|user_icon(120) }}
+            </a>
             <div class="small text-muted mt-2">Profile picture</div>
             {% else %}
             {{ user|avatar_svg(120) }}
@@ -19,8 +21,9 @@
                     <span class="badge bg-secondary">{{ user.initials }}</span>
                     {% if user.profile_image_key %}
                     {{ user|user_icon(24) }}
-                    {% endif %}
+                    {% else %}
                     {{ user|avatar_svg(24) }}
+                    {% endif %}
                 </td>
             </tr>
             <tr>
@@ -33,6 +36,18 @@
                 <td><a href="tel:{{ user.phone }}">{{ user.phone }}</a></td>
             </tr>
             {% endif %}
+            {% if user.yacht_club %}
+            <tr>
+                <th>Yacht Club</th>
+                <td>{{ user.yacht_club }}</td>
+            </tr>
+            {% endif %}
+            {% if user.bio %}
+            <tr>
+                <th>About</th>
+                <td>{{ user.bio }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <th>Role</th>
                 <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
@@ -41,4 +56,20 @@
         <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary btn-sm">Back</a>
     </div>
 </div>
+
+{% if user.profile_image_key and profile_image_url %}
+<div class="modal fade" id="profileImageModal" tabindex="-1" aria-label="Profile picture" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ user.display_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ profile_image_url }}" alt="{{ user.display_name }}" class="img-fluid rounded" style="max-height:80vh;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

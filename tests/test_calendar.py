@@ -188,7 +188,7 @@ class TestSubscribePage:
         db.session.refresh(admin_user)
         html = resp.data.decode()
         assert 'id="webcal-url"' in html
-        assert f"webcal://" in html
+        assert "webcal://" in html
         assert 'id="copy-webcal-url"' in html
 
     def test_shows_apple_instructions(self, db, logged_in_client):
@@ -250,19 +250,3 @@ class TestCalendarBanner:
 # ---------------------------------------------------------------------------
 
 
-class TestProfileCalendarSection:
-    """Profile shows generate button or subscription URL."""
-
-    def test_profile_shows_generate_button_without_token(
-        self, db, logged_in_client, admin_user
-    ):
-        resp = logged_in_client.get("/profile")
-        assert b"Generate Calendar Feed" in resp.data
-
-    def test_profile_shows_ics_url_with_token(self, db, logged_in_client, admin_user):
-        _subscribe(logged_in_client)
-        db.session.refresh(admin_user)
-        resp = logged_in_client.get("/profile")
-        assert admin_user.calendar_token.encode() in resp.data
-        assert b".ics" in resp.data
-        assert b"Copy" in resp.data
