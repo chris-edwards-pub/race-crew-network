@@ -1,5 +1,8 @@
 # Version History
 
+## 0.70.2
+- Fix crew nav link for skipper+crew users: show "My Crew" on own schedule, swap to "<Skipper>'s Crew" when viewing another skipper's schedule
+
 ## 0.70.1
 - Add optional Yacht Club and About Me fields to user profiles
 - Display new fields on view profile page (hidden when empty)

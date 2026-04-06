@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-__version__ = "0.70.1"
+__version__ = "0.70.2"
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -115,11 +115,15 @@ def create_app(test_config=None):
             return {"nav_crew_skipper": None}
 
         skippers = list(cu.skippers)
-        if len(skippers) == 1:
+
+        # Pure crew with one skipper: always show their crew link
+        if len(skippers) == 1 and not cu.is_skipper:
             return {"nav_crew_skipper": skippers[0]}
 
+        # Multi-skipper or skipper+crew: only show when viewing
+        # a specific other skipper's schedule
         skipper_id = request.args.get("skipper", type=int)
-        if skipper_id and skipper_id != 0:
+        if skipper_id and skipper_id != 0 and skipper_id != cu.id:
             for s in skippers:
                 if s.id == skipper_id:
                     return {"nav_crew_skipper": s}
