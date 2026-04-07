@@ -49,6 +49,8 @@ class User(UserMixin, db.Model):
     email_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     profile_image_key = db.Column(db.String(255), nullable=True)
     avatar_seed = db.Column(db.String(100), nullable=True)
+    schedule_slug = db.Column(db.String(100), unique=True, nullable=True)
+    schedule_published = db.Column(db.Boolean, default=True, nullable=False)
     notification_prefs = db.Column(db.Text, nullable=True)
 
     rsvps = db.relationship("RSVP", backref="user", lazy="dynamic")
@@ -91,6 +93,18 @@ class User(UserMixin, db.Model):
     def is_crew(self) -> bool:
         """True if this user is crew for at least one skipper."""
         return len(self.skippers) > 0
+
+    def generate_schedule_slug(self) -> str:
+        """Generate a URL slug from display_name, ensuring uniqueness."""
+        import re
+
+        base = re.sub(r"[^a-z0-9]+", "-", self.display_name.lower()).strip("-")
+        slug = base
+        counter = 1
+        while User.query.filter(User.schedule_slug == slug, User.id != self.id).first():
+            slug = f"{base}-{counter}"
+            counter += 1
+        return slug
 
     @property
     def notification_preferences(self) -> dict:

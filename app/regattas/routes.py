@@ -91,6 +91,22 @@ def index():
     if current_user.is_skipper:
         crew_list = get_eligible_crew(current_user)
 
+    # Build public schedule URL for the viewed skipper (if published)
+    public_schedule_url = None
+    view_skipper_id = skipper_id if skipper_id and skipper_id != 0 else None
+    if not view_skipper_id and len(schedules) == 1:
+        view_skipper_id = schedules[0].id
+    if view_skipper_id:
+        view_skipper = db.session.get(User, view_skipper_id)
+        if (
+            view_skipper
+            and view_skipper.schedule_published
+            and view_skipper.schedule_slug
+        ):
+            public_schedule_url = url_for(
+                "regattas.public_schedule", slug=view_skipper.schedule_slug
+            )
+
     return render_template(
         "index.html",
         upcoming=upcoming,
@@ -103,6 +119,7 @@ def index():
         pdf_url=url_for("regattas.pdf", **pdf_args),
         crew_list=crew_list,
         show_calendar_banner=current_user.calendar_token is None,
+        public_schedule_url=public_schedule_url,
     )
 
 
@@ -135,6 +152,70 @@ def pdf():
         generated_date=date.today().strftime("%B %d, %Y"),
         show_skipper=show_skipper,
         pdf_title=pdf_title,
+    )
+    pdf_bytes = HTML(string=html_str).write_pdf()
+    response = make_response(pdf_bytes)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = "inline; filename=race-crew-schedule.pdf"
+    return response
+
+
+@bp.route("/schedule/<slug>")
+def public_schedule(slug):
+    skipper = User.query.filter_by(
+        schedule_slug=slug, schedule_published=True
+    ).first_or_404()
+    today = date.today()
+    upcoming = (
+        Regatta.query.filter(
+            Regatta.created_by == skipper.id, Regatta.start_date >= today
+        )
+        .order_by(Regatta.start_date)
+        .all()
+    )
+    past = (
+        Regatta.query.filter(
+            Regatta.created_by == skipper.id, Regatta.start_date < today
+        )
+        .order_by(Regatta.start_date.desc())
+        .all()
+    )
+    return render_template(
+        "public_schedule.html",
+        skipper=skipper,
+        upcoming=upcoming,
+        past=past,
+        pdf_url=url_for("regattas.public_pdf", slug=slug),
+    )
+
+
+@bp.route("/schedule/<slug>/schedule.pdf")
+def public_pdf(slug):
+    skipper = User.query.filter_by(
+        schedule_slug=slug, schedule_published=True
+    ).first_or_404()
+    today = date.today()
+    upcoming = (
+        Regatta.query.filter(
+            Regatta.created_by == skipper.id, Regatta.start_date >= today
+        )
+        .order_by(Regatta.start_date)
+        .all()
+    )
+    past = (
+        Regatta.query.filter(
+            Regatta.created_by == skipper.id, Regatta.start_date < today
+        )
+        .order_by(Regatta.start_date.desc())
+        .all()
+    )
+    html_str = render_template(
+        "pdf_schedule.html",
+        upcoming=upcoming,
+        past=past,
+        generated_date=date.today().strftime("%B %d, %Y"),
+        show_skipper=False,
+        pdf_title=f"{skipper.display_name}'s Race Schedule",
     )
     pdf_bytes = HTML(string=html_str).write_pdf()
     response = make_response(pdf_bytes)
