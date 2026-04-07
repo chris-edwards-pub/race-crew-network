@@ -302,6 +302,17 @@ def profile():
                     request.form.get("yacht_club", "").strip() or None
                 )
                 current_user.bio = request.form.get("bio", "").strip() or None
+
+                # Public schedule publishing (skippers/admins only)
+                if current_user.is_skipper or current_user.is_admin:
+                    current_user.schedule_published = (
+                        request.form.get("schedule_published") == "on"
+                    )
+                    if not current_user.schedule_slug:
+                        current_user.schedule_slug = (
+                            current_user.generate_schedule_slug()
+                        )
+
                 current_user.email_opt_in = request.form.get("email_opt_in") == "on"
                 avatar_seed = request.form.get("avatar_seed", "").strip()
                 current_user.avatar_seed = avatar_seed or None
@@ -367,6 +378,11 @@ def profile():
 
                 flash("Profile updated.", "success")
                 return redirect(url_for("auth.profile"))
+
+    # Ensure skippers/admins always have a schedule slug for display
+    if (current_user.is_skipper or current_user.is_admin) and not current_user.schedule_slug:
+        current_user.schedule_slug = current_user.generate_schedule_slug()
+        db.session.commit()
 
     return render_template(
         "profile.html",

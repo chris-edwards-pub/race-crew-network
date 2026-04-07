@@ -3,6 +3,9 @@
 
 <div class="mb-3 d-flex flex-wrap align-items-center">
     <a href="{{ pdf_url }}" class="btn btn-outline-secondary btn-sm no-print" target="_blank">Print PDF</a>
+    {% if public_schedule_url %}
+    <a href="{{ public_schedule_url }}" class="btn btn-outline-secondary btn-sm no-print ms-1" target="_blank">Public View URL</a>
+    {% endif %}
     <div class="flex-grow-1 text-center">
         {% if selected_skipper == 0 %}
         <h2 class="mb-0">Combined Race Schedules</h2>

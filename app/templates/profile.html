@@ -48,6 +48,25 @@
                 <label for="bio" class="form-label">About Me</label>
                 <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="A little about yourself...">{{ current_user.bio or '' }}</textarea>
             </div>
+            {% if current_user.is_skipper or current_user.is_admin %}
+            <hr>
+            <h5 class="mt-3">Public Schedule</h5>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="schedule_published" name="schedule_published"
+                       {% if current_user.schedule_published %}checked{% endif %}>
+                <label class="form-check-label" for="schedule_published">Publish my schedule</label>
+                <div class="form-text">When published, anyone with the link can view your upcoming schedule.</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Your public schedule link</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="public-schedule-url" readonly
+                           value="{{ url_for('regattas.public_schedule', slug=current_user.schedule_slug, _external=True) }}">
+                    <button type="button" class="btn btn-outline-secondary" id="copy-public-url"
+                            onclick="navigator.clipboard.writeText(document.getElementById('public-schedule-url').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 2000);">Copy</button>
+                </div>
+            </div>
+            {% endif %}
             <hr>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="email_opt_in" name="email_opt_in" {% if current_user.email_opt_in %}checked{% endif %}>

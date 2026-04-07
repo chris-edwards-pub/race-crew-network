@@ -1,5 +1,13 @@
 # Version History
 
+## 0.71.0
+- Add public schedule page per skipper with anonymous access (`/schedule/<slug>`)
+- Published by default; URL slug auto-generated from display name
+- Public page shows event details and crew initials with RSVP status (no profile links or private info)
+- Public PDF download available at `/schedule/<slug>/schedule.pdf`
+- "Public View" button on main schedule page links to the skipper's public URL
+- Skipper can toggle publishing on/off in Profile Settings
+
 ## 0.70.2
 - Fix crew nav link for skipper+crew users: show "My Crew" on own schedule, swap to "<Skipper>'s Crew" when viewing another skipper's schedule
 
