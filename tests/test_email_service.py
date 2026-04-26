@@ -244,7 +244,7 @@ class TestEmailBranding:
         decoded_html = _decode_html_body(raw_data)
         assert "race-crew-network-1536x1024.png" in decoded_html
         assert 'alt="Race Crew Network"' in decoded_html
-        assert "max-width:350px" in decoded_html
+        assert "max-width:320px" in decoded_html
 
     @patch("app.admin.email_service._get_ses_client")
     def test_logo_before_body_before_footer(self, mock_get_client, app, db):
