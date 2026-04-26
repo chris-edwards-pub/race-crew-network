@@ -142,6 +142,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Wait for any in-progress Lightsail deployment
+        run: |
+          SERVICE="${{ vars.CONTAINER_SERVICE_NAME }}"
+          for i in $(seq 1 60); do
+            STATE=$(aws lightsail get-container-service-deployments \
+              --service-name "$SERVICE" \
+              --query 'deployments[0].state' --output text 2>/dev/null || echo "")
+            echo "Latest Lightsail deployment state: ${STATE:-unknown} (attempt $i/60)"
+            if [ "$STATE" != "ACTIVATING" ]; then
+              echo "No deployment in progress — ready to deploy."
+              break
+            fi
+            sleep 15
+          done
+
       - name: Deploy to Lightsail Container Service
         run: |
           aws lightsail create-container-service-deployment \
