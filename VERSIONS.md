@@ -1,5 +1,9 @@
 # Version History
 
+## 0.72.3
+- Drop GHA Docker build cache from the deploy workflow so every push rebuilds from scratch and `apt-get upgrade` always pulls patched Debian system packages
+- Revert the `APT_REFRESH` Dockerfile arg added in 0.72.2 (no longer needed without the build cache)
+
 ## 0.72.2
 - Patch `libtiff6` CVE-2026-4775 (HIGH) by adding an `APT_REFRESH` build arg to bust the GHA Docker cache for the apt layer, so `apt-get upgrade` picks up patched system packages on the next build (closes #134)
 
