@@ -1,5 +1,8 @@
 # Version History
 
+## 0.72.1
+- Daily vulnerability scan workflow now assigns the new issue to the repo owner and @mentions them on each comment, so GitHub sends an email each time the scan finds CRITICAL/HIGH vulnerabilities
+
 ## 0.72.0
 - Skipper can set crew RSVP status (Yes/No/Maybe/Clear) on behalf of crew members via clickable crew badges, with View Profile link in the modal
 - "+" badge in its own column allows setting RSVP for crew (including pending) who haven't responded
