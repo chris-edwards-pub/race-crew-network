@@ -1,5 +1,8 @@
 # Version History
 
+## 0.72.2
+- Patch `libtiff6` CVE-2026-4775 (HIGH) by adding an `APT_REFRESH` build arg to bust the GHA Docker cache for the apt layer, so `apt-get upgrade` picks up patched system packages on the next build (closes #134)
+
 ## 0.72.1
 - Daily vulnerability scan workflow now assigns the new issue to the repo owner and @mentions them on each comment, so GitHub sends an email each time the scan finds CRITICAL/HIGH vulnerabilities
 
