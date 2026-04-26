@@ -163,7 +163,7 @@
                 {% if current_user.is_skipper and not is_past %}
                 <td>
                     {% if is_own_regatta %}
-                    {% set all_crew = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|list %}
+                    {% set all_crew = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|sort(attribute='display_name', case_sensitive=false)|list %}
                     {% if all_crew %}
                     <a href="#" class="crew-badge editable" style="background-color:#e9ecef;color:#666;" title="Add Crew" data-regatta-id="{{ regatta.id }}" data-all-crew='[{% for c in all_crew %}{"id":{{ c.id }},"name":"{{ c.display_name }}"}{% if not loop.last %},{% endif %}{% endfor %}]' onclick="openAddCrewRsvpModal(this); return false;">+</a>
                     {% endif %}
@@ -268,7 +268,7 @@
                 {% endif %}
                 {% endfor %}
                 {% if is_own_regatta_m and not is_past %}
-                {% set all_crew_m = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|list %}
+                {% set all_crew_m = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|sort(attribute='display_name', case_sensitive=false)|list %}
                 {% if all_crew_m %}
                 <a href="#" class="crew-badge editable" style="background-color:#e9ecef;color:#666;" title="Add Crew" data-regatta-id="{{ regatta.id }}" data-all-crew='[{% for c in all_crew_m %}{"id":{{ c.id }},"name":"{{ c.display_name }}"}{% if not loop.last %},{% endif %}{% endfor %}]' onclick="openAddCrewRsvpModal(this); return false;">+</a>
                 {% endif %}

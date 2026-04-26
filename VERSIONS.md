@@ -1,5 +1,10 @@
 # Version History
 
+## 0.73.0
+- Add weekly GHCR retention workflow (`ghcr-cleanup.yml`) that keeps `:latest`, the 5 most recent semver release tags, and SHA-only tags newer than 30 days; deletes everything else and any untagged manifests
+- Sort the "Set RSVP" crew picker alphabetically by display name (case-insensitive)
+- Sort the "My Crew" page alphabetically by display name (case-insensitive); skipper stays pinned at the top
+
 ## 0.72.4
 - Deploy workflow polls for any in-progress Lightsail deployment before calling `create-container-service-deployment`, preventing back-to-back deploys from failing with `InvalidInputException: deployment N is in progress`
 

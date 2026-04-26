@@ -1,0 +1,42 @@
+name: GHCR Retention Cleanup
+
+on:
+  schedule:
+    - cron: "0 4 * * 0"   # Sunday 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    name: Trim GHCR image tags
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Delete SHA-only tags older than 30 days
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          package: race-crew-network
+          owner: chris-edwards-pub
+          tags: ^[0-9a-f]{40}$
+          older-than: 30 days
+          exclude-tags: latest
+
+      - name: Keep last 5 semver release tags
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          package: race-crew-network
+          owner: chris-edwards-pub
+          tags: ^\d+\.\d+\.\d+$
+          keep-n-tagged: 5
+          exclude-tags: latest
+
+      - name: Delete untagged manifests
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          package: race-crew-network
+          owner: chris-edwards-pub
+          delete-untagged: true
+          exclude-tags: latest

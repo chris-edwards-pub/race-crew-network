@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from flask import (current_app, flash, redirect, render_template, request,
                    session, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import func
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
@@ -708,7 +709,7 @@ def my_crew():
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
 
-    crew = current_user.crew_members.order_by(User.display_name).all()
+    crew = current_user.crew_members.order_by(func.lower(User.display_name)).all()
     return render_template(
         "my_crew.html",
         crew=[current_user] + crew,
@@ -724,7 +725,7 @@ def crew_view(skipper_id: int):
     if not skipper or skipper not in current_user.skippers:
         flash("Access denied.", "error")
         return redirect(url_for("regattas.index"))
-    crew = skipper.crew_members.order_by(User.display_name).all()
+    crew = skipper.crew_members.order_by(func.lower(User.display_name)).all()
     return render_template("crew_view.html", skipper=skipper, crew=[skipper] + crew)
 
 
