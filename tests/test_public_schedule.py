@@ -86,7 +86,10 @@ class TestPublicSchedule:
     def test_public_schedule_shows_skipper_name(self, db, client, admin_user):
         _publish_skipper(db, admin_user, "admin-schedule")
         resp = client.get("/schedule/admin-schedule")
-        assert b"Admin&#39;s Race Schedule" in resp.data or b"Admin's Race Schedule" in resp.data
+        assert (
+            b"Admin&#39;s Race Schedule" in resp.data
+            or b"Admin's Race Schedule" in resp.data
+        )
 
     def test_public_schedule_hides_rsvp_controls(self, db, client, admin_user):
         _publish_skipper(db, admin_user, "admin-schedule")

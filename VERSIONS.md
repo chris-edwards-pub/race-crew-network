@@ -1,5 +1,13 @@
 # Version History
 
+## 0.72.0
+- Skipper can set crew RSVP status (Yes/No/Maybe/Clear) on behalf of crew members via clickable crew badges, with View Profile link in the modal
+- "+" badge in its own column allows setting RSVP for crew (including pending) who haven't responded
+- Skipper's own badge in the crew column is not editable — use the "Your RSVP" dropdown instead
+- Crew members receive email notification when their skipper changes their RSVP (skippers do not self-notify)
+- Enhanced crew invite: collect name, initials (required), and phone (optional) at invite time
+- Resend invitation button on My Crew page for pending members (rate limited to once per day)
+
 ## 0.71.0
 - Add public schedule page per skipper with anonymous access (`/schedule/<slug>`)
 - Published by default; URL slug auto-generated from display name

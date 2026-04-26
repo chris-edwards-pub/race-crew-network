@@ -84,7 +84,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endif %}
-{% set divider_colspan = 6 + (1 if show_skipper else 0) + (0 if is_past else 1) + (2 if can_manage_any else 0) %}
+{% set divider_colspan = 6 + (1 if show_skipper else 0) + (0 if is_past else 1) + (1 if current_user.is_skipper and not is_past else 0) + (2 if can_manage_any else 0) %}
 <div class="table-responsive event-table-desktop">
     <table class="table table-hover align-middle{% if is_past %} event-past{% endif %}">
         <thead>
@@ -96,6 +96,9 @@
                 <th>Location</th>
                 <th class="text-nowrap">Docs</th>
                 <th class="text-nowrap">Crew</th>
+                {% if current_user.is_skipper and not is_past %}
+                <th style="width:1px;">+</th>
+                {% endif %}
                 {% if not is_past %}
                 <th>Your RSVP</th>
                 {% endif %}
@@ -148,10 +151,25 @@
                     {% endfor %}
                 </td>
                 <td>
+                    {% set is_own_regatta = current_user.id == regatta.created_by %}
                     {% for rsvp in regatta.rsvps|sort_rsvps %}
+                    {% if is_own_regatta and not is_past and rsvp.user.id != current_user.id %}
+                    <a href="#" class="crew-badge editable {{ rsvp.status }}" title="{{ rsvp.user.display_name }}" data-crew-id="{{ rsvp.user.id }}" data-crew-name="{{ rsvp.user.display_name }}" data-regatta-id="{{ regatta.id }}" data-current-status="{{ rsvp.status }}" onclick="openCrewRsvpModal(this); return false;">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
+                    {% else %}
                     <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
+                    {% endif %}
                     {% endfor %}
                 </td>
+                {% if current_user.is_skipper and not is_past %}
+                <td>
+                    {% if is_own_regatta %}
+                    {% set all_crew = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|list %}
+                    {% if all_crew %}
+                    <a href="#" class="crew-badge editable" style="background-color:#e9ecef;color:#666;" title="Add Crew" data-regatta-id="{{ regatta.id }}" data-all-crew='[{% for c in all_crew %}{"id":{{ c.id }},"name":"{{ c.display_name }}"}{% if not loop.last %},{% endif %}{% endfor %}]' onclick="openAddCrewRsvpModal(this); return false;">+</a>
+                    {% endif %}
+                    {% endif %}
+                </td>
+                {% endif %}
                 {% if not is_past %}
                 <td>
                     <form method="POST" action="{{ url_for('regattas.rsvp', regatta_id=regatta.id) }}" class="d-inline">
@@ -241,9 +259,20 @@
                 {% for doc in regatta.documents|sort(attribute='doc_type') %}
                 <a href="{% if doc.url %}{{ doc.url }}{% else %}{{ url_for('regattas.download_doc', doc_id=doc.id) }}{% endif %}" class="badge bg-info text-decoration-none doc-link" target="_blank">{{ doc.doc_type }}</a>
                 {% endfor %}
+                {% set is_own_regatta_m = current_user.id == regatta.created_by %}
                 {% for rsvp in regatta.rsvps|sort_rsvps %}
+                {% if is_own_regatta_m and not is_past and rsvp.user.id != current_user.id %}
+                <a href="#" class="crew-badge editable {{ rsvp.status }}" title="{{ rsvp.user.display_name }}" data-crew-id="{{ rsvp.user.id }}" data-crew-name="{{ rsvp.user.display_name }}" data-regatta-id="{{ regatta.id }}" data-current-status="{{ rsvp.status }}" onclick="openCrewRsvpModal(this); return false;">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
+                {% else %}
                 <a href="{{ url_for('auth.view_profile', user_id=rsvp.user.id) }}" class="crew-badge {{ rsvp.status }}" title="{{ rsvp.user.display_name }}">{% if rsvp.status == 'yes' %}&#10003;{% elif rsvp.status == 'no' %}&#10007;{% elif rsvp.status == 'maybe' %}?{% endif %} {{ rsvp.user.initials }} {{ rsvp.user|user_icon(26) }}</a>
+                {% endif %}
                 {% endfor %}
+                {% if is_own_regatta_m and not is_past %}
+                {% set all_crew_m = current_user.crew_members.all()|rejectattr('id', 'equalto', current_user.id)|list %}
+                {% if all_crew_m %}
+                <a href="#" class="crew-badge editable" style="background-color:#e9ecef;color:#666;" title="Add Crew" data-regatta-id="{{ regatta.id }}" data-all-crew='[{% for c in all_crew_m %}{"id":{{ c.id }},"name":"{{ c.display_name }}"}{% if not loop.last %},{% endif %}{% endfor %}]' onclick="openAddCrewRsvpModal(this); return false;">+</a>
+                {% endif %}
+                {% endif %}
             </div>
             {% if not is_past %}
             <div class="mt-1">
@@ -324,6 +353,40 @@
                     <button type="submit" class="btn btn-primary">Send Notification</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if current_user.is_skipper %}
+<!-- Crew RSVP Modal -->
+<div class="modal fade" id="crewRsvpModal" tabindex="-1" aria-labelledby="crewRsvpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" id="crewRsvpForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="crew_user_id" id="crewRsvpUserId">
+                <input type="hidden" name="status" id="crewRsvpStatus">
+                {% if selected_skipper is not none %}<input type="hidden" name="redirect_skipper" value="{{ selected_skipper }}">{% endif %}
+                {% for rf in rsvp_filters %}<input type="hidden" name="redirect_rsvp" value="{{ rf }}">{% endfor %}
+            </form>
+            <div class="modal-header">
+                <h5 class="modal-title" id="crewRsvpModalLabel">Set RSVP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center mb-3" id="crewRsvpName"></p>
+                <div id="crewRsvpPicker" style="display:none;">
+                    <div id="crewRsvpList" class="list-group mb-3" style="max-height:240px;overflow-y:auto;"></div>
+                </div>
+                <div id="crewRsvpButtons" class="d-grid gap-2" style="display:none;">
+                    <button type="button" class="btn btn-success crew-rsvp-btn" data-status="yes" onclick="submitCrewRsvp('yes')">Yes</button>
+                    <button type="button" class="btn btn-warning crew-rsvp-btn" data-status="maybe" onclick="submitCrewRsvp('maybe')">Maybe</button>
+                    <button type="button" class="btn btn-danger crew-rsvp-btn" data-status="no" onclick="submitCrewRsvp('no')">No</button>
+                    <button type="button" class="btn btn-outline-secondary crew-rsvp-btn" data-status="" onclick="submitCrewRsvp('')">Clear</button>
+                    <a href="#" id="crewRsvpProfileLink" class="btn btn-outline-info">View Profile</a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -472,6 +535,79 @@ function openNotifyModal(tableId) {
 {% endif %}
 
 <script>
+function openCrewRsvpModal(el) {
+    document.getElementById('crewRsvpUserId').value = el.dataset.crewId;
+    document.getElementById('crewRsvpName').textContent = el.dataset.crewName;
+    document.getElementById('crewRsvpForm').action = '/regattas/' + el.dataset.regattaId + '/crew-rsvp';
+    document.getElementById('crewRsvpPicker').style.display = 'none';
+    document.getElementById('crewRsvpProfileLink').href = '/crew/' + el.dataset.crewId;
+    document.getElementById('crewRsvpProfileLink').style.display = '';
+    document.getElementById('crewRsvpButtons').style.display = 'grid';
+    // Highlight current status
+    var currentStatus = el.dataset.currentStatus;
+    document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.dataset.status === currentStatus) btn.classList.add('active');
+    });
+    var modal = new bootstrap.Modal(document.getElementById('crewRsvpModal'));
+    modal.show();
+}
+
+function selectCrewFromList(item) {
+    document.getElementById('crewRsvpUserId').value = item.dataset.crewId;
+    document.getElementById('crewRsvpName').textContent = item.dataset.crewName;
+    // Highlight selected item
+    document.querySelectorAll('#crewRsvpList .list-group-item').forEach(function(li) {
+        li.classList.remove('active');
+    });
+    item.classList.add('active');
+    // Show RSVP buttons
+    document.getElementById('crewRsvpButtons').style.display = 'grid';
+    document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+}
+
+function openAddCrewRsvpModal(el) {
+    var crew = JSON.parse(el.dataset.allCrew);
+    var list = document.getElementById('crewRsvpList');
+    list.innerHTML = '';
+    crew.forEach(function(c) {
+        var item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+        item.dataset.crewId = c.id;
+        item.dataset.crewName = c.name;
+        item.textContent = c.name;
+        item.onclick = function(e) { e.preventDefault(); selectCrewFromList(this); };
+        list.appendChild(item);
+    });
+    document.getElementById('crewRsvpUserId').value = '';
+    document.getElementById('crewRsvpName').textContent = 'Select a crew member';
+    document.getElementById('crewRsvpForm').action = '/regattas/' + el.dataset.regattaId + '/crew-rsvp';
+    document.getElementById('crewRsvpPicker').style.display = 'block';
+    document.getElementById('crewRsvpProfileLink').style.display = 'none';
+    document.getElementById('crewRsvpButtons').style.display = 'none';
+    document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+    var modal = new bootstrap.Modal(document.getElementById('crewRsvpModal'));
+    modal.show();
+}
+
+function submitCrewRsvp(status) {
+    document.getElementById('crewRsvpStatus').value = status;
+    sessionStorage.setItem('rsvpScrollY', window.scrollY);
+    var checked = [];
+    document.querySelectorAll('input[name="selected"]:checked').forEach(function(cb) {
+        checked.push(cb.value);
+    });
+    if (checked.length) {
+        sessionStorage.setItem('rsvpChecked', JSON.stringify(checked));
+    }
+    document.getElementById('crewRsvpForm').submit();
+}
+
 function saveScrollAndSubmit(form) {
     sessionStorage.setItem('rsvpScrollY', window.scrollY);
     var checked = [];

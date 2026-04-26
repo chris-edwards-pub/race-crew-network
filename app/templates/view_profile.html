@@ -50,10 +50,21 @@
             {% endif %}
             <tr>
                 <th>Role</th>
-                <td>{{ "Admin" if user.is_admin else "Crew" }}</td>
+                <td>
+                    {% if user.invite_token %}
+                    <span class="badge bg-warning text-dark">Pending Invite</span>
+                    {% elif user.is_admin %}
+                    Admin
+                    {% else %}
+                    Crew
+                    {% endif %}
+                </td>
             </tr>
         </table>
         <a href="{{ url_for('regattas.index') }}" class="btn btn-outline-secondary btn-sm">Back</a>
+        {% if user.id == current_user.id %}
+        <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+        {% endif %}
     </div>
 </div>
 

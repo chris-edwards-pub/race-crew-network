@@ -1,0 +1,10 @@
+RSVP Update from Your Skipper
+
+Your skipper {{ skipper_name }} has {% if status %}set your RSVP to {{ status }}{% else %}cleared your RSVP{% endif %} for {{ regatta_name }}.
+
+Event: {{ regatta_name }}
+Date: {{ regatta_date.strftime('%b %d') }}{% if regatta_end_date %} – {{ regatta_end_date.strftime('%b %d') }}{% endif %}, {{ regatta_date.strftime('%Y') }}
+Location: {{ regatta_location }}
+{% if status %}Your RSVP: {{ status }}{% endif %}
+
+View your schedule: {{ schedule_url }}

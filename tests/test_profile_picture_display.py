@@ -176,3 +176,134 @@ class TestProfilePagePreview:
         html = resp.data.decode()
         assert "<svg" in html
         assert "avatar-icon" in html
+
+
+class TestViewProfileEditButton:
+    def test_edit_button_shown_on_own_profile(self, app, client, db):
+        user = User(
+            email="self@test.com",
+            display_name="Self",
+            initials="SE",
+        )
+        user.set_password("password")
+        db.session.add(user)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "self@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get(f"/crew/{user.id}")
+        html = resp.data.decode()
+        assert "Edit Profile" in html
+        assert "/profile" in html
+
+    def test_edit_button_hidden_on_other_profile(self, app, client, db):
+        viewer = User(
+            email="viewer@test.com",
+            display_name="Viewer",
+            initials="VW",
+        )
+        viewer.set_password("password")
+        db.session.add(viewer)
+
+        other = User(
+            email="other@test.com",
+            display_name="Other",
+            initials="OT",
+        )
+        other.set_password("password")
+        db.session.add(other)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "viewer@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get(f"/crew/{other.id}")
+        html = resp.data.decode()
+        assert "Edit Profile" not in html
+
+
+class TestPendingCrewProfile:
+    def test_skipper_can_view_pending_crew_profile(self, app, db, client):
+        skipper = User(
+            email="skipper@test.com",
+            display_name="Skipper",
+            initials="SK",
+            is_skipper=True,
+        )
+        skipper.set_password("password")
+        db.session.add(skipper)
+
+        pending = User(
+            email="pending@test.com",
+            display_name="Pending Crew",
+            initials="PC",
+            password_hash="pending",
+            invite_token="abc123",
+            invited_by=skipper.id,
+            phone="555-1234",
+        )
+        db.session.add(pending)
+        db.session.flush()
+        skipper.crew_members.append(pending)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "skipper@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get(f"/crew/{pending.id}")
+        assert resp.status_code == 200
+        html = resp.data.decode()
+        assert "Pending Crew" in html
+        assert "Pending Invite" in html
+        assert "555-1234" in html
+
+    def test_other_user_cannot_view_pending_crew_profile(self, app, db, client):
+        skipper = User(
+            email="skipper@test.com",
+            display_name="Skipper",
+            initials="SK",
+            is_skipper=True,
+        )
+        skipper.set_password("password")
+        db.session.add(skipper)
+
+        other = User(
+            email="other@test.com",
+            display_name="Other",
+            initials="OT",
+        )
+        other.set_password("password")
+        db.session.add(other)
+
+        pending = User(
+            email="pending@test.com",
+            display_name="Pending Crew",
+            initials="PC",
+            password_hash="pending",
+            invite_token="abc123",
+            invited_by=skipper.id,
+        )
+        db.session.add(pending)
+        db.session.flush()
+        skipper.crew_members.append(pending)
+        db.session.commit()
+
+        client.post(
+            "/login",
+            data={"email": "other@test.com", "password": "password"},
+            follow_redirects=True,
+        )
+
+        resp = client.get(f"/crew/{pending.id}", follow_redirects=True)
+        html = resp.data.decode()
+        assert "User not found" in html

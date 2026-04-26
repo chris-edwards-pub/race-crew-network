@@ -39,6 +39,18 @@ def can_manage_regatta(user, regatta) -> bool:
     return user.is_skipper and regatta.created_by == user.id
 
 
+def can_set_crew_rsvp(user, regatta, crew_user) -> bool:
+    """True if user can set RSVP for crew_user on this regatta.
+
+    Allowed for: admin, or regatta owner if crew_user is in their crew.
+    """
+    if user.is_admin:
+        return True
+    if regatta.created_by == user.id and crew_user in user.crew_members.all():
+        return True
+    return False
+
+
 def can_rsvp_to_regatta(user, regatta) -> bool:
     """True if user can RSVP to this regatta.
 
