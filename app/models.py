@@ -38,6 +38,8 @@ class User(UserMixin, db.Model):
 
     # Registration invite token (null after registration is complete)
     invite_token = db.Column(db.String(64), unique=True, nullable=True)
+    # When the last invite email was sent (for resend rate limiting)
+    invite_sent_at = db.Column(db.DateTime, nullable=True)
     # Token for iCal subscription feed (generated on first request)
     calendar_token = db.Column(db.String(64), unique=True, nullable=True)
     # Password reset token and expiry

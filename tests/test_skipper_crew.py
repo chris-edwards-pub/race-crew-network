@@ -31,7 +31,11 @@ class TestInviteCrew:
     def test_invite_crew_creates_user(self, app, logged_in_skipper, db, skipper_user):
         resp = logged_in_skipper.post(
             "/my-crew/invite",
-            data={"email": "newcrew@test.com"},
+            data={
+                "email": "newcrew@test.com",
+                "display_name": "New Crew",
+                "initials": "NC",
+            },
             follow_redirects=True,
         )
         assert b"Invite link:" in resp.data
@@ -58,7 +62,11 @@ class TestInviteCrew:
 
         resp = logged_in_skipper.post(
             "/my-crew/invite",
-            data={"email": "other@test.com"},
+            data={
+                "email": "other@test.com",
+                "display_name": "Other",
+                "initials": "OT",
+            },
             follow_redirects=True,
         )
         assert b"added to your crew" in resp.data
@@ -67,7 +75,11 @@ class TestInviteCrew:
     def test_invite_duplicate_warns(self, logged_in_skipper, crew_user):
         resp = logged_in_skipper.post(
             "/my-crew/invite",
-            data={"email": crew_user.email},
+            data={
+                "email": crew_user.email,
+                "display_name": crew_user.display_name,
+                "initials": crew_user.initials,
+            },
             follow_redirects=True,
         )
         assert b"already on your crew" in resp.data

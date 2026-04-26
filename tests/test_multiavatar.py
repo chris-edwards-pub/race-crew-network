@@ -202,7 +202,11 @@ class TestAutoAvatarSeedOnInvite:
     def test_invite_crew_sets_avatar_seed(self, logged_in_client, admin_user, db):
         resp = logged_in_client.post(
             "/my-crew/invite",
-            data={"email": "crewnew@test.com"},
+            data={
+                "email": "crewnew@test.com",
+                "display_name": "Crew New",
+                "initials": "CN",
+            },
             follow_redirects=True,
         )
         assert resp.status_code == 200

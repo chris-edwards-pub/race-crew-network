@@ -178,6 +178,70 @@ def notify_rsvp_to_skipper(rsvp) -> None:
     db.session.commit()
 
 
+def notify_crew_rsvp_changed(
+    crew_user: User, regatta: "Regatta", status: str, skipper: User
+) -> None:
+    """Notify a crew member that the skipper changed their RSVP."""
+    if not is_email_configured():
+        return
+
+    # Skip pending (unregistered) crew — they can't log in anyway
+    if crew_user.invite_token:
+        return
+
+    if not crew_user.email_opt_in:
+        return
+
+    schedule_url = url_for("regattas.index", _external=True)
+
+    if status:
+        subject = (
+            f"RSVP Update: {skipper.display_name} set you as {status} — {regatta.name}"
+        )
+    else:
+        subject = (
+            f"RSVP Update: {skipper.display_name} cleared your RSVP — {regatta.name}"
+        )
+
+    body_html = render_template(
+        "email/crew_rsvp_changed.html",
+        skipper_name=skipper.display_name,
+        status=status,
+        regatta_name=regatta.name,
+        regatta_date=regatta.start_date,
+        regatta_end_date=regatta.end_date,
+        regatta_location=regatta.full_location,
+        schedule_url=schedule_url,
+    )
+    body_text = render_template(
+        "email/crew_rsvp_changed.txt",
+        skipper_name=skipper.display_name,
+        status=status,
+        regatta_name=regatta.name,
+        regatta_date=regatta.start_date,
+        regatta_end_date=regatta.end_date,
+        regatta_location=regatta.full_location,
+        schedule_url=schedule_url,
+    )
+
+    send_email(
+        to=crew_user.email,
+        subject=subject,
+        body_text=body_text,
+        body_html=body_html,
+    )
+
+    db.session.add(
+        NotificationLog(
+            notification_type="crew_rsvp_changed",
+            regatta_id=regatta.id,
+            user_id=crew_user.id,
+            trigger_date=date.today(),
+        )
+    )
+    db.session.commit()
+
+
 def notify_crew_joined(crew_member: User, skipper: User) -> None:
     """Notify skipper that a crew member has completed registration."""
     if not is_email_configured():

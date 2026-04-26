@@ -380,7 +380,9 @@ def profile():
                 return redirect(url_for("auth.profile"))
 
     # Ensure skippers/admins always have a schedule slug for display
-    if (current_user.is_skipper or current_user.is_admin) and not current_user.schedule_slug:
+    if (
+        current_user.is_skipper or current_user.is_admin
+    ) and not current_user.schedule_slug:
         current_user.schedule_slug = current_user.generate_schedule_slug()
         db.session.commit()
 
@@ -395,9 +397,14 @@ def profile():
 @login_required
 def view_profile(user_id: int):
     user = db.session.get(User, user_id)
-    if not user or user.invite_token:
+    if not user:
         flash("User not found.", "error")
         return redirect(url_for("regattas.index"))
+    # Pending users visible only to their skipper or admin
+    if user.invite_token:
+        if not (current_user.is_admin or user in current_user.crew_members.all()):
+            flash("User not found.", "error")
+            return redirect(url_for("regattas.index"))
     return render_template(
         "view_profile.html",
         user=user,
@@ -706,6 +713,7 @@ def my_crew():
         "my_crew.html",
         crew=[current_user] + crew,
         email_configured=is_email_configured(),
+        now=datetime.now(timezone.utc).replace(tzinfo=None),
     )
 
 
@@ -744,8 +752,18 @@ def invite_crew():
         return redirect(url_for("regattas.index"))
 
     email = request.form.get("email", "").strip().lower()
+    display_name = request.form.get("display_name", "").strip()
+    initials = request.form.get("initials", "").strip().upper()
+    phone = request.form.get("phone", "").strip() or None
+
     if not email:
         flash("Email is required.", "error")
+        return redirect(url_for("auth.my_crew"))
+    if not display_name:
+        flash("Name is required.", "error")
+        return redirect(url_for("auth.my_crew"))
+    if not initials:
+        flash("Initials are required.", "error")
         return redirect(url_for("auth.my_crew"))
 
     existing_user = User.query.filter_by(email=email).first()
@@ -764,8 +782,9 @@ def invite_crew():
     user = User(
         email=email,
         password_hash="pending",
-        display_name=email,
-        initials="??",
+        display_name=display_name,
+        initials=initials,
+        phone=phone,
         invite_token=token,
         invited_by=current_user.id,
         avatar_seed=User.generate_avatar_seed(),
@@ -781,6 +800,8 @@ def invite_crew():
     if send_email_invite and is_email_configured():
         try:
             _send_invite_email(email, invite_url, current_user.display_name)
+            user.invite_sent_at = datetime.now(timezone.utc)
+            db.session.commit()
             flash(f"Invite email sent to {email}.", "success")
         except Exception:
             logger.exception("Failed to send invite email to %s", email)
@@ -788,6 +809,48 @@ def invite_crew():
             flash(f"Invite link: {invite_url}", "success")
     else:
         flash(f"Invite link: {invite_url}", "success")
+
+    return redirect(url_for("auth.my_crew"))
+
+
+@bp.route("/my-crew/<int:user_id>/resend-invite", methods=["POST"])
+@login_required
+def resend_invite(user_id: int):
+    if not (current_user.is_admin or current_user.is_skipper):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index"))
+
+    user = db.session.get(User, user_id)
+    if not user or not user.invite_token:
+        flash("User not found or already registered.", "error")
+        return redirect(url_for("auth.my_crew"))
+
+    if user not in current_user.crew_members.all():
+        flash("That user is not on your crew.", "warning")
+        return redirect(url_for("auth.my_crew"))
+
+    # Rate limit: one resend per day
+    if user.invite_sent_at:
+        hours_since = (
+            datetime.now(timezone.utc).replace(tzinfo=None) - user.invite_sent_at
+        ).total_seconds() / 3600
+        if hours_since < 24:
+            flash("Invite was already sent today. Try again tomorrow.", "warning")
+            return redirect(url_for("auth.my_crew"))
+
+    if not is_email_configured():
+        flash("Email is not configured.", "error")
+        return redirect(url_for("auth.my_crew"))
+
+    invite_url = url_for("auth.register", token=user.invite_token, _external=True)
+    try:
+        _send_invite_email(user.email, invite_url, current_user.display_name)
+        user.invite_sent_at = datetime.now(timezone.utc)
+        db.session.commit()
+        flash(f"Invite resent to {user.email}.", "success")
+    except Exception:
+        logger.exception("Failed to resend invite to %s", user.email)
+        flash("Failed to resend invite email.", "error")
 
     return redirect(url_for("auth.my_crew"))
 

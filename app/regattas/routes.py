@@ -12,8 +12,10 @@ from weasyprint import HTML
 from app import db, storage
 from app.models import RSVP, Document, Regatta, User
 from app.notifications.service import (get_eligible_crew, notify_crew,
+                                       notify_crew_rsvp_changed,
                                        notify_rsvp_to_skipper)
-from app.permissions import can_manage_regatta, can_rsvp_to_regatta
+from app.permissions import (can_manage_regatta, can_rsvp_to_regatta,
+                             can_set_crew_rsvp)
 from app.regattas import bp
 
 logger = logging.getLogger(__name__)
@@ -409,6 +411,77 @@ def rsvp(regatta_id: int):
         notify_rsvp_to_skipper(rsvp_obj)
     except Exception:
         logger.exception("Failed to send RSVP notification for regatta %s", regatta.id)
+
+    return redirect(url_for("regattas.index", **redirect_args))
+
+
+@bp.route("/regattas/<int:regatta_id>/crew-rsvp", methods=["POST"])
+@login_required
+def crew_rsvp(regatta_id: int):
+    """Allow a skipper to set RSVP status for one of their crew members."""
+    crew_user_id = request.form.get("crew_user_id", type=int)
+    status = request.form.get("status", "").lower()
+
+    # Build redirect args — same pattern as self-RSVP route
+    redirect_args = {}
+    redirect_skipper = request.form.get("redirect_skipper")
+    if redirect_skipper is not None and redirect_skipper != "":
+        redirect_args["skipper"] = redirect_skipper
+    redirect_rsvp = request.form.getlist("redirect_rsvp")
+    if redirect_rsvp:
+        redirect_args["rsvp"] = redirect_rsvp
+
+    regatta = db.session.get(Regatta, regatta_id)
+    crew_user = db.session.get(User, crew_user_id) if crew_user_id else None
+    skipper = db.session.get(User, current_user.id)
+
+    if (
+        not regatta
+        or not crew_user
+        or not can_set_crew_rsvp(current_user, regatta, crew_user)
+    ):
+        flash("Access denied.", "error")
+        return redirect(url_for("regattas.index", **redirect_args))
+
+    if not status:
+        # Clear the crew member's RSVP
+        existing = RSVP.query.filter_by(
+            regatta_id=regatta_id, user_id=crew_user.id
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+            try:
+                notify_crew_rsvp_changed(crew_user, regatta, "", skipper)
+            except Exception:
+                logger.exception(
+                    "Failed to send crew RSVP notification for regatta %s",
+                    regatta.id,
+                )
+        return redirect(url_for("regattas.index", **redirect_args))
+
+    if status not in ("yes", "no", "maybe"):
+        flash("Invalid RSVP status.", "error")
+        return redirect(url_for("regattas.index", **redirect_args))
+
+    existing = RSVP.query.filter_by(regatta_id=regatta_id, user_id=crew_user.id).first()
+
+    if existing:
+        existing.status = status
+        rsvp_obj = existing
+    else:
+        rsvp_obj = RSVP(regatta_id=regatta_id, user_id=crew_user.id, status=status)
+        db.session.add(rsvp_obj)
+
+    db.session.commit()
+
+    # Notify the crew member that their RSVP was changed
+    try:
+        notify_crew_rsvp_changed(crew_user, regatta, status, skipper)
+    except Exception:
+        logger.exception(
+            "Failed to send crew RSVP notification for regatta %s", regatta.id
+        )
 
     return redirect(url_for("regattas.index", **redirect_args))
 

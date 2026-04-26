@@ -12,10 +12,11 @@ A simple web app for organizing sailing events. Track dates, locations, NOR/SI d
 - Upload/download NOR and SI PDFs (stored in S3)
 - Profile pictures with S3 storage, displayed in navbar and crew profiles
 - Crew RSVP (Yes / No / Maybe) with color-coded initials and unique Multiavatar icons
+- Skippers can set crew RSVP on their behalf via clickable crew badges with "+" to add missing crew
 - AI-powered schedule import: paste text or URL, Claude extracts events for review and bulk import, with auto-discovery of NOR/SI/WWW documents from event detail pages and event websites (including clubspot Parse API integration)
 - Admin: manage all users, site settings, invite skippers
-- Skipper: add/edit/delete own events, upload documents, invite crew, import schedules
-- Crew: view skipper's schedule, download docs, set RSVP
+- Skipper: add/edit/delete own events, upload documents, invite crew (with name/initials/phone), import schedules, set crew RSVP, resend invitations
+- Crew: view skipper's schedule, download docs, set RSVP, receive email when skipper changes their RSVP
 - AI usage tracking with cost statistics dashboard, monthly budget cap, and automatic 80% budget alert
 - Email rate limiting with queueing, admin alerts, and statistics dashboard
 - Email-based password reset with secure token expiry
@@ -120,10 +121,11 @@ Open http://localhost and login with your admin credentials.
 
 ### Invite crew
 
-1. Go to **Crew** in the navbar
-2. Enter a crew member's email and click **Send Invite**
-3. Copy the invite link and send it to them
-4. They click the link, set their name/initials/password, and they're in
+1. Go to **My Crew** in the navbar
+2. Enter the crew member's name, initials, email, and optionally phone number
+3. Click **Invite** (optionally send invite via email)
+4. They click the invite link, confirm their name/initials, set a password, and they're in
+5. Use the **Resend** button next to pending crew to re-send the invite (once per day)
 
 ### Stop
 

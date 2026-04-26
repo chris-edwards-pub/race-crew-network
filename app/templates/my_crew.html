@@ -8,9 +8,21 @@
         <h5 class="card-title">Invite Crew Member</h5>
         <form method="POST" action="{{ url_for('auth.invite_crew') }}" class="row g-2 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="col-12 col-sm">
+            <div class="col-12 col-sm-6 col-md">
+                <label for="display_name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="display_name" name="display_name" required placeholder="John Doe">
+            </div>
+            <div class="col-6 col-sm-3 col-md-auto" style="max-width: 100px;">
+                <label for="initials" class="form-label">Initials</label>
+                <input type="text" class="form-control text-uppercase" id="initials" name="initials" required maxlength="5" placeholder="JD" style="text-transform:uppercase;">
+            </div>
+            <div class="col-12 col-sm-6 col-md">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email" required placeholder="crew@example.com">
+            </div>
+            <div class="col-12 col-sm-6 col-md">
+                <label for="phone" class="form-label">Phone <small class="text-muted">(optional)</small></label>
+                <input type="tel" class="form-control" id="phone" name="phone" placeholder="555-123-4567">
             </div>
             {% if email_configured %}
             <div class="col-12 col-sm-auto d-flex align-items-center">
@@ -60,8 +72,15 @@
                     <span class="badge bg-success">Active</span>
                     {% endif %}
                 </td>
-                <td>
+                <td class="text-nowrap">
                     {% if member.id != current_user.id %}
+                    {% if member.invite_token and email_configured %}
+                    {% set can_resend = not member.invite_sent_at or (now - member.invite_sent_at).total_seconds() >= 86400 %}
+                    <form method="POST" action="{{ url_for('auth.resend_invite', user_id=member.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" {% if not can_resend %}disabled title="Resent today"{% endif %}>Resend</button>
+                    </form>
+                    {% endif %}
                     <form method="POST" action="{{ url_for('auth.remove_crew', user_id=member.id) }}" class="d-inline" onsubmit="return confirm('Remove {{ member.display_name }} from your crew?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
