@@ -1,5 +1,8 @@
 # Version History
 
+## 0.72.4
+- Deploy workflow polls for any in-progress Lightsail deployment before calling `create-container-service-deployment`, preventing back-to-back deploys from failing with `InvalidInputException: deployment N is in progress`
+
 ## 0.72.3
 - Drop GHA Docker build cache from the deploy workflow so every push rebuilds from scratch and `apt-get upgrade` always pulls patched Debian system packages
 - Revert the `APT_REFRESH` Dockerfile arg added in 0.72.2 (no longer needed without the build cache)
