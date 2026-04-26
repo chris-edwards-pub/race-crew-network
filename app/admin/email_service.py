@@ -133,19 +133,38 @@ def _send_via_ses(
             filename="img/race-crew-network-1536x1024.png",
             _external=True,
         )
-        header = (
-            '<div style="text-align:center;margin-bottom:20px;">'
+        logo_block = (
+            '<table role="presentation" width="600" cellpadding="0" '
+            'cellspacing="0" border="0" '
+            'style="max-width:600px;width:100%;">'
+            '<tr><td align="center" style="padding:8px 0 16px 0;">'
+            '<table role="presentation" cellpadding="0" cellspacing="0" '
+            'border="0" style="background-color:#1f2937;border-radius:8px;">'
+            '<tr><td align="center" style="padding:16px 24px;">'
             f'<img src="{logo_url}" alt="Race Crew Network" '
-            'style="max-width:350px;width:100%;height:auto;" />'
-            "</div>"
+            'style="max-width:320px;width:100%;height:auto;display:block;" />'
+            "</td></tr></table>"
+            "</td></tr></table>"
         )
         footer = (
             '<hr style="margin-top:20px;border:none;border-top:1px solid #ddd;">'
-            '<p style="font-size:12px;color:#888;">'
+            '<p style="font-size:12px;color:#888;margin:0;">'
             f'<a href="{unsubscribe_url}">Unsubscribe</a> from Race Crew Network emails.'
             "</p>"
         )
-        body_html_with_footer = header + body_html + footer
+        body_html_with_footer = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            'border="0" style="background-color:#F8F9FA;margin:0;padding:0;">'
+            '<tr><td align="center" style="padding:24px 16px;">'
+            f"{logo_block}"
+            '<table role="presentation" width="600" cellpadding="0" cellspacing="0" '
+            'border="0" style="background-color:#FFFFFF;border-radius:8px;'
+            'max-width:600px;width:100%;">'
+            '<tr><td style="padding:24px;">'
+            f"{body_html}{footer}"
+            "</td></tr></table>"
+            "</td></tr></table>"
+        )
         msg.attach(MIMEText(body_html_with_footer, "html", "utf-8"))
 
     client.send_raw_email(

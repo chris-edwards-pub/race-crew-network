@@ -1,5 +1,10 @@
 # Version History
 
+## 0.73.1
+- Wrap transactional emails in a light-gray (`#F8F9FA`) page with a white (`#FFFFFF`) inner card so messages have a more polished, modern look across email clients
+- Move the logo above the white card so it sits on the light-gray page background
+- Place the logo on a dark slate (`#1f2937`) rounded panel so the transparent PNG's white elements remain visible
+
 ## 0.73.0
 - Add weekly GHCR retention workflow (`ghcr-cleanup.yml`) that keeps `:latest`, the 5 most recent semver release tags, and SHA-only tags newer than 30 days; deletes everything else and any untagged manifests
 - Sort the "Set RSVP" crew picker alphabetically by display name (case-insensitive)
