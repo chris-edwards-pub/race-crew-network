@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.2
+- Simplify GHCR retention workflow to a single step (`keep-n-tagged: 5` + `delete-untagged: true`); the previous three-step regex-filtered version deleted 0 release versions because each commit's package version carries both semver and SHA tags simultaneously, which made each step's tag filter skip every version
+
 ## 0.73.1
 - Wrap transactional emails in a light-gray (`#F8F9FA`) page with a white (`#FFFFFF`) inner card so messages have a more polished, modern look across email clients
 - Move the logo above the white card so it sits on the light-gray page background
