@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.3
+- Bring the 18-day training curriculum (training/) up to date with the current application: 7 blueprints (added `help`), 10 models + `skipper_crew`, new permission helper `can_set_crew_rsvp`, public per-skipper schedule pages, skipper-sets-crew-RSVP flow, queued/rate-limited email sender + `process-email-queue` CLI, `crew_rsvp_changed` notification, AI usage logging with monthly budget cap, optional Yacht Club / About Me profile fields, password reset flow, and updated SiteSetting / email template / CLI references in the appendix
+
 ## 0.73.2
 - Simplify GHCR retention workflow to a single step (`keep-n-tagged: 5` + `delete-untagged: true`); the previous three-step regex-filtered version deleted 0 release versions because each commit's package version carries both semver and SHA tags simultaneously, which made each step's tag filter skip every version
 
