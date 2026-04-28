@@ -5,17 +5,19 @@ the 18-day curriculum.
 
 # Model Reference
 
-## Models Summary (8 + 1 Association Table)
+## Models Summary (10 + 1 Association Table)
 
 | Model | Table | Key Fields | Day |
 |-------|-------|------------|-----|
-| User | users | email, is_admin, is_skipper, avatar_seed, profile_image_key, email_opt_in, notification_prefs, calendar_token | 3 |
-| Regatta | regattas | name, boat_class, start_date, end_date, location, created_by | 3 |
-| Document | documents | filename, doc_type, storage_key, regatta_id, uploaded_by | 3 |
+| User | users | email, is_admin, is_skipper, avatar_seed, profile_image_key, email_opt_in, notification_prefs, calendar_token, schedule_slug, schedule_published, yacht_club, bio, reset_token | 3 |
+| Regatta | regattas | name, boat_class, start_date, end_date, location, city_state, created_by | 3 |
+| Document | documents | original_filename, stored_filename, url, doc_type, regatta_id, uploaded_by | 3 |
 | RSVP | rsvps | user_id, regatta_id, status (yes/no/maybe) | 3 |
 | ImportCache | import_cache | url, year, results_json, regatta_count | 13 |
 | TaskResult | task_results | id (UUID), result_type, data_json | 13 |
 | NotificationLog | notification_log | notification_type, regatta_id, user_id, sent_at, trigger_date | 11 |
+| EmailQueue | email_queue | to_email, subject, body_text, body_html, status, queued_at, sent_at | 11 |
+| AIUsageLog | ai_usage_log | function_name, model, input_tokens, output_tokens, cost_usd, created_at | 13 |
 | SiteSetting | site_settings | key (unique), value | 15 |
 | skipper_crew | skipper_crew | skipper_id, crew_id, created_at (association table) | 9 |
 
@@ -30,12 +32,19 @@ the 18-day curriculum.
 | is_admin | Boolean | Admin role flag | 3 |
 | is_skipper | Boolean | Skipper role flag | 3 |
 | invite_token | String | Pending registration token | 4 |
+| invite_sent_at | DateTime | Drives once-per-day resend rate limit | 4 |
 | invited_by | Integer FK | Who invited this user | 4 |
+| reset_token | String | Forgot/reset password token | 4 |
+| reset_token_expires_at | DateTime | 1-hour expiry on reset token | 4 |
 | avatar_seed | String | Multiavatar SVG seed | 14 |
 | profile_image_key | String | S3/local storage key | 8 |
 | email_opt_in | Boolean | Email preference (default True) | 10 |
 | notification_prefs | Text | JSON: rsvp_notification, rsvp_delivery | 11 |
-| phone | String(30) | Optional phone number | 3 |
+| phone | String(20) | Optional phone number | 3 |
+| yacht_club | String | Optional public profile field | 3 |
+| bio | Text | Optional "About Me" public profile field | 3 |
+| schedule_slug | String | Public schedule URL slug | 3 |
+| schedule_published | Boolean | Public schedule on/off (default True) | 3 |
 | calendar_token | String | iCal feed auth token | 12 |
 
 # Permission Patterns Reference
@@ -48,6 +57,7 @@ the 18-day curriculum.
 | `require_skipper` | Decorator: redirects non-skipper/non-admin users | 5 |
 | `can_manage_regatta(user, regatta)` | Returns True if user can edit/delete | 5 |
 | `can_rsvp_to_regatta(user, regatta)` | Returns True if user can RSVP | 5 |
+| `can_set_crew_rsvp(user, regatta, crew_user)` | Returns True if user can set RSVP on behalf of `crew_user` | 5 |
 
 ## Permission Matrix
 
@@ -71,8 +81,12 @@ the 18-day curriculum.
 | `rsvp_notification` | Crew RSVPs (per_rsvp mode) | Event's skipper | 11 |
 | `rsvp_digest` | Daily cron (digest mode) | Skipper with digest pref | 11 |
 | `crew_joined` | Crew completes registration | Inviting skipper | 11 |
+| `crew_rsvp_changed` | Skipper sets/clears crew RSVP | Affected crew member | 11 |
 | `rsvp_reminder` | 14 days before event | Crew who haven't RSVPed | 11 |
 | `coming_up_reminder` | 3 days before event | Crew who RSVPed yes/maybe | 11 |
+| `rate_limit_alert` | EmailQueue first overflows in an hour | Admin (`ses_sender_to`) | 11 |
+| `ai_cost_alert` | AI monthly cost crosses 80% of budget | Admin (`ses_sender_to`) | 13 |
+| Reset password | User requests password reset | Requesting user (bypasses opt-in) | 4 |
 
 # SiteSetting Keys Reference
 
@@ -80,11 +94,14 @@ the 18-day curriculum.
 |-----|---------|---------|-----|
 | `ga_measurement_id` | Google Analytics injection | "" (disabled) | 15 |
 | `ses_sender` | SES sender email address | "" | 10 |
-| `ses_sender_to` | Default test email recipient | "" | 15 |
+| `ses_sender_to` | Default admin notification recipient | "" | 15 |
 | `ses_region` | SES AWS region | config["AWS_REGION"] | 10 |
 | `reminder_rsvp_days_before` | RSVP reminder window | "14" | 11 |
 | `reminder_upcoming_days_before` | Coming-up reminder window | "3" | 11 |
 | `reminder_api_token` | Reminder API auth token | "" | 15 |
+| `rate_limit_emails_per_hour` | Hourly SES send cap | (per env) | 11 |
+| `ai_monthly_cost_limit` | Monthly AI spend cap (USD) | "" | 13 |
+| `ai_cost_alert_sent_month` | Bookkeeping for monthly 80% alert | "" | 13 |
 
 # Template Filters Reference
 
@@ -105,7 +122,14 @@ the 18-day curriculum.
 | `email/rsvp_reminder.html/.txt` | `send_rsvp_reminders()` | "Please RSVP" reminder |
 | `email/coming_up_reminder.html/.txt` | `send_coming_up_reminders()` | "Event in 3 days" reminder |
 | `email/crew_digest.html/.txt` | `send_crew_digests()` | Daily digest for crew |
-| `email/invite_crew.html/.txt` | `invite_crew()` | Crew invitation email |
+| `email/crew_rsvp_changed.html/.txt` | `notify_crew_rsvp_changed()` | "Skipper changed your RSVP" |
+| `email/invite_crew.html/.txt` | Crew invite flow | Crew invitation email |
+| `email/reset_password.html/.txt` | Forgot/reset flow | Password reset link (1 hour TTL) |
+| `email/contact.html/.txt` | Help contact form | Forwarded contact submission |
+
+All transactional emails are wrapped in a light-gray page (`#F8F9FA`) with
+a white inner card and a slate logo panel by `_send_via_ses()` — templates
+only need to render the inner content.
 
 # Flask Routing Reference
 
@@ -242,6 +266,7 @@ docker compose ps                  # Running containers
 flask init-admin                   # Create admin from env vars
 flask create-admin                 # Interactive admin creation
 flask send-reminders               # Run all scheduled reminders
+flask process-email-queue          # Drain rate-limited EmailQueue
 
 # Migration commands
 flask db upgrade                   # Apply pending migrations
@@ -360,6 +385,6 @@ trivy image --format sarif --output results.sarif \
 
 # End of Appendix
 
-This appendix covers the complete Race Crew Network v0.61.0 application.
+This appendix covers the Race Crew Network application as of v0.73.2.
 Return to it whenever you need a quick reference for any topic covered in
 the 18-day curriculum.
