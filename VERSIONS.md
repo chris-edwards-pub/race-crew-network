@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.4
+- Purge `linux-libc-dev` (Debian kernel headers) from the runtime image after `pip install`, eliminating 99 HIGH kernel CVEs flagged by the daily Trivy scan; the package is pulled in transitively by `gcc` for builds, has no runtime use in the container (containers share the host kernel), and `apt-get autoremove` cleans up other build-only deps no longer needed
+
 ## 0.73.3
 - Bring the 18-day training curriculum (training/) up to date with the current application: 7 blueprints (added `help`), 10 models + `skipper_crew`, new permission helper `can_set_crew_rsvp`, public per-skipper schedule pages, skipper-sets-crew-RSVP flow, queued/rate-limited email sender + `process-email-queue` CLI, `crew_rsvp_changed` notification, AI usage logging with monthly budget cap, optional Yacht Club / About Me profile fields, password reset flow, and updated SiteSetting / email template / CLI references in the appendix
 
