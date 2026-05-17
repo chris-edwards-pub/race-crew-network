@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.5
+- Pin `urllib3>=2.7.0` in `requirements.txt` to patch CVE-2026-44431 (HIGH; sensitive headers forwarded across origins in proxied low-level redirects) and CVE-2026-44432 (HIGH; decompression-bomb safeguards bypassed in streaming API), both flagged against the transitively-installed `urllib3 2.6.3` by the daily Trivy scan (closes #147)
+
 ## 0.73.4
 - Purge `linux-libc-dev` (Debian kernel headers) from the runtime image after `pip install`, eliminating 99 HIGH kernel CVEs flagged by the daily Trivy scan; the package is pulled in transitively by `gcc` for builds, has no runtime use in the container (containers share the host kernel), and `apt-get autoremove` cleans up other build-only deps no longer needed
 
