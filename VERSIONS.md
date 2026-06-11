@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.6
+- Rebuild image to pick up Debian `openssl`/`libssl3t64`/`openssl-provider-legacy` `3.5.6-1~deb13u2`, which patches CVE-2026-45447 (HIGH; malformed PKCS#7/S/MIME signed messages) flagged by the daily Trivy scan against the stale `:latest` built on 2026-05-17; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #149)
+
 ## 0.73.5
 - Pin `urllib3>=2.7.0` in `requirements.txt` to patch CVE-2026-44431 (HIGH; sensitive headers forwarded across origins in proxied low-level redirects) and CVE-2026-44432 (HIGH; decompression-bomb safeguards bypassed in streaming API), both flagged against the transitively-installed `urllib3 2.6.3` by the daily Trivy scan (closes #147)
 
