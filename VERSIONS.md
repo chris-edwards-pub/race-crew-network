@@ -1,5 +1,8 @@
 # Version History
 
+## 0.73.7
+- Bump `cryptography` pin from `46.0.5` to `48.0.1` to patch GHSA-537c-gmf6-5ccf (HIGH; vulnerable OpenSSL bundled in `cryptography` wheels), flagged by the daily Trivy scan (closes #151)
+
 ## 0.73.6
 - Rebuild image to pick up Debian `openssl`/`libssl3t64`/`openssl-provider-legacy` `3.5.6-1~deb13u2`, which patches CVE-2026-45447 (HIGH; malformed PKCS#7/S/MIME signed messages) flagged by the daily Trivy scan against the stale `:latest` built on 2026-05-17; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #149)
 
