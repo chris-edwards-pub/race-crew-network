@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.0
+- Adopt the cross-tool [AGENTS.md](https://agents.md) convention: `AGENTS.md` is now the canonical source of project standards for AI coding agents (Cursor, Codex, Aider, etc.), and `CLAUDE.md` is a symlink to it so Claude Code continues to load the same instructions without duplicating content
+
 ## 0.73.7
 - Bump `cryptography` pin from `46.0.5` to `48.0.1` to patch GHSA-537c-gmf6-5ccf (HIGH; vulnerable OpenSSL bundled in `cryptography` wheels), flagged by the daily Trivy scan (closes #151)
 
