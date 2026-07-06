@@ -85,3 +85,6 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 - Testing can be done locally.  Docker and Mysql are both locally installed.
 - Testing should be done with each PR
 - Local admin credentials are set via `INIT_ADMIN_EMAIL` and `INIT_ADMIN_PASSWORD` in `.env`
+
+## Database
+- Every feature or code change that depends on a schema update must have a corresponding migration applied first.

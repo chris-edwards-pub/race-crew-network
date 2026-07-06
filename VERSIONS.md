@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.1
+- Add a "Database" section to `AGENTS.md` requiring that every feature or code change depending on a schema update must have a corresponding migration applied first — codifies a rule that had been implicit and prevents PRs from landing code that references not-yet-migrated columns
+
 ## 0.74.0
 - Adopt the cross-tool [AGENTS.md](https://agents.md) convention: `AGENTS.md` is now the canonical source of project standards for AI coding agents (Cursor, Codex, Aider, etc.), and `CLAUDE.md` is a symlink to it so Claude Code continues to load the same instructions without duplicating content
 
