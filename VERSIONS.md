@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.2
+- Rebuild image to pick up Debian `libtiff6` `4.7.0-3+deb13u3`, which patches CVE-2026-12912 (HIGH; heap-based buffer overflow via crafted PixarLog-compressed TIFF image) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #155)
+
 ## 0.74.1
 - Add a "Database" section to `AGENTS.md` requiring that every feature or code change depending on a schema update must have a corresponding migration applied first — codifies a rule that had been implicit and prevents PRs from landing code that references not-yet-migrated columns
 
