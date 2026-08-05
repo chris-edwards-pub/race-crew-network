@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.3
+- Rebuild image to pick up Debian `libexpat1` `2.8.2-1~deb13u1`, which patches CVE-2025-59375, CVE-2026-25210, CVE-2026-45186, CVE-2026-56131, and CVE-2026-56408 (all HIGH; denial of service, information disclosure, and integer overflow issues in expat XML parser) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #157)
+
 ## 0.74.2
 - Rebuild image to pick up Debian `libtiff6` `4.7.0-3+deb13u3`, which patches CVE-2026-12912 (HIGH; heap-based buffer overflow via crafted PixarLog-compressed TIFF image) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #155)
 
