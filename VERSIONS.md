@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.4
+- Bump `cryptography` pin from `48.0.1` to `50.0.0` to patch CVE-2026-69247 (HIGH; fixed in 50.0.0) and CVE-2026-69249 (HIGH; fixed in 49.0.0), both flagged against `cryptography 48.0.1` by the daily Trivy scan (closes #159)
+
 ## 0.74.3
 - Rebuild image to pick up Debian `libexpat1` `2.8.2-1~deb13u1`, which patches CVE-2025-59375, CVE-2026-25210, CVE-2026-45186, CVE-2026-56131, and CVE-2026-56408 (all HIGH; denial of service, information disclosure, and integer overflow issues in expat XML parser) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #157)
 
