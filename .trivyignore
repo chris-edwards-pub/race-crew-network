@@ -1,0 +1,7 @@
+# Vulnerabilities in pip's own vendored dependencies (usr/local/lib/python3.13/site-packages/pip/_vendor/).
+# These are bundled inside pip itself for bootstrap reasons; upgrading msgpack/setuptools in
+# requirements.txt does not touch pip's private vendored copies. They are used only during pip's
+# operations (parsing PyPI responses, installing packages), never by the running application, so they
+# are not exploitable at runtime. Revisit after pip publishes a release with newer vendored versions.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
