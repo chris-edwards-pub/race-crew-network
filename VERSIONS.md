@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.6
+- Pin `msgpack>=1.2.1` and `setuptools>=78.1.1` in `requirements.txt` to patch GHSA-6v7p-g79w-8964 (HIGH; out-of-bounds read / crash on `Unpacker` reuse in `msgpack`) and CVE-2025-47273 (HIGH; path traversal in `setuptools` `PackageIndex`), both flagged by the daily Trivy scan against transitive deps (`msgpack` via `boto3`, `setuptools` from the `python:3.13-slim` base image) (closes #163)
+
 ## 0.74.5
 - Rebuild image to pick up Debian `util-linux` `2.41.5-0+deb13u1`, which patches CVE-2026-53615 (HIGH; integer overflow in `libblkid/src/partitions/dos.c`) affecting `bsdutils`, `libblkid1`, `liblastlog2-2`, `libmount1`, `libsmartcols1`, `libuuid1`, `login`, `mount`, and `util-linux` flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #161)
 
