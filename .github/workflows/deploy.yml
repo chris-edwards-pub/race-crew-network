@@ -77,6 +77,9 @@ jobs:
       TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -86,6 +89,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
+          trivyignores: .trivyignore
           output: trivy-results.txt
 
       - name: Upload scan results as artifact
@@ -120,6 +124,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
+          trivyignores: .trivyignore
 
       - name: Upload SARIF to GitHub Security tab
         if: always()

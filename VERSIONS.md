@@ -1,5 +1,11 @@
 # Version History
 
+## 0.74.7
+- Add `.trivyignore` covering GHSA-6v7p-g79w-8964 (`msgpack` 1.1.2) and CVE-2025-47273 (`setuptools` 70.3.0) because Trivy was flagging pip's own vendored copies under `usr/local/lib/python3.13/site-packages/pip/_vendor/`; the site-packages installs are already on the fixed versions (`msgpack` 1.2.1, `setuptools` 84.0.0) via the pins added in 0.74.6, and pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable
+- Wire `trivyignores: .trivyignore` into all three Trivy invocations (deploy table + SARIF scans, daily scan)
+- Add `actions/checkout` to the `scan-image` job in `deploy.yml` so the ignore file is available (it previously ran without a checkout, which was also why the file could not have been picked up before)
+- Bump version so a fresh image is built and the deploy workflow re-runs with the corrected scanner config (closes #165)
+
 ## 0.74.6
 - Pin `msgpack>=1.2.1` and `setuptools>=78.1.1` in `requirements.txt` to patch GHSA-6v7p-g79w-8964 (HIGH; out-of-bounds read / crash on `Unpacker` reuse in `msgpack`) and CVE-2025-47273 (HIGH; path traversal in `setuptools` `PackageIndex`), both flagged by the daily Trivy scan against transitive deps (`msgpack` via `boto3`, `setuptools` from the `python:3.13-slim` base image) (closes #163)
 
