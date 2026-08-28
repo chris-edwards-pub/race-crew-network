@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.8
+- Rebuild image to pick up Debian `openssl` `3.5.7-1~deb13u2`, which patches CVE-2026-14456 (HIGH; denial of service via unbounded memory growth in QUIC server) affecting `libssl3t64`, `openssl`, and `openssl-provider-legacy` flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #167)
+
 ## 0.74.7
 - Add `.trivyignore` covering GHSA-6v7p-g79w-8964 (`msgpack` 1.1.2) and CVE-2025-47273 (`setuptools` 70.3.0) because Trivy was flagging pip's own vendored copies under `usr/local/lib/python3.13/site-packages/pip/_vendor/`; the site-packages installs are already on the fixed versions (`msgpack` 1.2.1, `setuptools` 84.0.0) via the pins added in 0.74.6, and pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable
 - Wire `trivyignores: .trivyignore` into all three Trivy invocations (deploy table + SARIF scans, daily scan)
