@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.9
+- Rebuild image to pick up Debian package upgrades that patch 19 CVEs flagged by the daily Trivy scan: `glib` `2.84.4-3~deb13u4` (CVE-2026-58010/58011/58012/58013/58014/58015/58016), `gzip` `1.13-1+deb13u1` (CVE-2026-41992), `libpcre2-8-0` `10.46-1~deb13u2` (CVE-2026-86145/89161), `libsqlite3-0` `3.46.1-7+deb13u2` (CVE-2026-11822/11824), and `perl-base` `5.40.1-6+deb13u1` (CVE-2026-8376/13221/42496/42497/48962/57432/57433); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #169)
+
 ## 0.74.8
 - Rebuild image to pick up Debian `openssl` `3.5.7-1~deb13u2`, which patches CVE-2026-14456 (HIGH; denial of service via unbounded memory growth in QUIC server) affecting `libssl3t64`, `openssl`, and `openssl-provider-legacy` flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #167)
 
