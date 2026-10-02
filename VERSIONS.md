@@ -1,5 +1,9 @@
 # Version History
 
+## 0.74.11
+- Add `CVE-2026-97687` and `CVE-2026-97689` to `.trivyignore` because Trivy was flagging pip's own vendored copy of `urllib3 2.7.0` under `usr/local/lib/python3.13/site-packages/pip/_vendor/` even though the site-packages install was already upgraded to `urllib3 2.8.0` by the 0.74.10 pin bump; pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable — same precedent as the `msgpack`/`setuptools` entries added in 0.74.7
+- Bump version so the deploy workflow re-runs the Trivy scan (which blocks deploy to Lightsail on HIGH/CRITICAL findings), unblocking the v0.74.10 image rollout
+
 ## 0.74.10
 - Bump `urllib3` pin from `>=2.7.0` to `>=2.8.0` to patch CVE-2026-97687 (HIGH; traffic interception via HTTPS proxy TLS configuration override) and CVE-2026-97689 (HIGH; denial of service via unbounded memory allocation in chunk parser) flagged by the daily Trivy scan against `urllib3 2.7.0`
 - Rebuild image to pick up Debian `libpcre2-8-0` `10.46-1~deb13u3` (CVE-2026-103111; HIGH; out-of-bounds write via crafted regular expression) and `openssl` `3.5.7-1~deb13u3` (CVE-2026-75804 denial of service via unenforced QUIC flow control, CVE-2026-84782 information disclosure via DTLS handshake retransmission; both HIGH) affecting `libssl3t64`, `openssl`, and `openssl-provider-legacy`; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #171)
