@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.12
+- Bump `weasyprint` pin from `68.1` to `70.0` to patch CVE-2026-106443 (HIGH; arbitrary code execution via unsafe loading, fixed in 70.0) flagged by the daily Trivy scan (closes #174)
+
 ## 0.74.11
 - Add `CVE-2026-97687` and `CVE-2026-97689` to `.trivyignore` because Trivy was flagging pip's own vendored copy of `urllib3 2.7.0` under `usr/local/lib/python3.13/site-packages/pip/_vendor/` even though the site-packages install was already upgraded to `urllib3 2.8.0` by the 0.74.10 pin bump; pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable — same precedent as the `msgpack`/`setuptools` entries added in 0.74.7
 - Bump version so the deploy workflow re-runs the Trivy scan (which blocks deploy to Lightsail on HIGH/CRITICAL findings), unblocking the v0.74.10 image rollout
