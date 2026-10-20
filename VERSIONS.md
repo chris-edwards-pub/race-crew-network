@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.13
+- Rebuild image to pick up Debian `libexpat1` `2.9.0-1~deb13u1`, which patches 5 HIGH CVEs flagged by the daily Trivy scan: CVE-2026-66046 (denial of service via quadratic complexity in attribute processing), CVE-2026-76956 (denial of service via hash flooding attack with crafted XML), CVE-2026-76957 (memory corruption allowing arbitrary code execution or denial of service), CVE-2026-77214 (information disclosure via heap buffer over-read in `XML_ParseBuffer`), and CVE-2026-93990 (XML injection via malformed UTF-16 input); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #176)
+
 ## 0.74.12
 - Bump `weasyprint` pin from `68.1` to `70.0` to patch CVE-2026-106443 (HIGH; arbitrary code execution via unsafe loading, fixed in 70.0) flagged by the daily Trivy scan (closes #174)
 
