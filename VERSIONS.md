@@ -1,5 +1,9 @@
 # Version History
 
+## 0.74.15
+- Uninstall `pip` from the runtime image after installing requirements; Trivy was failing the v0.74.14 deploy on GHSA-6q48-6c7w-9gw2 (CRITICAL) against pip's own vendored `certifi 2026.06.17` under `pip/_vendor/`, even though the app's `certifi` was already on the fixed `2026.10.19`. pip is not used at runtime (`entrypoint.sh` only runs `flask` and `gunicorn`), so removing it eliminates this whole class of vendored-dependency findings
+- Remove the now-unneeded pip-vendored entries (GHSA-6v7p-g79w-8964, CVE-2025-47273, CVE-2026-97687, CVE-2026-97689) from `.trivyignore`
+
 ## 0.74.14
 - Pin `certifi>=2026.10.19` in `requirements.txt` to patch GHSA-6q48-6c7w-9gw2 (CRITICAL; `certifi` bundled emSign root CAs whose intermediate CA keys were compromised) flagged by the daily Trivy scan against the transitive `certifi 2026.6.17` (via `requests`) (closes #178)
 

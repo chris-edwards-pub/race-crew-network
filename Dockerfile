@@ -9,7 +9,10 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# Uninstall pip after installing deps: it is not used at runtime, and its vendored
+# copies of certifi/urllib3/msgpack/setuptools keep tripping the Trivy scan.
 RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y pip \
     && apt-get purge -y linux-libc-dev \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
