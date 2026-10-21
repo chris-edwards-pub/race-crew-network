@@ -1,5 +1,8 @@
 # Version History
 
+## 0.74.14
+- Pin `certifi>=2026.10.19` in `requirements.txt` to patch GHSA-6q48-6c7w-9gw2 (CRITICAL; `certifi` bundled emSign root CAs whose intermediate CA keys were compromised) flagged by the daily Trivy scan against the transitive `certifi 2026.6.17` (via `requests`) (closes #178)
+
 ## 0.74.13
 - Rebuild image to pick up Debian `libexpat1` `2.9.0-1~deb13u1`, which patches 5 HIGH CVEs flagged by the daily Trivy scan: CVE-2026-66046 (denial of service via quadratic complexity in attribute processing), CVE-2026-76956 (denial of service via hash flooding attack with crafted XML), CVE-2026-76957 (memory corruption allowing arbitrary code execution or denial of service), CVE-2026-77214 (information disclosure via heap buffer over-read in `XML_ParseBuffer`), and CVE-2026-93990 (XML injection via malformed UTF-16 input); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #176)
 
