@@ -1,5 +1,10 @@
 # Version History
 
+## 0.74.16
+- Pin `brotli>=1.2.1` in `requirements.txt` to patch GHSA-9v8h-qqgm-4m35 (CRITICAL; out-of-bounds write in the Brotli decoder) flagged by the daily Trivy scan against the transitive `brotli 1.2.0` (via `weasyprint` → `fonttools[woff]`)
+- Bump `pypdf` floor from `>=4.0.0` to `>=6.21.2` to patch CVE-2026-115572, CVE-2026-115580, and CVE-2026-115585 (HIGH; denial of service via repeated nonexistent references, large xref table headers, and malformed input) flagged against `pypdf 6.21.1`
+- Rebuild image to pick up Debian `libbrotli1` `1.1.0-2+deb13u1`, which patches CVE-2026-111497 (HIGH; out-of-bounds write in the Brotli decoder); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #181)
+
 ## 0.74.15
 - Uninstall `pip` from the runtime image after installing requirements; Trivy was failing the v0.74.14 deploy on GHSA-6q48-6c7w-9gw2 (CRITICAL) against pip's own vendored `certifi 2026.06.17` under `pip/_vendor/`, even though the app's `certifi` was already on the fixed `2026.10.19`. pip is not used at runtime (`entrypoint.sh` only runs `flask` and `gunicorn`), so removing it eliminates this whole class of vendored-dependency findings
 - Remove the now-unneeded pip-vendored entries (GHSA-6v7p-g79w-8964, CVE-2025-47273, CVE-2026-97687, CVE-2026-97689) from `.trivyignore`
