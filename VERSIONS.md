@@ -1,5 +1,10 @@
 # Version History
 
+## 0.74.17
+- Bump `aquasecurity/trivy-action` from `0.35.0` to `v0.36.0` (pinned to commit SHA `ed142fd`) in `deploy.yml` and `vulnerability-scan.yml`; 0.35.0 internally used `actions/cache` v4.2.4, which targets the deprecated Node.js 20 runtime and was producing a deprecation warning on every deploy. v0.36.0 uses `actions/cache` v5.0.5 (Node.js 24) and bundles Trivy 0.70.0
+- Bump `actions/checkout` from `v4` to `v6` and `hashicorp/setup-terraform` from `v3` to `v4` in `terraform.yml` (both Node.js 20 → Node.js 24)
+- Pin all workflow jobs to `runs-on: ubuntu-24.04` instead of `ubuntu-latest`, which GitHub began migrating to Ubuntu 26 on 2026-10-19, so runner OS upgrades are deliberate rather than implicit
+
 ## 0.74.16
 - Pin `brotli>=1.2.1` in `requirements.txt` to patch GHSA-9v8h-qqgm-4m35 (CRITICAL; out-of-bounds write in the Brotli decoder) flagged by the daily Trivy scan against the transitive `brotli 1.2.0` (via `weasyprint` → `fonttools[woff]`)
 - Bump `pypdf` floor from `>=4.0.0` to `>=6.21.2` to patch CVE-2026-115572, CVE-2026-115580, and CVE-2026-115585 (HIGH; denial of service via repeated nonexistent references, large xref table headers, and malformed input) flagged against `pypdf 6.21.1`
