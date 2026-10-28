@@ -332,10 +332,15 @@ Every push to `master` triggers automatic deployment via GitHub Actions. The
 workflow has three stages:
 
 1. **Build & Push** — Builds the Docker image in GitHub Actions using BuildKit
-   with layer caching, then pushes to GHCR with three tags:
-   - `latest` — for docker-compose simplicity
-   - Git SHA (e.g. `065d419e...`) — for traceability and rollback
-   - Semantic version (e.g. `0.18.0`) — for release tracking
+   (no layer cache, so `apt-get upgrade` always pulls current Debian patches),
+   then pushes to GHCR with these tags:
+
+   | Tag | Meaning |
+   |---|---|
+   | `0.75.0` | The original release build — **immutable**, only pushed on the first build of a version. Use for rollback. |
+   | `0.75.0-20261103` | That version rebuilt on that date, including later security fixes and OS patches |
+   | `latest` | Newest build (used by docker-compose and the daily scan) |
+   | Git SHA (e.g. `065d419e...`) | Exact build — this is what the deploy job deploys |
 2. **Scan Image** — Runs Trivy vulnerability scanner against the pushed image.
    Blocks deployment if CRITICAL or HIGH severity vulnerabilities are found
    (unfixed CVEs are ignored). Results are uploaded as a GitHub Actions artifact
@@ -351,6 +356,21 @@ workflow. It scans the `latest` GHCR image with Trivy and automatically creates
 or updates a GitHub Issue (labeled `security/vulnerability-scan`) when
 CRITICAL/HIGH vulnerabilities are found. Issues are auto-closed when scans come
 back clean. Run it manually with `gh workflow run vulnerability-scan.yml`.
+
+### Security maintenance
+
+Security fixes don't produce a release each time:
+
+- **OS packages** — the deploy workflow also runs on a schedule (Mondays
+  04:00 UTC, before the daily scan), rebuilding and redeploying the image to
+  pick up patched Debian packages. For an urgent fix, run
+  `gh workflow run deploy.yml`. No version bump or changelog entry.
+- **Python packages, base image, GitHub Actions** — Dependabot
+  (`.github/dependabot.yml`) opens one grouped PR per ecosystem per week.
+- **Changelog** — security/dependency-only changes go on `deps/<name>` branches
+  without a version bump and get a one-line entry under `## Unreleased` →
+  `### Security` in `VERSIONS.md`; the next feature or fix release rolls them
+  into its version.
 
 ### Container images
 
