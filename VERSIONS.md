@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Security
+- 2026-10-28: rebuilt image `:0.76.0-20261028`
 
 ## 0.76.0
 - Replace the weekly rebuild and Dependabot version-update PRs with a nightly security loop (`vulnerability-scan.yml`): scan `:latest` with Trivy plus open Dependabot alerts; on findings, rebuild as `:<version>-<YYYYMMDD>`, rescan, and run the test suite inside the rebuilt image; deploy and verify if clean, otherwise open/update a GitHub issue
