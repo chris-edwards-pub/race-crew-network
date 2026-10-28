@@ -1,62 +1,19 @@
 # Version History
 
-## 0.74.17
-- Bump `aquasecurity/trivy-action` from `0.35.0` to `v0.36.0` (pinned to commit SHA `ed142fd`) in `deploy.yml` and `vulnerability-scan.yml`; 0.35.0 internally used `actions/cache` v4.2.4, which targets the deprecated Node.js 20 runtime and was producing a deprecation warning on every deploy. v0.36.0 uses `actions/cache` v5.0.5 (Node.js 24) and bundles Trivy 0.70.0
-- Bump `actions/checkout` from `v4` to `v6` and `hashicorp/setup-terraform` from `v3` to `v4` in `terraform.yml` (both Node.js 20 → Node.js 24)
-- Pin all workflow jobs to `runs-on: ubuntu-24.04` instead of `ubuntu-latest`, which GitHub began migrating to Ubuntu 26 on 2026-10-19, so runner OS upgrades are deliberate rather than implicit
+## Unreleased
 
-## 0.74.16
-- Pin `brotli>=1.2.1` in `requirements.txt` to patch GHSA-9v8h-qqgm-4m35 (CRITICAL; out-of-bounds write in the Brotli decoder) flagged by the daily Trivy scan against the transitive `brotli 1.2.0` (via `weasyprint` → `fonttools[woff]`)
-- Bump `pypdf` floor from `>=4.0.0` to `>=6.21.2` to patch CVE-2026-115572, CVE-2026-115580, and CVE-2026-115585 (HIGH; denial of service via repeated nonexistent references, large xref table headers, and malformed input) flagged against `pypdf 6.21.1`
-- Rebuild image to pick up Debian `libbrotli1` `1.1.0-2+deb13u1`, which patches CVE-2026-111497 (HIGH; out-of-bounds write in the Brotli decoder); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #181)
+### Security
 
-## 0.74.15
-- Uninstall `pip` from the runtime image after installing requirements; Trivy was failing the v0.74.14 deploy on GHSA-6q48-6c7w-9gw2 (CRITICAL) against pip's own vendored `certifi 2026.06.17` under `pip/_vendor/`, even though the app's `certifi` was already on the fixed `2026.10.19`. pip is not used at runtime (`entrypoint.sh` only runs `flask` and `gunicorn`), so removing it eliminates this whole class of vendored-dependency findings
-- Remove the now-unneeded pip-vendored entries (GHSA-6v7p-g79w-8964, CVE-2025-47273, CVE-2026-97687, CVE-2026-97689) from `.trivyignore`
+## 0.75.0
+- Stop security maintenance from producing a release per CVE: security/dependency-only changes now go on `deps/` branches with no version bump and a one-line entry under `## Unreleased` → `### Security`, which rolls into the next `feature/`/`fix/` release (policy in `AGENTS.md`)
+- Add a weekly scheduled rebuild + redeploy (Monday 04:00 UTC, before the 06:00 daily Trivy scan) to `deploy.yml` so Debian package CVEs are patched without a code change
+- Make the `:<version>` image tag immutable — it is pushed only on the first build of a version; every build also gets a `:<version>-<YYYYMMDD>` tag, so rolling back to `:<version>` always yields the original release
+- Add `.github/dependabot.yml` with grouped weekly updates for pip, the Docker base image, and GitHub Actions
+- Collapse the 0.74.2–0.74.17 security-maintenance entries into one summary
 
-## 0.74.14
-- Pin `certifi>=2026.10.19` in `requirements.txt` to patch GHSA-6q48-6c7w-9gw2 (CRITICAL; `certifi` bundled emSign root CAs whose intermediate CA keys were compromised) flagged by the daily Trivy scan against the transitive `certifi 2026.6.17` (via `requests`) (closes #178)
-
-## 0.74.13
-- Rebuild image to pick up Debian `libexpat1` `2.9.0-1~deb13u1`, which patches 5 HIGH CVEs flagged by the daily Trivy scan: CVE-2026-66046 (denial of service via quadratic complexity in attribute processing), CVE-2026-76956 (denial of service via hash flooding attack with crafted XML), CVE-2026-76957 (memory corruption allowing arbitrary code execution or denial of service), CVE-2026-77214 (information disclosure via heap buffer over-read in `XML_ParseBuffer`), and CVE-2026-93990 (XML injection via malformed UTF-16 input); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #176)
-
-## 0.74.12
-- Bump `weasyprint` pin from `68.1` to `70.0` to patch CVE-2026-106443 (HIGH; arbitrary code execution via unsafe loading, fixed in 70.0) flagged by the daily Trivy scan (closes #174)
-
-## 0.74.11
-- Add `CVE-2026-97687` and `CVE-2026-97689` to `.trivyignore` because Trivy was flagging pip's own vendored copy of `urllib3 2.7.0` under `usr/local/lib/python3.13/site-packages/pip/_vendor/` even though the site-packages install was already upgraded to `urllib3 2.8.0` by the 0.74.10 pin bump; pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable — same precedent as the `msgpack`/`setuptools` entries added in 0.74.7
-- Bump version so the deploy workflow re-runs the Trivy scan (which blocks deploy to Lightsail on HIGH/CRITICAL findings), unblocking the v0.74.10 image rollout
-
-## 0.74.10
-- Bump `urllib3` pin from `>=2.7.0` to `>=2.8.0` to patch CVE-2026-97687 (HIGH; traffic interception via HTTPS proxy TLS configuration override) and CVE-2026-97689 (HIGH; denial of service via unbounded memory allocation in chunk parser) flagged by the daily Trivy scan against `urllib3 2.7.0`
-- Rebuild image to pick up Debian `libpcre2-8-0` `10.46-1~deb13u3` (CVE-2026-103111; HIGH; out-of-bounds write via crafted regular expression) and `openssl` `3.5.7-1~deb13u3` (CVE-2026-75804 denial of service via unenforced QUIC flow control, CVE-2026-84782 information disclosure via DTLS handshake retransmission; both HIGH) affecting `libssl3t64`, `openssl`, and `openssl-provider-legacy`; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #171)
-
-## 0.74.9
-- Rebuild image to pick up Debian package upgrades that patch 19 CVEs flagged by the daily Trivy scan: `glib` `2.84.4-3~deb13u4` (CVE-2026-58010/58011/58012/58013/58014/58015/58016), `gzip` `1.13-1+deb13u1` (CVE-2026-41992), `libpcre2-8-0` `10.46-1~deb13u2` (CVE-2026-86145/89161), `libsqlite3-0` `3.46.1-7+deb13u2` (CVE-2026-11822/11824), and `perl-base` `5.40.1-6+deb13u1` (CVE-2026-8376/13221/42496/42497/48962/57432/57433); no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #169)
-
-## 0.74.8
-- Rebuild image to pick up Debian `openssl` `3.5.7-1~deb13u2`, which patches CVE-2026-14456 (HIGH; denial of service via unbounded memory growth in QUIC server) affecting `libssl3t64`, `openssl`, and `openssl-provider-legacy` flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #167)
-
-## 0.74.7
-- Add `.trivyignore` covering GHSA-6v7p-g79w-8964 (`msgpack` 1.1.2) and CVE-2025-47273 (`setuptools` 70.3.0) because Trivy was flagging pip's own vendored copies under `usr/local/lib/python3.13/site-packages/pip/_vendor/`; the site-packages installs are already on the fixed versions (`msgpack` 1.2.1, `setuptools` 84.0.0) via the pins added in 0.74.6, and pip's vendored code is only used during pip operations (not at app runtime), so it is not exploitable
-- Wire `trivyignores: .trivyignore` into all three Trivy invocations (deploy table + SARIF scans, daily scan)
-- Add `actions/checkout` to the `scan-image` job in `deploy.yml` so the ignore file is available (it previously ran without a checkout, which was also why the file could not have been picked up before)
-- Bump version so a fresh image is built and the deploy workflow re-runs with the corrected scanner config (closes #165)
-
-## 0.74.6
-- Pin `msgpack>=1.2.1` and `setuptools>=78.1.1` in `requirements.txt` to patch GHSA-6v7p-g79w-8964 (HIGH; out-of-bounds read / crash on `Unpacker` reuse in `msgpack`) and CVE-2025-47273 (HIGH; path traversal in `setuptools` `PackageIndex`), both flagged by the daily Trivy scan against transitive deps (`msgpack` via `boto3`, `setuptools` from the `python:3.13-slim` base image) (closes #163)
-
-## 0.74.5
-- Rebuild image to pick up Debian `util-linux` `2.41.5-0+deb13u1`, which patches CVE-2026-53615 (HIGH; integer overflow in `libblkid/src/partitions/dos.c`) affecting `bsdutils`, `libblkid1`, `liblastlog2-2`, `libmount1`, `libsmartcols1`, `libuuid1`, `login`, `mount`, and `util-linux` flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #161)
-
-## 0.74.4
-- Bump `cryptography` pin from `48.0.1` to `50.0.0` to patch CVE-2026-69247 (HIGH; fixed in 50.0.0) and CVE-2026-69249 (HIGH; fixed in 49.0.0), both flagged against `cryptography 48.0.1` by the daily Trivy scan (closes #159)
-
-## 0.74.3
-- Rebuild image to pick up Debian `libexpat1` `2.8.2-1~deb13u1`, which patches CVE-2025-59375, CVE-2026-25210, CVE-2026-45186, CVE-2026-56131, and CVE-2026-56408 (all HIGH; denial of service, information disclosure, and integer overflow issues in expat XML parser) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #157)
-
-## 0.74.2
-- Rebuild image to pick up Debian `libtiff6` `4.7.0-3+deb13u3`, which patches CVE-2026-12912 (HIGH; heap-based buffer overflow via crafted PixarLog-compressed TIFF image) flagged by the daily Trivy scan; no Dockerfile changes needed because `apt-get upgrade` already runs on every build and the deploy workflow does not cache layers (closes #155)
+## 0.74.2 – 0.74.17
+- Security: dependency CVE bumps (cryptography, urllib3, certifi, weasyprint, msgpack, setuptools, brotli, pypdf), Debian package rebuilds, pip removed from runtime image
+- CI: GitHub Actions moved to Node.js 24; runners pinned to `ubuntu-24.04`
 
 ## 0.74.1
 - Add a "Database" section to `AGENTS.md` requiring that every feature or code change depending on a schema update must have a corresponding migration applied first — codifies a rule that had been implicit and prevents PRs from landing code that references not-yet-migrated columns

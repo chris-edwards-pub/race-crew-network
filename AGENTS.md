@@ -31,13 +31,22 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
   - `fix/` branches bump PATCH (e.g. 0.14.0 → 0.14.1)
 - **After merging, tag the merge commit:** `git tag v<version>` and `git push origin --tags`
 
+### Security & dependency maintenance (no release)
+- Security/dependency-only changes (CVE pin bumps, `.trivyignore` updates, Dependabot PRs) go on `deps/<name>` branches and **do not bump the version**
+  - Add one line under `## Unreleased` → `### Security` in `VERSIONS.md` (e.g. `Bump urllib3, pypdf (CVE-2026-97687, CVE-2026-115572)`); Dependabot PRs may skip the entry
+  - Put the detailed rationale in the PR body, not in `VERSIONS.md`
+- OS-package CVEs are fixed by rebuilding the image — no branch, bump, or changelog entry. `deploy.yml` rebuilds weekly (Monday 04:00 UTC); for urgent fixes run `gh workflow run deploy.yml`
+- The next `feature/` or `fix/` release renames `## Unreleased` to its version and adds a fresh empty `## Unreleased` section on top
+- Only do a standalone PATCH release for security when an urgent fix needs its own tagged version
+- Image tags: `:<version>` is immutable (pushed only on the first build of that version — use it for rollback); `:<version>-<YYYYMMDD>` = that version plus later patches; `:latest` / `:<sha>` = newest / exact build
+
 ## Task Tracking
 - When working on complex or multi-step tasks, create a todo list to track progress and remain on track
 - Check off items as they are completed to maintain visibility into what remains
 
 ## Git Workflow
 - `master` branch is production-ready — **never push directly to master**
-- All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes
+- All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes, `deps/<name>` for security/dependency-only changes
 - Merge to `master` via PR when complete and tested
 - Commit messages: imperative mood, concise ("Add regatta CRUD routes")
 - **After tests pass**, prompt the user to: commit, push, create PR, merge, tag, and clean up branches — do not proceed without confirmation at each step

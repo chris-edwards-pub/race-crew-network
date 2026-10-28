@@ -4,6 +4,11 @@ on:
   push:
     branches: [master]
 
+  # Weekly rebuild to pick up patched Debian packages (apt-get upgrade runs on
+  # every build). Runs before the 06:00 UTC daily scan so it scans a fresh image.
+  schedule:
+    - cron: "0 4 * * 1"   # Mondays at 4 AM UTC
+
   workflow_dispatch:
     inputs:
       branch:
@@ -36,13 +41,6 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
 
-      - name: Extract version from app/__init__.py
-        id: version
-        run: |
-          VERSION=$(grep -oP '(?<=__version__ = ")[^"]+' app/__init__.py)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -53,15 +51,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tags
+        id: tags
+        run: |
+          VERSION=$(grep -oP '(?<=__version__ = ")[^"]+' app/__init__.py)
+          IMAGE="$REGISTRY/$IMAGE_NAME"
+          echo "Detected version: $VERSION"
+          {
+            echo "tags<<EOF"
+            echo "$IMAGE:latest"
+            echo "$IMAGE:$GITHUB_SHA"
+            echo "$IMAGE:$VERSION-$(date -u +%Y%m%d)"
+            # The plain version tag is immutable: only push it on the first
+            # build of a version so it always points at the original release.
+            if docker manifest inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
+              echo "::notice::$IMAGE:$VERSION already exists; leaving it unchanged" >&2
+            else
+              echo "$IMAGE:$VERSION"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          tags: ${{ steps.tags.outputs.tags }}
 
   scan-image:
     name: Scan Image for Vulnerabilities
