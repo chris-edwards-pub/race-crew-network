@@ -3,11 +3,9 @@ name: Deploy to Lightsail
 on:
   push:
     branches: [master]
-
-  # Weekly rebuild to pick up patched Debian packages (apt-get upgrade runs on
-  # every build). Runs before the 06:00 UTC daily scan so it scans a fresh image.
-  schedule:
-    - cron: "0 4 * * 1"   # Mondays at 4 AM UTC
+    # Changelog-only commits (e.g. from the nightly security rebuild) don't
+    # need a new image
+    paths-ignore: [VERSIONS.md]
 
   workflow_dispatch:
     inputs:
@@ -61,7 +59,6 @@ jobs:
             echo "tags<<EOF"
             echo "$IMAGE:latest"
             echo "$IMAGE:$GITHUB_SHA"
-            echo "$IMAGE:$VERSION-$(date -u +%Y%m%d)"
             # The plain version tag is immutable: only push it on the first
             # build of a version so it always points at the original release.
             if docker manifest inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
@@ -151,64 +148,8 @@ jobs:
 
   deploy:
     name: Deploy
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
     needs: scan-image
-
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Wait for any in-progress Lightsail deployment
-        run: |
-          SERVICE="${{ vars.CONTAINER_SERVICE_NAME }}"
-          for i in $(seq 1 60); do
-            STATE=$(aws lightsail get-container-service-deployments \
-              --service-name "$SERVICE" \
-              --query 'deployments[0].state' --output text 2>/dev/null || echo "")
-            echo "Latest Lightsail deployment state: ${STATE:-unknown} (attempt $i/60)"
-            if [ "$STATE" != "ACTIVATING" ]; then
-              echo "No deployment in progress — ready to deploy."
-              break
-            fi
-            sleep 15
-          done
-
-      - name: Deploy to Lightsail Container Service
-        run: |
-          aws lightsail create-container-service-deployment \
-            --service-name ${{ vars.CONTAINER_SERVICE_NAME }} \
-            --containers '{
-              "web": {
-                "image": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}",
-                "ports": {"8000": "HTTP"},
-                "environment": {
-                  "DATABASE_URL": "mysql+pymysql://${{ vars.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@${{ vars.DB_ENDPOINT }}/${{ vars.MYSQL_DATABASE }}",
-                  "SECRET_KEY": "${{ secrets.SECRET_KEY }}",
-                  "UPLOAD_FOLDER": "/app/uploads",
-                  "BUCKET_NAME": "${{ vars.BUCKET_NAME }}",
-                  "AWS_ACCESS_KEY_ID": "${{ secrets.BUCKET_ACCESS_KEY_ID }}",
-                  "AWS_SECRET_ACCESS_KEY": "${{ secrets.BUCKET_SECRET_ACCESS_KEY }}",
-                  "AWS_REGION": "us-east-1",
-                  "INIT_ADMIN_EMAIL": "${{ secrets.INIT_ADMIN_EMAIL }}",
-                  "INIT_ADMIN_PASSWORD": "${{ secrets.INIT_ADMIN_PASSWORD }}",
-                  "ANTHROPIC_API_KEY": "${{ secrets.ANTHROPIC_API_KEY }}",
-                  "SES_ACCESS_KEY_ID": "${{ secrets.SES_ACCESS_KEY_ID }}",
-                  "SES_SECRET_ACCESS_KEY": "${{ secrets.SES_SECRET_ACCESS_KEY }}"
-                }
-              }
-            }' \
-            --public-endpoint '{
-              "containerName": "web",
-              "containerPort": 8000,
-              "healthCheck": {
-                "path": "/",
-                "successCodes": "200-499",
-                "intervalSeconds": 30,
-                "timeoutSeconds": 5
-              }
-            }'
+    uses: ./.github/workflows/lightsail-deploy.yml
+    with:
+      image: ghcr.io/chris-edwards-pub/race-crew-network:${{ github.sha }}
+    secrets: inherit

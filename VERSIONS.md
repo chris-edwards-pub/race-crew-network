@@ -4,6 +4,14 @@
 
 ### Security
 
+## 0.76.0
+- Replace the weekly rebuild and Dependabot version-update PRs with a nightly security loop (`vulnerability-scan.yml`): scan `:latest` with Trivy plus open Dependabot alerts; on findings, rebuild as `:<version>-<YYYYMMDD>`, rescan, and run the test suite inside the rebuilt image; deploy and verify if clean, otherwise open/update a GitHub issue
+- Successful nightly rebuilds move `:latest` and record themselves under `## Unreleased` in `VERSIONS.md` via an automatically merged bot PR
+- Extract Lightsail deployment into a reusable `lightsail-deploy.yml` that also verifies the deployment is `ACTIVE`, running the expected image, and responding
+- Stop pushing date tags on push builds; `VERSIONS.md`-only commits no longer trigger a deploy
+- GHCR cleanup never deletes release (`X.Y.Z`) tags
+- Remove `.github/dependabot.yml` (routine version updates); Dependabot alerts and security updates stay on
+
 ## 0.75.0
 - Stop security maintenance from producing a release per CVE: security/dependency-only changes now go on `deps/` branches with no version bump and a one-line entry under `## Unreleased` → `### Security`, which rolls into the next `feature/`/`fix/` release (policy in `AGENTS.md`)
 - Add a weekly scheduled rebuild + redeploy (Monday 04:00 UTC, before the 06:00 daily Trivy scan) to `deploy.yml` so Debian package CVEs are patched without a code change

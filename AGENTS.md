@@ -31,14 +31,15 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
   - `fix/` branches bump PATCH (e.g. 0.14.0 → 0.14.1)
 - **After merging, tag the merge commit:** `git tag v<version>` and `git push origin --tags`
 
-### Security & dependency maintenance (no release)
-- Security/dependency-only changes (CVE pin bumps, `.trivyignore` updates, Dependabot PRs) go on `deps/<name>` branches and **do not bump the version**
-  - Add one line under `## Unreleased` → `### Security` in `VERSIONS.md` (e.g. `Bump urllib3, pypdf (CVE-2026-97687, CVE-2026-115572)`); Dependabot PRs may skip the entry
-  - Put the detailed rationale in the PR body, not in `VERSIONS.md`
-- OS-package CVEs are fixed by rebuilding the image — no branch, bump, or changelog entry. `deploy.yml` rebuilds weekly (Monday 04:00 UTC); for urgent fixes run `gh workflow run deploy.yml`
-- The next `feature/` or `fix/` release renames `## Unreleased` to its version and adds a fresh empty `## Unreleased` section on top
-- Only do a standalone PATCH release for security when an urgent fix needs its own tagged version
-- Image tags: `:<version>` is immutable (pushed only on the first build of that version — use it for rollback); `:<version>-<YYYYMMDD>` = that version plus later patches; `:latest` / `:<sha>` = newest / exact build
+### Security maintenance (automated, no release)
+- `vulnerability-scan.yml` runs nightly (06:00 UTC): Trivy scans the deployed `:latest` image and open HIGH/CRITICAL Dependabot alerts are fetched
+  - Nothing found → done
+  - Found → rebuild as `:<version>-<YYYYMMDD>`, rescan, run `pytest` inside the rebuilt image
+  - Clean and tests pass → deploy and verify, move `:latest`, and a bot PR adds a line under `## Unreleased` → `### Security` in `VERSIONS.md`
+  - Still vulnerable or tests fail → a GitHub issue (label `security/vulnerability-scan`) is opened/updated and nothing is deployed
+- Humans only act on that issue: fix on a `deps/<name>` branch (e.g. bump an `==` pin, merge a Dependabot security PR, or add a `.trivyignore` entry with justification). `deps/` branches **do not bump the version**; add a one-line entry under `## Unreleased` → `### Security`
+- The next `feature/` or `fix/` release renames `## Unreleased` to its version and adds a fresh empty `## Unreleased` / `### Security` section on top
+- Image tags: `:<version>` = frozen release (pushed only on the first build of a version, never pruned — use it for rollback); `:<version>-<YYYYMMDD>` = nightly security rebuild; `:latest` = currently deployed; `:<sha>` = push build
 
 ## Task Tracking
 - When working on complex or multi-step tasks, create a todo list to track progress and remain on track
@@ -46,7 +47,7 @@ Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`
 
 ## Git Workflow
 - `master` branch is production-ready — **never push directly to master**
-- All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes, `deps/<name>` for security/dependency-only changes
+- All work must be on a branch: `feature/<name>` for new work, `fix/<name>` for bug fixes, `deps/<name>` for security/dependency-only changes (no version bump)
 - Merge to `master` via PR when complete and tested
 - Commit messages: imperative mood, concise ("Add regatta CRUD routes")
 - **After tests pass**, prompt the user to: commit, push, create PR, merge, tag, and clean up branches — do not proceed without confirmation at each step

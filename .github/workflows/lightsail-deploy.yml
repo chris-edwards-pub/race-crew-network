@@ -1,0 +1,120 @@
+name: Lightsail Deploy
+
+# Reusable: deploys an image to the Lightsail container service and verifies
+# it went live. Called by deploy.yml (push to master) and
+# vulnerability-scan.yml (nightly security rebuild).
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Full image reference to deploy"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    name: Deploy & Verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    concurrency:
+      group: lightsail-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Wait for any in-progress Lightsail deployment
+        run: |
+          SERVICE="${{ vars.CONTAINER_SERVICE_NAME }}"
+          for i in $(seq 1 60); do
+            STATE=$(aws lightsail get-container-service-deployments \
+              --service-name "$SERVICE" \
+              --query 'deployments[0].state' --output text 2>/dev/null || echo "")
+            echo "Latest Lightsail deployment state: ${STATE:-unknown} (attempt $i/60)"
+            if [ "$STATE" != "ACTIVATING" ]; then
+              echo "No deployment in progress — ready to deploy."
+              break
+            fi
+            sleep 15
+          done
+
+      - name: Deploy to Lightsail Container Service
+        run: |
+          aws lightsail create-container-service-deployment \
+            --service-name ${{ vars.CONTAINER_SERVICE_NAME }} \
+            --containers '{
+              "web": {
+                "image": "${{ inputs.image }}",
+                "ports": {"8000": "HTTP"},
+                "environment": {
+                  "DATABASE_URL": "mysql+pymysql://${{ vars.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@${{ vars.DB_ENDPOINT }}/${{ vars.MYSQL_DATABASE }}",
+                  "SECRET_KEY": "${{ secrets.SECRET_KEY }}",
+                  "UPLOAD_FOLDER": "/app/uploads",
+                  "BUCKET_NAME": "${{ vars.BUCKET_NAME }}",
+                  "AWS_ACCESS_KEY_ID": "${{ secrets.BUCKET_ACCESS_KEY_ID }}",
+                  "AWS_SECRET_ACCESS_KEY": "${{ secrets.BUCKET_SECRET_ACCESS_KEY }}",
+                  "AWS_REGION": "us-east-1",
+                  "INIT_ADMIN_EMAIL": "${{ secrets.INIT_ADMIN_EMAIL }}",
+                  "INIT_ADMIN_PASSWORD": "${{ secrets.INIT_ADMIN_PASSWORD }}",
+                  "ANTHROPIC_API_KEY": "${{ secrets.ANTHROPIC_API_KEY }}",
+                  "SES_ACCESS_KEY_ID": "${{ secrets.SES_ACCESS_KEY_ID }}",
+                  "SES_SECRET_ACCESS_KEY": "${{ secrets.SES_SECRET_ACCESS_KEY }}"
+                }
+              }
+            }' \
+            --public-endpoint '{
+              "containerName": "web",
+              "containerPort": 8000,
+              "healthCheck": {
+                "path": "/",
+                "successCodes": "200-499",
+                "intervalSeconds": 30,
+                "timeoutSeconds": 5
+              }
+            }'
+
+      - name: Verify deployment is live
+        env:
+          SERVICE: ${{ vars.CONTAINER_SERVICE_NAME }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          # Wait up to 20 minutes for the new deployment to become ACTIVE
+          for i in $(seq 1 80); do
+            read -r STATE DEPLOYED < <(aws lightsail get-container-service-deployments \
+              --service-name "$SERVICE" \
+              --query 'deployments[0].[state, containers.web.image]' --output text)
+            echo "Deployment state: $STATE, image: $DEPLOYED (attempt $i/80)"
+            [ "$STATE" = "ACTIVE" ] && break
+            if [ "$STATE" = "FAILED" ]; then
+              echo "::error::Lightsail deployment FAILED"
+              exit 1
+            fi
+            sleep 15
+          done
+          if [ "$STATE" != "ACTIVE" ]; then
+            echo "::error::Deployment did not become ACTIVE within 20 minutes"
+            exit 1
+          fi
+          if [ "$DEPLOYED" != "$IMAGE" ]; then
+            echo "::error::Active deployment runs $DEPLOYED, expected $IMAGE"
+            exit 1
+          fi
+
+          URL=$(aws lightsail get-container-services --service-name "$SERVICE" \
+            --query 'containerServices[0].url' --output text)
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$URL")
+          echo "GET $URL -> HTTP $CODE"
+          if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 500 ]; then
+            echo "::error::Service returned HTTP $CODE"
+            exit 1
+          fi
+          echo "## ✅ Deployed and verified" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGE\` is ACTIVE; $URL returned HTTP $CODE" >> "$GITHUB_STEP_SUMMARY"

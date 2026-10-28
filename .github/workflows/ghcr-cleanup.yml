@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      # Release tags (X.Y.Z) and latest are never deleted; :<sha> and nightly
+      # :<version>-<date> rebuild tags are trimmed to the newest 5
       - name: Keep last 5 tagged versions, delete untagged
         uses: dataaxiom/ghcr-cleanup-action@v1
         with:
@@ -22,4 +24,5 @@ jobs:
           owner: chris-edwards-pub
           keep-n-tagged: 5
           delete-untagged: true
-          exclude-tags: latest
+          use-regex: true
+          exclude-tags: ^(latest|\d+\.\d+\.\d+)$

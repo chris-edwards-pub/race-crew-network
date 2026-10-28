@@ -337,40 +337,68 @@ workflow has three stages:
 
    | Tag | Meaning |
    |---|---|
-   | `0.75.0` | The original release build — **immutable**, only pushed on the first build of a version. Use for rollback. |
-   | `0.75.0-20261103` | That version rebuilt on that date, including later security fixes and OS patches |
-   | `latest` | Newest build (used by docker-compose and the daily scan) |
-   | Git SHA (e.g. `065d419e...`) | Exact build — this is what the deploy job deploys |
+   | `0.76.0` | The original release build — **immutable**, only pushed on the first build of a version and never pruned. Use for rollback. |
+   | `0.76.0-20261103` | Nightly security rebuild of that version on that date |
+   | `latest` | The image currently deployed (scanned nightly) |
+   | Git SHA (e.g. `065d419e...`) | Exact push build — this is what a push deploy deploys |
 2. **Scan Image** — Runs Trivy vulnerability scanner against the pushed image.
    Blocks deployment if CRITICAL or HIGH severity vulnerabilities are found
    (unfixed CVEs are ignored). Results are uploaded as a GitHub Actions artifact
    and to the GitHub Security tab in SARIF format.
-3. **Deploy** — Uses AWS CLI to create a new container service deployment with
-   the SHA-tagged image and environment variables from GitHub Secrets/Variables.
+3. **Deploy** — `lightsail-deploy.yml` (a reusable workflow) creates a new
+   container service deployment with the SHA-tagged image and environment
+   variables from GitHub Secrets/Variables, then **verifies** it: waits for the
+   deployment to become `ACTIVE`, checks it runs the expected image, and checks
+   the public URL responds.
+
+Commits that only change `VERSIONS.md` don't trigger a deploy.
 
 The container service handles HTTPS termination, health checks, and rolling
 deployments automatically. No SSH, nginx, or certbot required.
 
-A **daily vulnerability scan** runs at 6 AM UTC via a separate GitHub Actions
-workflow. It scans the `latest` GHCR image with Trivy and automatically creates
-or updates a GitHub Issue (labeled `security/vulnerability-scan`) when
-CRITICAL/HIGH vulnerabilities are found. Issues are auto-closed when scans come
-back clean. Run it manually with `gh workflow run vulnerability-scan.yml`.
+### Nightly security scan
 
-### Security maintenance
+`vulnerability-scan.yml` runs every night at 06:00 UTC and fixes what it can
+without any interaction:
 
-Security fixes don't produce a release each time:
+```
+Trivy scan of :latest + open HIGH/CRITICAL Dependabot alerts
+  │
+  ├─ nothing found ──────────────► done (closes any open scan issue)
+  │
+  └─ found ─► rebuild :<version>-<YYYYMMDD> (no cache) ─► rescan
+                 │
+                 ├─ still vulnerable ─────────► open/update GitHub issue, no deploy
+                 │
+                 └─ clean ─► pytest inside the rebuilt image
+                               │
+                               ├─ fail ───────► open/update GitHub issue, no deploy
+                               │
+                               └─ pass ─► deploy + verify ─► move :latest
+                                           ─► bot PR adds a line under
+                                              "## Unreleased" in VERSIONS.md
+```
 
-- **OS packages** — the deploy workflow also runs on a schedule (Mondays
-  04:00 UTC, before the daily scan), rebuilding and redeploying the image to
-  pick up patched Debian packages. For an urgent fix, run
-  `gh workflow run deploy.yml`. No version bump or changelog entry.
-- **Python packages, base image, GitHub Actions** — Dependabot
-  (`.github/dependabot.yml`) opens one grouped PR per ecosystem per week.
-- **Changelog** — security/dependency-only changes go on `deps/<name>` branches
-  without a version bump and get a one-line entry under `## Unreleased` →
-  `### Security` in `VERSIONS.md`; the next feature or fix release rolls them
-  into its version.
+- A rebuild picks up patched Debian packages (`apt-get upgrade`) and the latest
+  versions allowed by `>=` floors in `requirements.txt`. It can't fix `==` pins
+  or Dependabot alerts — those end up in the issue.
+- The issue (label `security/vulnerability-scan`) is the only thing that needs
+  you. Fix it on a `deps/<name>` branch (no version bump; add a line under
+  `## Unreleased` → `### Security`). Once the next scan is clean the issue
+  closes itself.
+- If the findings haven't changed since the issue was last updated, the nightly
+  run doesn't rebuild again.
+- Run it manually with `gh workflow run vulnerability-scan.yml`. To exercise the
+  whole loop on a clean image: `gh workflow run vulnerability-scan.yml -f force_rebuild=true`.
+
+**One-time setup:**
+- Secret `DEPENDABOT_ALERTS_TOKEN` — a fine-grained personal access token
+  limited to this repository with **Dependabot alerts: Read-only**
+  (`GITHUB_TOKEN` can't read Dependabot alerts). Renew it before it expires.
+- Settings → Actions → General → **Allow GitHub Actions to create and approve
+  pull requests** (for the `VERSIONS.md` PR).
+- Dependabot alerts and security updates enabled (Settings → Code security).
+  Routine Dependabot version updates are intentionally not configured.
 
 ### Container images
 
