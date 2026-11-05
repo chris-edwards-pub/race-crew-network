@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Security
+- 2026-11-05: rebuilt image `:0.76.0-20261105` to fix CVE-2026-109518 (apt, libapt-pkg7.0)
 - 2026-10-28: rebuilt image `:0.76.0-20261028`
 
 ## 0.76.0
