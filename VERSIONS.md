@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Security
+- 2026-11-08: rebuilt image `:0.76.0-20261108` to fix CVE-2026-76844, CVE-2026-85091 (zlib1g)
 - 2026-11-05: rebuilt image `:0.76.0-20261105` to fix CVE-2026-109518 (apt, libapt-pkg7.0)
 - 2026-10-28: rebuilt image `:0.76.0-20261028`
 
