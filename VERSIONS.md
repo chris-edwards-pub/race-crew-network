@@ -4,6 +4,11 @@
 
 ### Security
 
+## 0.77.1
+- Fix AI schedule import and document discovery failing with a 404: `claude-sonnet-4-20250514` was retired; switch to `claude-sonnet-5-5` at `low` effort
+- Read the response text from `text` blocks only (skipping thinking blocks), and show a clear error when the model declines or returns nothing
+- Raise `max_tokens` (thinking now counts toward it) and the request timeout to 60s; update AI cost tracking to Sonnet 5.5 pricing ($2/$10 per MTok)
+
 ## 0.77.0
 - Nightly security loop now fixes Dependabot alerts on its own: open Dependabot security PRs that touch only `requirements.txt` are merged into the rebuild, rescanned (the rebuilt image must have each alert's patched version), tested, deployed, and then merged to `master`
 - Dependabot alerts of MEDIUM severity and above are now included (Trivy stays at HIGH/CRITICAL)

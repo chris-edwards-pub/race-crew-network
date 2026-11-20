@@ -88,7 +88,7 @@ class TestAIFunctionLogging:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='[{"name": "Test"}]')]
+        mock_msg.content = [MagicMock(type="text", text='[{"name": "Test"}]')]
         mock_msg.usage.input_tokens = 500
         mock_msg.usage.output_tokens = 200
         mock_client.messages.create.return_value = mock_msg
@@ -106,7 +106,7 @@ class TestAIFunctionLogging:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="[]")]
+        mock_msg.content = [MagicMock(type="text", text="[]")]
         mock_msg.usage.input_tokens = 300
         mock_msg.usage.output_tokens = 100
         mock_client.messages.create.return_value = mock_msg
@@ -124,7 +124,7 @@ class TestAIFunctionLogging:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="[]")]
+        mock_msg.content = [MagicMock(type="text", text="[]")]
         mock_msg.usage.input_tokens = 400
         mock_msg.usage.output_tokens = 150
         mock_client.messages.create.return_value = mock_msg
