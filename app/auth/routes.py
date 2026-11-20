@@ -210,7 +210,18 @@ def logout():
 
 @bp.route("/register/<token>", methods=["GET", "POST"])
 def register(token: str):
-    user = User.query.filter_by(invite_token=token).first_or_404()
+    user = User.query.filter_by(invite_token=token).first()
+    if user is None:
+        # Token is cleared on registration, so this is usually a double-tapped
+        # submit or a reused invite link — don't show a bare 404
+        if current_user.is_authenticated:
+            return redirect(url_for("regattas.index"))
+        flash(
+            "This invite link has already been used or is no longer valid. "
+            "Please log in.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
 
     if request.method == "POST":
         display_name = request.form.get("display_name", "").strip()

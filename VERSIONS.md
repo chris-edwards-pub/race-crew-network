@@ -4,6 +4,9 @@
 
 ### Security
 
+## 0.77.3
+- Fix crew invite sign-up showing "Not Found" after a double-tapped **Create Account**: the first submit registered the user and cleared the invite token, and the second hit the used token. The button now disables on submit, and a used or invalid invite link redirects to the schedule (if logged in) or to login with a message instead of returning a 404
+
 ## 0.77.2
 - Set RSVP modal: the Yes / Maybe / No / Clear buttons are now disabled until a crew member is selected (the old "hide until selected" never worked, because Bootstrap's `.d-grid` overrides inline `display:none`)
 

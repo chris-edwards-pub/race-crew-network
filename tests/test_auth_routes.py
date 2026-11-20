@@ -619,3 +619,62 @@ class TestPasswordStrength:
             follow_redirects=True,
         )
         assert b"at least 8 characters" in resp.data
+
+
+class TestRegisterUsedToken:
+    FORM = {
+        "display_name": "New User",
+        "initials": "NU",
+        "password": "Strong1Pass",
+        "password2": "Strong1Pass",
+    }
+
+    def _invite(self, db):
+        user = User(
+            email="new@test.com",
+            password_hash="pending",
+            display_name="New",
+            initials="NW",
+            invite_token="reg-token",
+        )
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    def test_double_submit_redirects_instead_of_404(self, client, db):
+        self._invite(db)
+        first = client.post("/register/reg-token", data=self.FORM)
+        assert first.status_code == 302
+
+        # Second tap arrives after the token was cleared; user is now logged in
+        second = client.post("/register/reg-token", data=self.FORM)
+        assert second.status_code == 302
+        assert second.headers["Location"].endswith("/")
+
+    def test_used_token_logged_out_redirects_to_login(self, client, db):
+        resp = client.get("/register/no-such-token")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+        resp = client.get("/register/no-such-token", follow_redirects=True)
+        assert b"already been used" in resp.data
+
+    def test_used_token_post_does_not_modify_users(self, client, db):
+        user = self._invite(db)
+        client.post("/register/reg-token", data=self.FORM)
+        client.get("/logout")
+
+        client.post(
+            "/register/reg-token",
+            data={**self.FORM, "display_name": "Someone Else"},
+        )
+        db.session.refresh(user)
+        assert user.display_name == "New User"
+
+    def test_register_page_disables_submit_on_submit(self, client, db):
+        self._invite(db)
+        resp = client.get("/register/reg-token")
+        html = resp.get_data(as_text=True)
+        assert 'id="registerForm"' in html
+        assert 'id="registerSubmit"' in html
+        assert "btn.disabled = true" in html
