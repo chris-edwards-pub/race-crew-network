@@ -5,7 +5,7 @@
     <div class="col-md-4">
         <h2 class="mb-4">Join the Crew</h2>
         <p class="text-muted">You've been invited! Set up your account below.</p>
-        <form method="POST">
+        <form method="POST" id="registerForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
@@ -29,11 +29,19 @@
                 <label for="password2" class="form-label">Confirm Password</label>
                 <input type="password" class="form-control" id="password2" name="password2" required minlength="8">
             </div>
-            <button type="submit" class="btn btn-primary w-100">Create Account</button>
+            <button type="submit" class="btn btn-primary w-100" id="registerSubmit">Create Account</button>
         </form>
     </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/password-strength.js') }}"></script>
+<script>
+// Prevent a double-tap from submitting twice (the second POST would hit a used token)
+document.getElementById('registerForm').addEventListener('submit', function() {
+    var btn = document.getElementById('registerSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+});
+</script>
 {% endblock %}
