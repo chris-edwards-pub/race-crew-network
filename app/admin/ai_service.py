@@ -9,9 +9,14 @@ from app import db
 
 logger = logging.getLogger(__name__)
 
-# Claude Sonnet 4 pricing (per token)
-INPUT_PRICE_PER_TOKEN = 3.00 / 1_000_000
-OUTPUT_PRICE_PER_TOKEN = 15.00 / 1_000_000
+CLAUDE_MODEL = "claude-sonnet-5-5"
+# Low effort: these are simple extraction tasks, so keep thinking (and latency) minimal
+CLAUDE_OUTPUT_CONFIG = {"effort": "low"}
+CLAUDE_TIMEOUT = 60.0
+
+# Claude Sonnet 5.5 pricing (per token)
+INPUT_PRICE_PER_TOKEN = 2.00 / 1_000_000
+OUTPUT_PRICE_PER_TOKEN = 10.00 / 1_000_000
 
 
 def _log_ai_usage(function_name: str, model: str, message) -> None:
@@ -209,10 +214,11 @@ def extract_regattas(content: str, year: int) -> list[dict]:
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
+            model=CLAUDE_MODEL,
+            max_tokens=16000,
+            output_config=CLAUDE_OUTPUT_CONFIG,
             messages=[{"role": "user", "content": prompt}],
-            timeout=30.0,
+            timeout=CLAUDE_TIMEOUT,
         )
     except anthropic.APITimeoutError:
         raise ConnectionError("Claude API request timed out. Please try again.")
@@ -223,9 +229,9 @@ def extract_regattas(content: str, year: int) -> list[dict]:
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
 
-    _log_ai_usage("extract_regattas", "claude-sonnet-4-20250514", message)
+    _log_ai_usage("extract_regattas", CLAUDE_MODEL, message)
 
-    raw = message.content[0].text.strip()
+    raw = _response_text(message)
 
     # Strip markdown code fences if present
     if raw.startswith("```"):
@@ -246,6 +252,20 @@ def extract_regattas(content: str, year: int) -> list[dict]:
         raise ValueError("Unexpected AI response format.")
 
     return data
+
+
+def _response_text(message) -> str:
+    """Return the text of a Claude response, skipping any thinking blocks."""
+    if message.stop_reason == "refusal":
+        raise ValueError("The AI declined to process this content.")
+    text = "".join(
+        block.text
+        for block in message.content
+        if getattr(block, "type", None) == "text"
+    )
+    if not text.strip():
+        raise ValueError("The AI returned an empty response. Please try again.")
+    return text.strip()
 
 
 def _parse_json_response(raw: str) -> list:
@@ -286,10 +306,11 @@ def discover_documents(content: str, regatta_name: str, source_url: str) -> list
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
+            model=CLAUDE_MODEL,
+            max_tokens=4096,
+            output_config=CLAUDE_OUTPUT_CONFIG,
             messages=[{"role": "user", "content": prompt}],
-            timeout=30.0,
+            timeout=CLAUDE_TIMEOUT,
         )
     except anthropic.APITimeoutError:
         raise ConnectionError("Claude API request timed out. Please try again.")
@@ -300,9 +321,9 @@ def discover_documents(content: str, regatta_name: str, source_url: str) -> list
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
 
-    _log_ai_usage("discover_documents", "claude-sonnet-4-20250514", message)
+    _log_ai_usage("discover_documents", CLAUDE_MODEL, message)
 
-    raw = message.content[0].text.strip()
+    raw = _response_text(message)
     return _parse_json_response(raw)
 
 
@@ -324,10 +345,11 @@ def discover_documents_deep(
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
+            model=CLAUDE_MODEL,
+            max_tokens=4096,
+            output_config=CLAUDE_OUTPUT_CONFIG,
             messages=[{"role": "user", "content": prompt}],
-            timeout=30.0,
+            timeout=CLAUDE_TIMEOUT,
         )
     except anthropic.APITimeoutError:
         raise ConnectionError("Claude API request timed out. Please try again.")
@@ -338,7 +360,7 @@ def discover_documents_deep(
     except anthropic.APIStatusError as e:
         raise ConnectionError(f"Claude API error: {e.message}")
 
-    _log_ai_usage("discover_documents_deep", "claude-sonnet-4-20250514", message)
+    _log_ai_usage("discover_documents_deep", CLAUDE_MODEL, message)
 
-    raw = message.content[0].text.strip()
+    raw = _response_text(message)
     return _parse_json_response(raw)

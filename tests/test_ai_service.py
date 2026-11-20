@@ -56,7 +56,9 @@ class TestExtractRegattas:
         mock_anthropic_cls.return_value = mock_client
         mock_msg = MagicMock()
         mock_msg.content = [
-            MagicMock(text='[{"name": "Test", "start_date": "2026-03-01"}]')
+            MagicMock(
+                type="text", text='[{"name": "Test", "start_date": "2026-03-01"}]'
+            )
         ]
         mock_client.messages.create.return_value = mock_msg
 
@@ -77,7 +79,9 @@ class TestExtractRegattas:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='```json\n[{"name": "Fenced"}]\n```')]
+        mock_msg.content = [
+            MagicMock(type="text", text='```json\n[{"name": "Fenced"}]\n```')
+        ]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():
@@ -101,13 +105,13 @@ class TestExtractRegattas:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='[{"name": "Test"}]')]
+        mock_msg.content = [MagicMock(type="text", text='[{"name": "Test"}]')]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():
             extract_regattas("content", 2026)
             _, kwargs = mock_client.messages.create.call_args
-            assert kwargs["timeout"] == 30.0
+            assert kwargs["timeout"] == 60.0
 
 
 class TestExtractionPrompt:
@@ -130,8 +134,9 @@ class TestDiscoverDocuments:
         mock_msg = MagicMock()
         mock_msg.content = [
             MagicMock(
+                type="text",
                 text='[{"doc_type": "NOR", "url": "http://example.com/nor.pdf", '
-                '"label": "Notice of Race"}]'
+                '"label": "Notice of Race"}]',
             )
         ]
         mock_client.messages.create.return_value = mock_msg
@@ -146,7 +151,7 @@ class TestDiscoverDocuments:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="[]")]
+        mock_msg.content = [MagicMock(type="text", text="[]")]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():
@@ -170,13 +175,13 @@ class TestDiscoverDocuments:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="[]")]
+        mock_msg.content = [MagicMock(type="text", text="[]")]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():
             discover_documents("content", "Test", "http://example.com")
             _, kwargs = mock_client.messages.create.call_args
-            assert kwargs["timeout"] == 30.0
+            assert kwargs["timeout"] == 60.0
 
 
 # --- discover_documents_deep ---
@@ -190,10 +195,11 @@ class TestDiscoverDocumentsDeep:
         mock_msg = MagicMock()
         mock_msg.content = [
             MagicMock(
+                type="text",
                 text='[{"doc_type": "NOR", "url": "http://example.com/nor.pdf", '
                 '"label": "Notice of Race"}, '
                 '{"doc_type": "SI", "url": "http://example.com/si.pdf", '
-                '"label": "Sailing Instructions"}]'
+                '"label": "Sailing Instructions"}]',
             )
         ]
         mock_client.messages.create.return_value = mock_msg
@@ -222,10 +228,72 @@ class TestDiscoverDocumentsDeep:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="[]")]
+        mock_msg.content = [MagicMock(type="text", text="[]")]
         mock_client.messages.create.return_value = mock_msg
 
         with app.app_context():
             discover_documents_deep("content", "Test", "http://example.com")
             _, kwargs = mock_client.messages.create.call_args
-            assert kwargs["timeout"] == 30.0
+            assert kwargs["timeout"] == 60.0
+
+
+# --- model config and response parsing ---
+
+
+class TestClaudeModelConfig:
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_uses_current_model_and_low_effort(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(type="text", text="[]")]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            extract_regattas("content", 2026)
+            discover_documents("content", "Test", "http://example.com")
+            discover_documents_deep("content", "Test", "http://example.com")
+
+        for _, kwargs in mock_client.messages.create.call_args_list:
+            assert kwargs["model"] == "claude-sonnet-5-5"
+            assert kwargs["output_config"] == {"effort": "low"}
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_skips_thinking_blocks(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [
+            MagicMock(type="thinking", thinking=""),
+            MagicMock(type="text", text='[{"name": "After Thinking"}]'),
+        ]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            result = extract_regattas("content", 2026)
+            assert result == [{"name": "After Thinking"}]
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_refusal_raises_value_error(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.stop_reason = "refusal"
+        mock_msg.content = []
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            with pytest.raises(ValueError, match="declined"):
+                extract_regattas("content", 2026)
+
+    @patch("app.admin.ai_service.anthropic.Anthropic")
+    def test_empty_response_raises_value_error(self, mock_cls, app):
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(type="thinking", thinking="")]
+        mock_client.messages.create.return_value = mock_msg
+
+        with app.app_context():
+            with pytest.raises(ValueError, match="empty response"):
+                discover_documents("content", "Test", "http://example.com")
