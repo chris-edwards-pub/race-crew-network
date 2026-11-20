@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Security updates only: open-pull-requests-limit 0 turns off routine
+  # version updates but not security updates. Dependabot opens one grouped PR
+  # per batch of alerts; the nightly loop (vulnerability-scan.yml) builds it
+  # into a rebuilt image, rescans, tests, deploys, and then merges it.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily   # required; only governs version updates, which are off
+    open-pull-requests-limit: 0
+    labels: [dependencies, security]
+    groups:
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]

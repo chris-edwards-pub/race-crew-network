@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Security
+
+## 0.77.0
+- Nightly security loop now fixes Dependabot alerts on its own: open Dependabot security PRs that touch only `requirements.txt` are merged into the rebuild, rescanned (the rebuilt image must have each alert's patched version), tested, deployed, and then merged to `master`
+- Dependabot alerts of MEDIUM severity and above are now included (Trivy stays at HIGH/CRITICAL)
+- Add `.github/dependabot.yml`: pip security updates only, grouped into one PR; routine version updates stay off
+
+### Security
 - 2026-10-28: rebuilt image `:0.76.0-20261028`
 
 ## 0.76.0
