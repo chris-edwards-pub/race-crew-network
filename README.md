@@ -362,11 +362,12 @@ deployments automatically. No SSH, nginx, or certbot required.
 without any interaction:
 
 ```
-Trivy scan of :latest + open HIGH/CRITICAL Dependabot alerts
+Trivy scan of :latest (HIGH/CRITICAL) + open MEDIUM+ Dependabot alerts
   │
   ├─ nothing found ──────────────► done (closes any open scan issue)
   │
-  └─ found ─► rebuild :<version>-<YYYYMMDD> (no cache) ─► rescan
+  └─ found ─► rebuild :<version>-<YYYYMMDD> (no cache, master +
+              Dependabot security PRs) ─► rescan
                  │
                  ├─ still vulnerable ─────────► open/update GitHub issue, no deploy
                  │
@@ -375,13 +376,19 @@ Trivy scan of :latest + open HIGH/CRITICAL Dependabot alerts
                                ├─ fail ───────► open/update GitHub issue, no deploy
                                │
                                └─ pass ─► deploy + verify ─► move :latest
+                                           ─► merge the Dependabot PRs
                                            ─► bot PR adds a line under
                                               "## Unreleased" in VERSIONS.md
 ```
 
 - A rebuild picks up patched Debian packages (`apt-get upgrade`) and the latest
-  versions allowed by `>=` floors in `requirements.txt`. It can't fix `==` pins
-  or Dependabot alerts — those end up in the issue.
+  versions allowed by `>=` floors in `requirements.txt`.
+- Dependabot security PRs (configured in `.github/dependabot.yml`: pip only,
+  grouped, no routine version updates) are merged into the rebuild if they
+  touch nothing but `requirements.txt`. A Dependabot alert counts as fixed when
+  the rebuilt image has its patched version. After a successful deploy the PRs
+  are merged to `master`; if they can't fix it (or no PR exists yet), it ends up
+  in the issue.
 - The issue (label `security/vulnerability-scan`) is the only thing that needs
   you. Fix it on a `deps/<name>` branch (no version bump; add a line under
   `## Unreleased` → `### Security`). Once the next scan is clean the issue
@@ -398,7 +405,8 @@ Trivy scan of :latest + open HIGH/CRITICAL Dependabot alerts
 - Settings → Actions → General → **Allow GitHub Actions to create and approve
   pull requests** (for the `VERSIONS.md` PR).
 - Dependabot alerts and security updates enabled (Settings → Code security).
-  Routine Dependabot version updates are intentionally not configured.
+  Routine Dependabot version updates are intentionally off
+  (`open-pull-requests-limit: 0` in `.github/dependabot.yml`).
 
 ### Container images
 
