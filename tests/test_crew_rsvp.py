@@ -559,3 +559,46 @@ class TestCanSetCrewRsvp:
 
         regatta = _make_regatta(db, skipper_user)
         assert can_set_crew_rsvp(admin_user, regatta, crew_user) is True
+
+
+# ── Crew RSVP modal: buttons require a crew member ──────────────────
+
+
+class TestCrewRsvpModalButtons:
+
+    def test_buttons_container_not_hidden_inline(
+        self, app, db, logged_in_skipper, skipper_user
+    ):
+        """`.d-grid` overrides inline display:none, so buttons are disabled instead."""
+        _make_regatta(db, skipper_user)
+        resp = logged_in_skipper.get("/")
+        html = resp.get_data(as_text=True)
+        assert 'id="crewRsvpButtons" class="d-grid gap-2">' in html
+
+    def test_add_crew_modal_disables_buttons_until_selected(
+        self, app, db, logged_in_skipper, skipper_user
+    ):
+        _make_regatta(db, skipper_user)
+        resp = logged_in_skipper.get("/")
+        html = resp.get_data(as_text=True)
+        assert "function setCrewRsvpButtonsEnabled(enabled)" in html
+        add_modal = html.split("function openAddCrewRsvpModal")[1].split(
+            "function submitCrewRsvp"
+        )[0]
+        assert "setCrewRsvpButtonsEnabled(false)" in add_modal
+        select = html.split("function selectCrewFromList")[1].split(
+            "function openAddCrewRsvpModal"
+        )[0]
+        assert "setCrewRsvpButtonsEnabled(true)" in select
+
+    def test_submit_without_crew_member_creates_no_rsvp(
+        self, app, db, logged_in_skipper, skipper_user
+    ):
+        regatta = _make_regatta(db, skipper_user)
+        resp = logged_in_skipper.post(
+            f"/regattas/{regatta.id}/crew-rsvp",
+            data={"crew_user_id": "", "status": "yes"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert RSVP.query.filter_by(regatta_id=regatta.id).count() == 0

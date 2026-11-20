@@ -379,7 +379,7 @@
                 <div id="crewRsvpPicker" style="display:none;">
                     <div id="crewRsvpList" class="list-group mb-3" style="max-height:240px;overflow-y:auto;"></div>
                 </div>
-                <div id="crewRsvpButtons" class="d-grid gap-2" style="display:none;">
+                <div id="crewRsvpButtons" class="d-grid gap-2">
                     <button type="button" class="btn btn-success crew-rsvp-btn" data-status="yes" onclick="submitCrewRsvp('yes')">Yes</button>
                     <button type="button" class="btn btn-warning crew-rsvp-btn" data-status="maybe" onclick="submitCrewRsvp('maybe')">Maybe</button>
                     <button type="button" class="btn btn-danger crew-rsvp-btn" data-status="no" onclick="submitCrewRsvp('no')">No</button>
@@ -542,7 +542,7 @@ function openCrewRsvpModal(el) {
     document.getElementById('crewRsvpPicker').style.display = 'none';
     document.getElementById('crewRsvpProfileLink').href = '/crew/' + el.dataset.crewId;
     document.getElementById('crewRsvpProfileLink').style.display = '';
-    document.getElementById('crewRsvpButtons').style.display = 'grid';
+    setCrewRsvpButtonsEnabled(true);
     // Highlight current status
     var currentStatus = el.dataset.currentStatus;
     document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
@@ -553,6 +553,13 @@ function openCrewRsvpModal(el) {
     modal.show();
 }
 
+// RSVP buttons stay disabled until a crew member is chosen
+function setCrewRsvpButtonsEnabled(enabled) {
+    document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
+        btn.disabled = !enabled;
+    });
+}
+
 function selectCrewFromList(item) {
     document.getElementById('crewRsvpUserId').value = item.dataset.crewId;
     document.getElementById('crewRsvpName').textContent = item.dataset.crewName;
@@ -561,8 +568,8 @@ function selectCrewFromList(item) {
         li.classList.remove('active');
     });
     item.classList.add('active');
-    // Show RSVP buttons
-    document.getElementById('crewRsvpButtons').style.display = 'grid';
+    // Enable RSVP buttons
+    setCrewRsvpButtonsEnabled(true);
     document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
         btn.classList.remove('active');
     });
@@ -587,7 +594,7 @@ function openAddCrewRsvpModal(el) {
     document.getElementById('crewRsvpForm').action = '/regattas/' + el.dataset.regattaId + '/crew-rsvp';
     document.getElementById('crewRsvpPicker').style.display = 'block';
     document.getElementById('crewRsvpProfileLink').style.display = 'none';
-    document.getElementById('crewRsvpButtons').style.display = 'none';
+    setCrewRsvpButtonsEnabled(false);
     document.querySelectorAll('.crew-rsvp-btn').forEach(function(btn) {
         btn.classList.remove('active');
     });
@@ -596,6 +603,7 @@ function openAddCrewRsvpModal(el) {
 }
 
 function submitCrewRsvp(status) {
+    if (!document.getElementById('crewRsvpUserId').value) return;
     document.getElementById('crewRsvpStatus').value = status;
     sessionStorage.setItem('rsvpScrollY', window.scrollY);
     var checked = [];

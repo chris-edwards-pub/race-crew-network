@@ -4,6 +4,9 @@
 
 ### Security
 
+## 0.77.2
+- Set RSVP modal: the Yes / Maybe / No / Clear buttons are now disabled until a crew member is selected (the old "hide until selected" never worked, because Bootstrap's `.d-grid` overrides inline `display:none`)
+
 ## 0.77.1
 - Fix AI schedule import and document discovery failing with a 404: `claude-sonnet-4-20250514` was retired; switch to `claude-sonnet-5-5` at `low` effort
 - Read the response text from `text` blocks only (skipping thinking blocks), and show a clear error when the model declines or returns nothing
