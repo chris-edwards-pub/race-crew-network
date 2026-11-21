@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Security
+- 2026-11-21: rebuilt image `:0.77.3-20261121` to fix CVE-2026-28684 (python-dotenv); merged Dependabot #184
 
 ## 0.77.3
 - Fix crew invite sign-up showing "Not Found" after a double-tapped **Create Account**: the first submit registered the user and cleared the invite token, and the second hit the used token. The button now disables on submit, and a used or invalid invite link redirects to the schedule (if logged in) or to login with a message instead of returning a 404
