@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Security
+- 2026-11-26: rebuilt image `:0.77.3-20261126` to fix CVE-2026-124851 (libzstd1)
 - 2026-11-21: rebuilt image `:0.77.3-20261121` to fix CVE-2026-28684 (python-dotenv); merged Dependabot #184
 
 ## 0.77.3
